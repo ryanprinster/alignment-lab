@@ -1,23 +1,12 @@
-# Byte-compiled files
-cartpole-
-__pycache__/
-*.py[cod]
-
-# Virtual environment
-torch_env/
-venv/
-.env
+# Experiment Outputs
+runs/
+model_weights/
+cartpole-ppo-videos/
 
 # OS files
 .DS_Store
 
-# Logs
-*.log
-
-# Experiment Outputs
-runs/
-model_weights/
-cartpole-ppo-videos/# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
 *$py.class
@@ -162,6 +151,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+torch_env/
 
 # Spyder project settings
 .spyderproject
