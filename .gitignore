@@ -1,0 +1,20 @@
+# Byte-compiled files
+cartpole-
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+torch_env/
+venv/
+.env
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
+
+# Experiment Outputs
+runs/
+model_weights/
+cartpole-ppo-videos/
