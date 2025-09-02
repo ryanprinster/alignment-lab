@@ -1,7 +1,29 @@
 (WIP) README 
 
+PPO
+- Current implementation on Cartpole is very basic, one should anticipate challenges scaling to more difficult tasks
+- Resources for this:
+- https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
+- https://arxiv.org/pdf/2005.12729
+
 An implementation of PPO on Cartpole, to demonstrate basic learning. This will be built upon later.
 
+SFT
+
+Reference:
+
 Activate virtual environment with `source torch_env/bin/activate`
-Run with `python3 -m rl_experiments`
-Show tensorboard with rl_experiments % tensorboard --logdir=./runs
+
+Run with `python3 -m experiments`
+
+Show tensorboard with `tensorboard --logdir=./runs`
+
+
+
+TODO:
+
+SFT
+- Extend profiler to be able to log more statistics for function calls
+    - Memory usage
+    - Overall call count, time spent
+    - Track I/O as a limitation

@@ -2,6 +2,8 @@
 runs/
 model_weights/
 cartpole-ppo-videos/
+checkpoints/
+util.py
 
 # OS files
 .DS_Store

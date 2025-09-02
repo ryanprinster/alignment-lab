@@ -22,6 +22,7 @@ from experiments.trajectory import Trajectory, BatchTrajectory
 from experiments.config import PPOConfig
 
 class Trainer():
+    # TODO: Update with new logger class, etc
     def __init__(self):
 
         # PPO Hyperparams
@@ -55,6 +56,7 @@ class Trainer():
         self.optimizer_policy = optim.Adam(self.policy_model.parameters(), lr = self.config.alpha)
         self.optimizer_value = optim.Adam(self.value_model.parameters(), lr = self.config.alpha)
 
+    # TODO: Switch to logger class
     def log_weights_and_grads(self, models, epoch):
         for model in models:
             model_name = model.__class__.__name__

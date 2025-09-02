@@ -8,8 +8,12 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
+from experiments.profiler import profile
+from experiments.monitor import detect_nans
 
 
+# TODO: Could optionally combine these classes
 class MLPValue(nn.Module):
     def __init__(self, obs_dim, hidden_dims=None):
         super().__init__()
@@ -60,3 +64,26 @@ class MLPPolicy(nn.Module):
         if single_input:
             x = x.squeeze(dim=0)
         return x
+
+class Llama_3p2_1B(nn.Module):
+    @profile
+    def __init__(self, hf_model_name="meta-llama/Llama-3.2-1B"):
+        super().__init__()
+        self.transformer = AutoModelForCausalLM.from_pretrained(hf_model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(hf_model_name)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+
+    @detect_nans
+    @profile
+    def forward(self, input_ids, attention_mask, labels):
+        """
+        Note for learning:
+        Since this is a Causal LM, therefore in this case labels are likely the data itself
+        (input_ids), shifted by one place. 
+        """
+        outputs = self.transformer(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels
+        )
+        return outputs
