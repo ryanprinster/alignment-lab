@@ -85,7 +85,6 @@ class Trajectory():
         return self._length
     
     def __getitem__(self, idx):
-        # TODO: Change to not underscores
         return self.states[idx], \
             self.actions[idx], \
             self.rewards[idx], \

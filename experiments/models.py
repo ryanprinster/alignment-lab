@@ -71,7 +71,12 @@ class Llama_3p2_1B(nn.Module):
         super().__init__()
         self.transformer = AutoModelForCausalLM.from_pretrained(hf_model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(hf_model_name)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        
+        # # NOTE: NOT advised by (https://arxiv.org/pdf/2403.17031) detail 3
+        # self.tokenizer.pad_token = self.tokenizer.eos_token 
+        # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
+        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        self.transformer.resize_token_embeddings(len(self.tokenizer))
 
     @detect_nans
     @profile
