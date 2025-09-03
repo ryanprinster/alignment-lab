@@ -6,7 +6,8 @@ import time
 from experiments.profiler import profile
 
 class Checkpointer:
-    def __init__(self, checkpoint_dir="./checkpoints", keep_last_n=3, save_freq_steps=500, save_freq_epochs=1, save_interval_min=60):
+    def __init__(self, config, checkpoint_dir="./checkpoints", keep_last_n=2, save_freq_steps=200, save_freq_epochs=1, save_interval_min=60):
+        self.config = config
         self.checkpoint_dir = checkpoint_dir
         self.keep_last_n = keep_last_n
         self.best_loss = float('inf')
@@ -20,7 +21,7 @@ class Checkpointer:
     @profile
     def save_checkpoint(self, model, optimizer, global_step, epoch, loss):        
         
-        path = self._should_save_checkpoint(global_step, epoch, loss)
+        path = self._should_save_checkpoint(global_step, loss)
         if path:
             checkpoint = self._build_checkpoint(model, optimizer, global_step, epoch, loss)
             torch.save(checkpoint, path)
@@ -30,7 +31,12 @@ class Checkpointer:
         # [TODO] implement
         pass
 
-    def _should_save_checkpoint(self, global_step, epoch, loss):
+    def _should_save_checkpoint(self, global_step, loss):
+        if hasattr(self.config, 'save_freq_steps'):
+            self.save_freq_steps = self.config.save_freq_steps
+        if hasattr(self.config, 'save_interval_min'):
+            self.save_interval_secs = self.config.save_interval_min * 60
+        
         path = None
         
         if loss < self.best_loss:

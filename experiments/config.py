@@ -38,9 +38,21 @@ class SFTConfig2():
         self.eps = 1e-5
         self.lr = 3e-6
         self.lr_final_ratio = 0.1
-        self.batch_size = 32
-        self.virtual_batch_size = 128
-        # TODO: Add virtual batch size
+        # self.batch_size = 32
+        # self.virtual_batch_size = 128
+        self.batch_size = 2
+        self.virtual_batch_size = 4
+        assert self.virtual_batch_size % self.batch_size == 0
+        self.accumulation_steps = self.virtual_batch_size / self.batch_size
+
+        # Checkpointing
+        self.save_freq_steps = 50 * self.accumulation_steps
+        self.save_interval_min = 60
+
+        # Logging
+        # self.log_weights_freq=None
+        self.log_scalars_freq=self.accumulation_steps
+
         # TODO: Could move optimizer, lr scheduler, data to config
 
         # Detail 7 (Disable dropout) aka there is no dropout

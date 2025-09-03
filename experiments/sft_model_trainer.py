@@ -17,17 +17,13 @@ class SFTTrainer():
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = Llama_3p2_1B().to(self.device)
         self.optimizer = optim.AdamW(self.model.parameters(), 
-                                    lr = self.config.lr, 
-                                    # betas = (self.config.beta_1, self.config.beta_2), 
-                                    # eps = self.config.eps
-                                    )
+                                    lr = self.config.lr)
         self.lr_scheduler = CosineAnnealingLR(self.optimizer, 
                                               T_max=self.config.num_epochs, 
                                               eta_min=self.config.lr_final_ratio * self.config.lr)
-        # self.data = Dolly15kData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size, test_size_pct=self.config.test_pct)
         self.data = TLDRFilteredData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
-        self.checkpointer = Checkpointer()
-        self.logger = Logger()
+        self.checkpointer = Checkpointer(self.config)
+        self.logger = Logger(self.config)
 
     @detect_nans
     def loss(self, outputs):
@@ -40,9 +36,13 @@ class SFTTrainer():
     
     @profile
     def update_weights(self):
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-        self.optimizer.step()
+        if (self.global_step+1) % self.config.accumulation_steps == 0:
+            self.optimizer.step()
         self.global_step += 1
+    
+    def zero_grad(self):
+        if (self.global_step+1) % self.config.accumulation_steps == 0:
+            self.optimizer.zero_grad()
     
     def train(self):
         print("Starting Training!")
@@ -52,7 +52,6 @@ class SFTTrainer():
         for epoch in range(self.config.num_epochs):   
                      
             for _batch_idx, batch in enumerate(self.data.train_loader):
-                
                 
                 outputs = self.model.forward(input_ids=batch['input_ids'].to(self.device), 
                                        attention_mask=batch['attention_mask'].to(self.device), 
@@ -76,7 +75,7 @@ class SFTTrainer():
                     global_step=self.global_step
                 )
 
-                self.optimizer.zero_grad()
+                self.zero_grad()
             
             self.lr_scheduler.step()
 

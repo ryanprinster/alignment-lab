@@ -7,11 +7,11 @@ import sys
 from experiments.profiler import profile
 
 class Logger():
-    def __init__(self,log_weights_freq=100,log_scalars_freq=5):
+    def __init__(self, config):
+
+        self.config = config
         self.writer = SummaryWriter()
         self.best_loss = float('inf')
-        self.log_weights_freq = log_weights_freq
-        self.log_scalars_freq = log_scalars_freq
 
         self._closed = False
         # Thanks to Claude here:
@@ -37,10 +37,12 @@ class Logger():
        
     def log(self, scalars, models, epoch, global_step):
         if not self._closed and hasattr(self, 'writer'):
-            if global_step % self.log_weights_freq == 0: 
-                self._log_weights_and_grads(models, global_step)
-            if global_step % self.log_scalars_freq == 0: 
-                self._log_scalars(scalars, global_step)
+            if hasattr(self.config, 'log_weights_freq'):
+                if global_step % self.config.log_weights_freq == 0: 
+                    self._log_weights_and_grads(models, global_step)
+            if hasattr(self.config, 'log_scalars_freq'):
+                if global_step % self.config.log_scalars_freq == 0: 
+                    self._log_scalars(scalars, global_step)
                 
             print("epoch: ", epoch, "global_step: ", global_step, " loss: ", scalars["loss"], "\n\n\n")
 
