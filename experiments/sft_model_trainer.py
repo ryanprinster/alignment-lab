@@ -58,12 +58,6 @@ class SFTTrainer():
                                        attention_mask=batch['attention_mask'].to(self.device), 
                                        labels=batch['input_ids'].to(self.device)) 
                 
-                print("Memory diagnosis:")
-                print(torch.cuda.memory_summary())
-                torch.cuda.empty_cache()
-                torch.cuda.synchronize() 
-                print(torch.cuda.memory_summary())
-
                 loss = self.loss(outputs)
                 self.backward(loss)
                 self.update_weights()
