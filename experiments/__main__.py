@@ -81,8 +81,8 @@ def main():
         print(f"ERROR: {e}")
         traceback.print_exc()
 
-        allocated = torch.cuda.memory_allocated() / 1024**3
-        print(f"Mem allocated: {allocated:.1f}GB")
+        summary = torch.cuda.memory_summary()
+        print(summary)
         
         with open("crash_log.txt", "w") as f:
             f.write(f"Crashed at {datetime.now()}\n")
