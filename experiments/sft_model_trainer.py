@@ -40,6 +40,7 @@ class SFTTrainer():
             self.optimizer.step()
         self.global_step += 1
     
+    @profile
     def zero_grad(self):
         if (self.global_step+1) % self.config.accumulation_steps == 0:
             self.optimizer.zero_grad()
