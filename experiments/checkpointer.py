@@ -39,7 +39,8 @@ class Checkpointer:
         
         path = None
         
-        if loss < self.best_loss:
+        # Don't save so frequently at the beginning, slowing things down
+        if (loss < self.best_loss) and (global_step > self.save_freq_steps):
             self.best_loss = loss
             path = os.path.join(self.checkpoint_dir, "checkpoint_best.pt")
 
