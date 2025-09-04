@@ -38,12 +38,12 @@ class SFTTrainer():
     def update_weights(self):
         if (self.global_step+1) % self.config.accumulation_steps == 0:
             self.optimizer.step()
-            torch.cuda.empty_cache()
         self.global_step += 1
     
     def zero_grad(self):
         if (self.global_step+1) % self.config.accumulation_steps == 0:
             self.optimizer.zero_grad()
+        torch.cuda.empty_cache()
     
     def train(self):
         print("Starting Training!")
@@ -78,6 +78,7 @@ class SFTTrainer():
                 )
 
                 self.zero_grad()
+                
             
             self.lr_scheduler.step()
 
