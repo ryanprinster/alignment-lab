@@ -1,8 +1,11 @@
+from datetime import time
+import json
 from torch.utils.tensorboard import SummaryWriter
 import atexit
 import signal
 import torch
 import sys
+import psutil
 
 from experiments.profiler import profile
 
@@ -35,21 +38,52 @@ class Logger():
             print("TensorBoard writer closed")
 
        
-    def log(self, scalars, models, epoch, global_step):
+    def log(self, scalars, models, epoch, global_step, lr):
         if not self._closed and hasattr(self, 'writer'):
             if hasattr(self.config, 'log_weights_freq'):
                 if global_step % self.config.log_weights_freq == 0: 
-                    self._log_weights_and_grads(models, global_step)
+                    self._log_weights_and_grads_to_tensorboard(models, global_step)
             if hasattr(self.config, 'log_scalars_freq'):
                 if global_step % self.config.log_scalars_freq == 0: 
-                    self._log_scalars(scalars, global_step)
+                    self._log_scalars_to_tensorboard(scalars, global_step)
                 
-            print("epoch: ", epoch, "global_step: ", global_step, " loss: ", scalars["loss"], "\n\n\n")
+            mem_info_str = self._get_memory_usage_info()
+            print(f"\n\n\n epoch: {epoch}, global_step: {global_step}, loss: {scalars["loss"]}, {mem_info_str}\n\n\n")
 
             self.writer.flush()
 
+    def _get_memory_usage_info(self):
+        mem_usage_info_str = ""
+        if torch.cuda.is_available():
+            # / 1024**3 is Bytes --> GB
+            gpu_mem_used = torch.cuda.memory_allocated() / 1024**3 
+            gpu_mem_total = torch.cuda.get_device_properties(0).total_memory / 1024**3 
+            gpu_mem_pct = (gpu_mem_used / gpu_mem_total) * 100
+            gpu_info = f"GPU: {gpu_mem_used:.1f}/{gpu_mem_total:.1f}GB ({gpu_mem_pct:.1f}%)"
+            mem_usage_info_str = gpu_info
+        else:
+            gpu_info = "CPU"
+            cpu_mem = psutil.virtual_memory()
+            cpu_mem_used = cpu_mem.used / 1024**3
+            cpu_mem_total = cpu_mem.total / 1024**3 
+            cpu_mem_pct = 100.0 * cpu_mem_used/cpu_mem_total
+            cpu_mem_pct_real = cpu_mem.percent
+            cpu_mem_used_real = cpu_mem_pct_real * cpu_mem_total / 100
+            cpu_info = f"CPU Mem Used: {cpu_mem_used:.1f}/{cpu_mem_total:.1f}GB ({cpu_mem_pct:.1f}%) "
+            cpu_info += f"CPU Mem Unavailable: {cpu_mem_used_real:.1f}/{cpu_mem_total:.1f}GB ({cpu_mem_pct_real:.1f}%) "
+            mem_usage_info_str = cpu_info
+
+        return mem_usage_info_str
+
+    
+    @profile
+    def _write_step_data(self, step, loss, lr):
+        log_data = {"step": step, "loss": loss, "lr": lr, "timestamp": time.time()}
+        with open(self.config.log_file_name + ".jsonl", "a") as f:
+            f.write(json.dumps(log_data) + "\n")
+
     @profile 
-    def _log_weights_and_grads(self, models, global_step):
+    def _log_weights_and_grads_to_tensorboard(self, models, global_step):
         for model in models:
             model_name = model.__class__.__name__
             for name, param in model.named_parameters():
@@ -62,6 +96,6 @@ class Logger():
                 if param.data is not None:
                     self.writer.add_histogram(f'{model_name}{name}.weight', param.data, global_step=global_step)
     @profile
-    def _log_scalars(self, scalars, global_step):
+    def _log_scalars_to_tensorboard(self, scalars, global_step):
         for name in scalars.keys():
             self.writer.add_scalar(name, scalars[name], global_step)

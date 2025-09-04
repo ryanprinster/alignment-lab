@@ -12,7 +12,7 @@ SFT
 
 Reference:
 
-Activate virtual environment with `source torch_env/bin/activate`
+Activate virtual environment with `source torch_env/bin/activate`, install stuff with `python -m pip install <stuff>`
 
 Run with `python3 -m experiments`
 

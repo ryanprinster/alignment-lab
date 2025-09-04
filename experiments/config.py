@@ -52,6 +52,7 @@ class SFTConfig2():
         # Logging
         # self.log_weights_freq=None
         self.log_scalars_freq=self.accumulation_steps
+        self.log_file_name="sft_training_log"
 
         # TODO: Could move optimizer, lr scheduler, data to config
 

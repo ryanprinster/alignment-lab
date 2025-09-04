@@ -72,7 +72,8 @@ class SFTTrainer():
                     scalars={"loss": loss.item()},
                     models=[self.model],
                     epoch=epoch,
-                    global_step=self.global_step
+                    global_step=self.global_step,
+                    lr=self.lr_scheduler.get_last_lr()[0]
                 )
 
                 self.zero_grad()
