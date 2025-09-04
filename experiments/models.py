@@ -78,7 +78,7 @@ class Llama_3p2_1B(nn.Module):
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         self.transformer.resize_token_embeddings(len(self.tokenizer))
 
-    @detect_nans
+    # @detect_nans
     @profile
     def forward(self, input_ids, attention_mask, labels):
         """

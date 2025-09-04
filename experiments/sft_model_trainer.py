@@ -25,7 +25,7 @@ class SFTTrainer():
         self.checkpointer = Checkpointer(self.config)
         self.logger = Logger(self.config)
 
-    @detect_nans
+    # @detect_nans
     def loss(self, outputs):
         # This model does CE loss under the hood
         return outputs.loss
