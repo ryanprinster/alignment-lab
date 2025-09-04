@@ -2,7 +2,6 @@ import functools
 import torch
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
-
 def detect_nans(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):

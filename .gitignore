@@ -4,6 +4,7 @@ model_weights/
 cartpole-ppo-videos/
 checkpoints/
 util.py
+crash_log.txt
 
 # OS files
 .DS_Store
