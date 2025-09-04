@@ -91,4 +91,5 @@ class Llama_3p2_1B(nn.Module):
             attention_mask=attention_mask,
             labels=labels
         )
+        torch.cuda.empty_cache()
         return outputs
