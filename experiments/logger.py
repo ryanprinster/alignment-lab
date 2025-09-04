@@ -48,7 +48,7 @@ class Logger():
                     self._log_scalars_to_tensorboard(scalars, global_step)
                 
             mem_info_str = self._get_memory_usage_info()
-            print(f"\n\n\n epoch: {epoch}, global_step: {global_step}, loss: {scalars["loss"]}, {mem_info_str}\n\n\n")
+            print(f"\n\n\n epoch: {epoch}, global_step: {global_step}, loss: {scalars['loss']}, {mem_info_str}\n\n\n")
 
             self.writer.flush()
 
