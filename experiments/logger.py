@@ -57,9 +57,12 @@ class Logger():
         if torch.cuda.is_available():
             # / 1024**3 is Bytes --> GB
             gpu_mem_used = torch.cuda.memory_allocated() / 1024**3 
+            gpu_mem_reserved = torch.cuda.memory_reserved() / 1024**3
             gpu_mem_total = torch.cuda.get_device_properties(0).total_memory / 1024**3 
-            gpu_mem_pct = (gpu_mem_used / gpu_mem_total) * 100
-            gpu_info = f"GPU: {gpu_mem_used:.1f}/{gpu_mem_total:.1f}GB ({gpu_mem_pct:.1f}%)"
+            gpu_mem_pct_allocated = (gpu_mem_used / gpu_mem_total) * 100
+            gpu_mem_pct_reserved = (gpu_mem_used / gpu_mem_total) * 100
+            gpu_info = f"GPU Allocated: {gpu_mem_used:.1f}/{gpu_mem_total:.1f}GB ({gpu_mem_pct_allocated:.1f}%)"
+            gpu_info += f"GPU Reserved: {gpu_mem_reserved:.1f}/{gpu_mem_total:.1f}GB ({gpu_mem_pct_reserved:.1f}%)"
             mem_usage_info_str = gpu_info
         else:
             gpu_info = "CPU"

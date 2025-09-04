@@ -6,6 +6,7 @@ import subprocess
 import sys
 import traceback
 from datetime import datetime
+import torch
 
 def create_parser(config_class):
     config = config_class()
@@ -79,6 +80,9 @@ def main():
 
         print(f"ERROR: {e}")
         traceback.print_exc()
+
+        allocated = torch.cuda.memory_allocated() / 1024**3
+        print(f"Mem allocated: {allocated:.1f}GB")
         
         with open("crash_log.txt", "w") as f:
             f.write(f"Crashed at {datetime.now()}\n")
