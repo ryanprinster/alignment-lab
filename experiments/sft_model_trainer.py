@@ -27,6 +27,10 @@ class SFTTrainer():
         self.checkpointer = Checkpointer(self.config)
         self.logger = Logger(self.config)
 
+        # Mixed precision training
+        self.mixed_precision_context = autocast("cuda") if self.config.enable_mixed_precision_training else nullcontext()
+        self.scaler = GradScaler("cuda") 
+
     @profile
     def to_device(self, batch):
         batch['input_ids'] = batch['input_ids'].to(self.device)
@@ -37,7 +41,11 @@ class SFTTrainer():
     @detect_nans
     def loss(self, outputs):
         # This model does CE loss under the hood
-        return outputs.loss
+        loss = outputs.loss
+        if self.config.enable_mixed_precision_training:
+            # Loss scaling for mixed precision training
+            self.scaler.scale(loss)
+        return loss
 
     @profile
     def backward(self, loss):
@@ -45,7 +53,12 @@ class SFTTrainer():
     
     @profile
     def update_weights(self):
-        self.optimizer.step()
+        if self.config.enable_mixed_precision_training:
+            # Unscale gradient, take optimizer step, and update scale factor
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            self.optimizer.step()
     
     @profile
     def zero_grad(self):
@@ -64,7 +77,8 @@ class SFTTrainer():
 
                 batch = self.to_device(batch)
                 
-                with autocast("cuda"): # FP32 --> FP16 for mixed precision training
+                # FP32 --> FP16 for mixed precision training
+                with self.mixed_precision_context: 
                     outputs = self.model.forward(input_ids=batch['input_ids'], 
                                         attention_mask=batch['attention_mask'], 
                                         labels=batch['labels']) 

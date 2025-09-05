@@ -54,6 +54,10 @@ class SFTConfig2():
         self.log_scalars_freq=self.accumulation_steps
         self.log_file_name="sft_training_log"
 
+        # Other
+        self.enable_gradient_checkpointing = False
+        self.enable_mixed_precision_training = True
+
         # TODO: Could move optimizer, lr scheduler, data to config
 
         # Detail 7 (Disable dropout) aka there is no dropout
