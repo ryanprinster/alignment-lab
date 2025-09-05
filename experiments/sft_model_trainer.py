@@ -1,6 +1,8 @@
 import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.cuda.amp import GradScaler, autocast
+
 
 from experiments.models import Llama_3p2_1B
 from experiments.config import SFTConfig2
@@ -62,11 +64,13 @@ class SFTTrainer():
 
                 batch = self.to_device(batch)
                 
-                outputs = self.model.forward(input_ids=batch['input_ids'], 
-                                       attention_mask=batch['attention_mask'], 
-                                       labels=batch['labels']) 
-                
-                loss = self.loss(outputs)
+                with autocast("cuda"): # FP32 --> FP16 for mixed precision training
+                    outputs = self.model.forward(input_ids=batch['input_ids'], 
+                                        attention_mask=batch['attention_mask'], 
+                                        labels=batch['labels']) 
+                    
+                    loss = self.loss(outputs)
+
                 self.backward(loss)
                 
                 if (self.global_step+1) % self.config.accumulation_steps == 0:
