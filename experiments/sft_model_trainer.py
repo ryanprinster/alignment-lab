@@ -17,7 +17,7 @@ class SFTTrainer():
     def __init__(self, config):
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model = Llama_3p2_1B().to(self.device)
+        self.model = Llama_3p2_1B(self.config).to(self.device)
         self.optimizer = optim.AdamW(self.model.parameters(), 
                                     lr = self.config.lr)
         self.lr_scheduler = CosineAnnealingLR(self.optimizer, 
