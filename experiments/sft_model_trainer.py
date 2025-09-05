@@ -25,7 +25,7 @@ class SFTTrainer():
         self.checkpointer = Checkpointer(self.config)
         self.logger = Logger(self.config)
 
-    # @detect_nans
+    @detect_nans
     def loss(self, outputs):
         # This model does CE loss under the hood
         return outputs.loss
@@ -36,16 +36,14 @@ class SFTTrainer():
     
     @profile
     def update_weights(self):
-        if (self.global_step+1) % self.config.accumulation_steps == 0:
-            self.optimizer.step()
-        self.global_step += 1
+        self.optimizer.step()
     
     @profile
     def zero_grad(self):
-        if (self.global_step+1) % self.config.accumulation_steps == 0:
-            self.optimizer.zero_grad()
-        torch.cuda.empty_cache()
+        self.optimizer.zero_grad()
+        
     
+    @profile
     def train(self):
         print("Starting Training!")
         self.global_step = 0
@@ -61,7 +59,11 @@ class SFTTrainer():
                 
                 loss = self.loss(outputs)
                 self.backward(loss)
-                self.update_weights()
+                
+                if (self.global_step+1) % self.config.accumulation_steps == 0:
+                    self.update_weights()
+                
+                self.global_step += 1
 
                 self.checkpointer.save_checkpoint(
                     self.model,
@@ -79,8 +81,10 @@ class SFTTrainer():
                     lr=self.lr_scheduler.get_last_lr()[0]
                 )
 
-                self.zero_grad()
+                if (self.global_step+1) % self.config.accumulation_steps == 0:
+                    self.zero_grad()
                 
+                torch.cuda.empty_cache()
             
             self.lr_scheduler.step()
 

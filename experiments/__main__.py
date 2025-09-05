@@ -81,9 +81,6 @@ def main():
         print(f"ERROR: {e}")
         traceback.print_exc()
 
-        summary = torch.cuda.memory_summary()
-        print(summary)
-        
         with open("crash_log.txt", "w") as f:
             f.write(f"Crashed at {datetime.now()}\n")
             f.write(f"Error: {e}\n")

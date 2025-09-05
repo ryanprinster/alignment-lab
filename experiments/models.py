@@ -66,7 +66,6 @@ class MLPPolicy(nn.Module):
         return x
 
 class Llama_3p2_1B(nn.Module):
-    @profile
     def __init__(self, hf_model_name="meta-llama/Llama-3.2-1B"):
         super().__init__()
         self.transformer = AutoModelForCausalLM.from_pretrained(hf_model_name)

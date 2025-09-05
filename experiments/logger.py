@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import datetime
 import json
 from torch.utils.tensorboard import SummaryWriter
 import atexit
@@ -22,11 +22,12 @@ class Logger():
         signal.signal(signal.SIGTERM, self._cleanup_signal)  # Pod termination
         signal.signal(signal.SIGINT, self._cleanup_signal)   # Ctrl+C
     
+    ### Cleanup handling
+
     def __del__(self):
         self.close()
-
-    # Thanks to Claude here:
-    def _cleanup_signal(self, signum, frame):
+    
+    def _cleanup_signal(self, signum, frame): # Thanks to Claude here
         print(f"Received signal {signum}, cleaning up...")
         self.close()
         sys.exit(0)
@@ -37,21 +38,21 @@ class Logger():
             self._closed = True
             print("TensorBoard writer closed")
 
-       
+    
+    ### Logging Entrypoint    
+    
     def log(self, scalars, models, epoch, global_step, lr):
-        if not self._closed and hasattr(self, 'writer'):
-            if hasattr(self.config, 'log_weights_freq'):
-                if global_step % self.config.log_weights_freq == 0: 
-                    self._log_weights_and_grads_to_tensorboard(models, global_step)
-            if hasattr(self.config, 'log_scalars_freq'):
-                if global_step % self.config.log_scalars_freq == 0: 
-                    self._log_scalars_to_tensorboard(scalars, global_step)
-                
+        if not self._closed:
+            self.log_to_tensorboard(global_step, models, scalars)
+            self.log_to_terminal(epoch, global_step, scalars['loss'])
+            self._write_step_data(global_step, scalars["loss"], lr)
+     
+    ### Console/Terminal Logging
+
+    def log_to_terminal(self, epoch, global_step, loss):
             mem_info_str = self._get_memory_usage_info()
-            print(f"\n\n\n epoch: {epoch}, global_step: {global_step}, loss: {scalars['loss']}, {mem_info_str}\n\n\n")
-
-            self.writer.flush()
-
+            print(f"\n\n\n epoch: {epoch}, global_step: {global_step}, loss: {loss}, {mem_info_str}\n\n\n")
+        
     def _get_memory_usage_info(self):
         mem_usage_info_str = ""
         if torch.cuda.is_available():
@@ -78,12 +79,18 @@ class Logger():
 
         return mem_usage_info_str
 
-    
-    @profile
-    def _write_step_data(self, step, loss, lr):
-        log_data = {"step": step, "loss": loss, "lr": lr, "timestamp": time.time()}
-        with open(self.config.log_file_name + ".jsonl", "a") as f:
-            f.write(json.dumps(log_data) + "\n")
+    ### Tensorboard Logging
+
+    def log_to_tensorboard(self, global_step, models, scalars):
+        if hasattr(self, 'writer'):
+            if hasattr(self.config, 'log_weights_freq'):
+                if global_step % self.config.log_weights_freq == 0: 
+                    self._log_weights_and_grads_to_tensorboard(models, global_step)
+            if hasattr(self.config, 'log_scalars_freq'):
+                if global_step % self.config.log_scalars_freq == 0: 
+                    self._log_scalars_to_tensorboard(scalars, global_step)
+
+            self.writer.flush()
 
     @profile 
     def _log_weights_and_grads_to_tensorboard(self, models, global_step):
@@ -102,3 +109,11 @@ class Logger():
     def _log_scalars_to_tensorboard(self, scalars, global_step):
         for name in scalars.keys():
             self.writer.add_scalar(name, scalars[name], global_step)
+
+
+    ### File Logging
+        
+    def _write_step_data(self, step, loss, lr):
+        log_data = {"step": step, "loss": loss, "lr": lr, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        with open(self.config.log_file_name + ".jsonl", "a") as f:
+            f.write(json.dumps(log_data) + "\n")
