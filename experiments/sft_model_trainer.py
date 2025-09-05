@@ -25,6 +25,13 @@ class SFTTrainer():
         self.checkpointer = Checkpointer(self.config)
         self.logger = Logger(self.config)
 
+    @profile
+    def to_device(self, batch):
+        batch['input_ids'] = batch['input_ids'].to(self.device)
+        batch['attention_mask'] = batch['attention_mask'].to(self.device)
+        batch['labels'] = batch['input_ids']  # reference
+        return batch
+
     @detect_nans
     def loss(self, outputs):
         # This model does CE loss under the hood
@@ -52,10 +59,12 @@ class SFTTrainer():
         for epoch in range(self.config.num_epochs):   
                      
             for _batch_idx, batch in enumerate(self.data.train_loader):
+
+                batch = self.to_device(batch)
                 
-                outputs = self.model.forward(input_ids=batch['input_ids'].to(self.device), 
-                                       attention_mask=batch['attention_mask'].to(self.device), 
-                                       labels=batch['input_ids'].to(self.device)) 
+                outputs = self.model.forward(input_ids=batch['input_ids'], 
+                                       attention_mask=batch['attention_mask'], 
+                                       labels=batch['labels']) 
                 
                 loss = self.loss(outputs)
                 self.backward(loss)
