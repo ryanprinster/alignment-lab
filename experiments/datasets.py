@@ -4,6 +4,16 @@ from torch.utils.data import Dataset, DataLoader
 
 from experiments.profiler import profile
 
+class ProfiledDataLoader(DataLoader):
+    
+    def __iter__(self):
+        self._iterator = super().__iter__()
+        return self
+    
+    @profile
+    def __next__(self):
+        return next(self._iterator)
+
 #TODO make subclasses?
 
 class TLDRFilteredData():
@@ -19,11 +29,11 @@ class TLDRFilteredData():
         dataset = self.dataset.map(preprocess_func, batched=True)
         dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
         
-        self.train_loader = DataLoader(dataset["train"], batch_size=batch_size, shuffle=True, num_workers=0)
-        self.validation_loader = DataLoader(dataset["validation"], batch_size=batch_size, shuffle=True, num_workers=0)
-        self.test_loader = DataLoader(dataset["test"], batch_size=batch_size, shuffle=True, num_workers=0)
+        self.train_loader = ProfiledDataLoader(dataset["train"], batch_size=batch_size, shuffle=True, num_workers=0)
+        self.validation_loader = ProfiledDataLoader(dataset["validation"], batch_size=batch_size, shuffle=True, num_workers=0)
+        self.test_loader = ProfiledDataLoader(dataset["test"], batch_size=batch_size, shuffle=True, num_workers=0)
         
-
+    @profile
     def _sft_tldr_filtered_preprocessor(self, batch, tokenizer):
         #  Detail 1 (Dataset -> Specification)
         texts = []

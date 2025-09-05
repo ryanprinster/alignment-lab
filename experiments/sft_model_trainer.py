@@ -1,7 +1,7 @@
 import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler, autocast
 from contextlib import nullcontext
 
 
@@ -111,9 +111,7 @@ class SFTTrainer():
 
                 if (self.global_step+1) % self.config.accumulation_steps == 0:
                     self.zero_grad()
-                
-                torch.cuda.empty_cache()
-            
+                            
             self.lr_scheduler.step()
 
 

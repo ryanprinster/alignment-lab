@@ -21,38 +21,46 @@ class Checkpointer:
     @profile
     def save_checkpoint(self, model, optimizer, global_step, epoch, loss):        
         
-        path = self._should_save_checkpoint(global_step, loss)
-        if path:
-            checkpoint = self._build_checkpoint(model, optimizer, global_step, epoch, loss)
-            torch.save(checkpoint, path)
-            self._cleanup_old_checkpoints()
+        should_save_checkpoint, path = self._should_save_checkpoint(global_step, loss)
+        
+        if should_save_checkpoint:
+            self._save_checkpoint(path, model, optimizer, global_step, epoch, loss)
+
 
     def load_checkpoint(self):
         # [TODO] implement
         pass
 
     def _should_save_checkpoint(self, global_step, loss):
+        should_save_checkpoint = False
+        path = None
+
         if hasattr(self.config, 'save_freq_steps'):
             self.save_freq_steps = self.config.save_freq_steps
         if hasattr(self.config, 'save_interval_min'):
             self.save_interval_secs = self.config.save_interval_min * 60
         
-        path = None
         
         # Don't save so frequently at the beginning, slowing things down
         if (loss < self.best_loss) and (global_step > self.save_freq_steps):
             self.best_loss = loss
             path = os.path.join(self.checkpoint_dir, "checkpoint_best.pt")
-
+            should_save_checkpoint = True
         elif global_step % self.save_freq_steps == 0:
             path = os.path.join(self.checkpoint_dir, f"checkpoint_step_{global_step}.pt")
-        
+            should_save_checkpoint = True
         elif time.time() - self.last_save_time >= self.save_interval_secs:
             path = os.path.join(self.checkpoint_dir, f"checkpoint_at_{datetime.now().isoformat()}.pt")
             self.last_save_time = time.time()
+            should_save_checkpoint = True
         
-        return path
+        return should_save_checkpoint, path
 
+    @profile
+    def _save_checkpoint(self, path, model, optimizer, global_step, epoch, loss):
+        checkpoint = self._build_checkpoint(model, optimizer, global_step, epoch, loss)
+        torch.save(checkpoint, path)
+        self._cleanup_old_checkpoints()
 
     def _build_checkpoint(self, model, optimizer, global_step, epoch, loss):
         return {
