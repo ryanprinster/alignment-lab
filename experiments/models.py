@@ -66,10 +66,11 @@ class MLPPolicy(nn.Module):
         return x
 
 class Llama_3p2_1B(nn.Module):
-    def __init__(self, hf_model_name="meta-llama/Llama-3.2-1B"):
+    def __init__(self, config, hf_model_name="meta-llama/Llama-3.2-1B"):
         super().__init__()
         self.transformer = AutoModelForCausalLM.from_pretrained(hf_model_name)
-        self.transformer.gradient_checkpointing_enable()
+        if config.enable_gradient_checkpointing:
+            self.transformer.gradient_checkpointing_enable()
         self.tokenizer = AutoTokenizer.from_pretrained(hf_model_name)
         
         # # NOTE: NOT advised by (https://arxiv.org/pdf/2403.17031) detail 3

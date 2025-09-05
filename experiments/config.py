@@ -41,9 +41,8 @@ class SFTConfig2():
         # self.batch_size = 32
         # self.virtual_batch_size = 128
         self.batch_size = 2
-        self.virtual_batch_size = 4
-        assert self.virtual_batch_size % self.batch_size == 0
-        self.accumulation_steps = self.virtual_batch_size / self.batch_size
+        self.accumulation_steps = 4
+        self.virtual_batch_size = self.batch_size * self.accumulation_steps
 
         # Checkpointing
         self.save_freq_steps = 50 * self.accumulation_steps
