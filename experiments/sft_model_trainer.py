@@ -2,6 +2,7 @@ import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.cuda.amp import GradScaler, autocast
+from contextlib import nullcontext
 
 
 from experiments.models import Llama_3p2_1B
