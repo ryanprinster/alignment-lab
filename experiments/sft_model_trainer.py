@@ -114,5 +114,15 @@ class SFTTrainer():
 
                 if (self.global_step+1) % self.config.accumulation_steps == 0:
                     self.zero_grad()
+        
+        # Final checkpoint
+        self.checkpointer.save_checkpoint(
+                    self.model,
+                    self.optimizer,
+                    self.global_step,
+                    epoch,
+                    loss.item(),
+                    final_checkpoint=True
+                )
                             
 
