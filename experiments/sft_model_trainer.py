@@ -104,7 +104,8 @@ class SFTTrainer():
                 )
 
                 self.logger.log(
-                    scalars={"loss": loss.item()},
+                    scalars={
+                        "loss": loss.item()},
                     models=[self.model],
                     epoch=epoch,
                     global_step=self.global_step,

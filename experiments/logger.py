@@ -44,14 +44,14 @@ class Logger():
     def log(self, scalars, models, epoch, global_step, lr):
         if not self._closed:
             self.log_to_tensorboard(global_step, models, scalars)
-            self.log_to_terminal(epoch, global_step, scalars['loss'])
+            self.log_to_terminal(epoch, global_step, scalars['loss'], lr)
             self._write_step_data(global_step, scalars["loss"], lr)
      
     ### Console/Terminal Logging
 
-    def log_to_terminal(self, epoch, global_step, loss):
+    def log_to_terminal(self, epoch, global_step, loss, lr):
             mem_info_str = self._get_memory_usage_info()
-            print(f"\n\n\n epoch: {epoch}, global_step: {global_step}, loss: {loss}, {mem_info_str}\n\n\n")
+            print(f"\n\n\n epoch: {epoch}, global_step: {global_step}, loss: {loss}, last lr: {lr}, {mem_info_str}\n\n\n")
         
     def _get_memory_usage_info(self):
         mem_usage_info_str = ""
