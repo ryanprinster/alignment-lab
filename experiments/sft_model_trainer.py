@@ -43,14 +43,14 @@ class SFTTrainer():
     @detect_nans
     def loss(self, outputs):
         # This model does CE loss under the hood
-        loss = outputs.loss
-        if self.config.enable_mixed_precision_training:
-            # Loss scaling for mixed precision training
-            self.scaler.scale(loss)
-        return loss
+        return outputs.loss
 
     @profile
     def backward(self, loss):
+        if self.config.enable_mixed_precision_training:
+            # Loss scaling for mixed precision training
+            # Note: do this only in backward pass, because otherwise we are logging with a scaled loss 
+            loss = self.scaler.scale(loss)
         loss.backward()
     
     @profile
