@@ -23,7 +23,7 @@ class SFTTrainer():
         self.optimizer = optim.AdamW(self.model.parameters(), 
                                     lr = self.config.lr)
         self.lr_scheduler = CosineAnnealingLR(self.optimizer, 
-                                              T_max=len(self.dataset["train"]) / self.config._virtual_batch_size,
+                                              T_max=len(self.data.dataset["train"]) / self.config._virtual_batch_size,
                                             #   self.config.num_epochs, # might end up not doing anything, need to do based on global steps
                                               eta_min=self.config.lr_final_ratio * self.config.lr)
         self.checkpointer = Checkpointer(self.config)
