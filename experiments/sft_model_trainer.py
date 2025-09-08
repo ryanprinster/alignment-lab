@@ -19,12 +19,13 @@ class SFTTrainer():
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = Llama_3p2_1B(self.config).to(self.device)
+        self.data = TLDRFilteredData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         self.optimizer = optim.AdamW(self.model.parameters(), 
                                     lr = self.config.lr)
         self.lr_scheduler = CosineAnnealingLR(self.optimizer, 
-                                              T_max=self.config.num_epochs, 
+                                              T_max=len(self.dataset["train"]) / self.config._virtual_batch_size,
+                                            #   self.config.num_epochs, # might end up not doing anything, need to do based on global steps
                                               eta_min=self.config.lr_final_ratio * self.config.lr)
-        self.data = TLDRFilteredData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         self.checkpointer = Checkpointer(self.config)
         self.logger = Logger(self.config)
 
@@ -60,6 +61,7 @@ class SFTTrainer():
             self.scaler.update()
         else:
             self.optimizer.step()
+        self.lr_scheduler.step()
     
     @profile
     def zero_grad(self):
@@ -112,6 +114,4 @@ class SFTTrainer():
                 if (self.global_step+1) % self.config.accumulation_steps == 0:
                     self.zero_grad()
                             
-            self.lr_scheduler.step()
-
 
