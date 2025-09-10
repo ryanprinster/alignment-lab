@@ -48,6 +48,7 @@ class SFTConfig2():
         # Checkpointing
         self.save_freq_steps = 100 * self.accumulation_steps
         self.save_interval_min = 60
+        self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
 
         # Logging
         # self.log_weights_freq=None

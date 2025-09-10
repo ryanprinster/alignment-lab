@@ -127,12 +127,12 @@ class SFTTrainer():
                             
 
     @profile
-    def evaluate(self, checkpoint_path="/Users/ryanprinster/Projects/trained_models/sft/checkpoint_step_4800.pt"):
+    def evaluate(self):
 
         self.sft = Llama_3p2_1B(self.config).to(self.device)
         self.gpt = Llama_3p2_1B(self.config).to(self.device)
         
-        self.checkpointer.load_model(checkpoint_path, self.sft, self.device)
+        self.checkpointer.load_model(self.config.load_checkpoint_path, self.sft, self.device)
     
         batch = self.data.validation_loader.__next__
 
