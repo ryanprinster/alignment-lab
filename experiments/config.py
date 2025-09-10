@@ -43,6 +43,7 @@ class SFTConfig2():
         self.batch_size = 2
         self.accumulation_steps = 4
         self._virtual_batch_size = self.batch_size * self.accumulation_steps
+        self.generation_temperature = 0.7
 
         # Checkpointing
         self.save_freq_steps = 100 * self.accumulation_steps
@@ -53,7 +54,7 @@ class SFTConfig2():
         self.log_scalars_freq=self.accumulation_steps
         self.log_file_name="sft_training_log"
 
-        # Other
+        # Efficiency
         self.enable_gradient_checkpointing = False
         self.enable_mixed_precision_training = True
 

@@ -92,5 +92,22 @@ class Llama_3p2_1B(nn.Module):
             attention_mask=attention_mask,
             labels=labels
         )
-        torch.cuda.empty_cache()
+        torch.cuda.empty_cache() #TODO: Check how this actually impacts memory
         return outputs
+
+    @profile
+    def generate(self, input_ids, max_length):
+        outputs = self.transformer.generate(
+            input_ids=input_ids,
+            max_length=max_length,
+            temperature=self.config.generation_temperature
+        )
+        generated_ids = torch.argmax(outputs.logits, dim=-1)
+        return generated_ids
+
+    @profile
+    def token_ids_to_text(self, token_ids):
+        text = self.tokenizer.batch_decode(token_ids, skip_special_tokens=True)
+        return text
+        
+        

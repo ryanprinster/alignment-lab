@@ -72,7 +72,8 @@ def main():
 
         print_config(config)
 
-        SFTTrainer(config).train()
+        SFTTrainer(config).evaluate()
+        # SFTTrainer(config).train()
         print("Training Done! Woweee")
         
     except Exception as e:

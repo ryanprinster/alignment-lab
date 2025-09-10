@@ -126,3 +126,27 @@ class SFTTrainer():
                 )
                             
 
+    @profile
+    def evaluate(self, checkpoint_path="/Users/ryanprinster/Projects/trained_models/sft/checkpoint_step_4800.pt"):
+
+        self.sft = Llama_3p2_1B(self.config).to(self.device)
+        self.gpt = Llama_3p2_1B(self.config).to(self.device)
+        
+        self.checkpointer.load_model(checkpoint_path, self.sft, self.device)
+    
+        batch = self.data.validation_loader.__next__
+
+        prompt_ids = batch['input_ids']
+        sft_gen_ids = self.sft.generate(prompt_ids)
+        gpt_gen_ids = self.gpt.generate(prompt_ids)
+        
+        prompt_text = self.sft.token_ids_to_text(prompt_ids)
+        sft_text = self.sft.token_ids_to_text(sft_gen_ids)
+        gpt_text = self.gpt.token_ids_to_text(gpt_gen_ids)
+
+        # Log a few examples
+        for i in range(min(3, len(prompt_text))):
+            print(f"\nSample {i}:")
+            print(f"Prompt: {prompt_text[i][:200]}...")
+            print(f"Prompt: {sft_text[i][:200]}...")
+            print(f"Prompt: {gpt_text[i][:200]}...")

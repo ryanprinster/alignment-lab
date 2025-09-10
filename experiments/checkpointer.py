@@ -26,9 +26,17 @@ class Checkpointer:
         if should_save_checkpoint:
             self._save_checkpoint(path, model, optimizer, global_step, epoch, loss)
 
+    @profile
+    def load_model(self, checkpoint_path, model, device):
+        if not os.path.exists(checkpoint_path):
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+        
+        checkpoint = torch.load(checkpoint_path, map_location=device)
 
-    def load_checkpoint(self):
-        # [TODO] implement
+        model.load_state_dict(checkpoint['model_state_dict'])
+
+    @profile
+    def load_checkpoint(self, checkpoint_path, model, device, optimizer=None):
         pass
 
     def _should_save_checkpoint(self, global_step, loss, final_checkpoint):
