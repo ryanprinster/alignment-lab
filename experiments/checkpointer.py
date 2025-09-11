@@ -33,7 +33,7 @@ class Checkpointer:
         
         checkpoint = torch.load(checkpoint_path, map_location=device)
 
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint['model_state_dict'], strict=False)
 
     @profile
     def load_checkpoint(self, checkpoint_path, model, device, optimizer=None):

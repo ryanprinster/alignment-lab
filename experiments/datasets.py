@@ -1,6 +1,7 @@
 from functools import partial
 from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader
+import torch
 
 from experiments.profiler import profile
 
@@ -100,6 +101,93 @@ class TLDRFilteredData():
         return post
         
         
+class OpenAIPreferenceData():
+
+    RM_MAX_QUERY_LENGTH = 512
+    RM_MAX_INPUT_LENGTH = 638
+    
+    @profile
+    def __init__(self, tokenizer, batch_size, subset="comparisons"):
+        # openai/summarize_from_feedback is not really supported by hf anymore
+        self.dataset = load_dataset("HuggingFaceH4/summarize-from-feedback")
+        self.tokenizer = tokenizer
+        
+        preprocess_func = partial(self._extract_preference_data, tokenizer=tokenizer)
+        
+        # The comparisons dataset has a different structure - we need to extract post-summary pairs
+        dataset = self.dataset.map(preprocess_func, batched=True, remove_columns=self.dataset["train"].column_names)
+        c = self.dataset["train"].column_names
+        print(f"self.dataset['train'].column_names {c}")
+        dataset.set_format(type="torch", columns=["preferred_input_ids", "preferred_attention_mask",
+                                                  "rejected_input_ids", "rejected_attention_mask"])
+
+        # Create dataloaders
+        self.train_loader = ProfiledDataLoader(dataset["train"], batch_size=batch_size, shuffle=True, num_workers=0)
+        self.validation_loader = ProfiledDataLoader(dataset["validation"], batch_size=batch_size, shuffle=True, num_workers=0)
+
+        
+    @profile
+    def _extract_preference_data(self, batch, tokenizer):
+        preferred_input_ids = []
+        preferred_attention_mask = []
+        rejected_input_ids = []
+        rejected_attention_mask = []
+        queries = []
+        
+        for meta, responses, label in zip(batch["meta"], batch["responses"], batch["label"]):
+            # Extract post information
+            post = meta["post"]
+            subreddit = meta["subreddit"]
+            title = meta["title"]
+            preferred_summary = responses[label]["text"]
+            rejected_summary = responses[1 - label]["text"]
+
+            query_text = self._format_query(subreddit, title, post)
+
+            preferred_text = query_text + " " + preferred_summary + self.tokenizer.eos_token
+            rejected_text = query_text + " " + rejected_summary + self.tokenizer.eos_token
+
+            #TODO: Padding and truncation
+            preferred_tokens = self.tokenizer(
+                    preferred_text,
+                    truncation=True,
+                    padding="max_length",
+                    max_length=OpenAIPreferenceData.RM_MAX_INPUT_LENGTH,
+                    return_tensors="pt"
+                )
+                
+            rejected_tokens = self.tokenizer(
+                rejected_text,
+                truncation=True,
+                padding="max_length",
+                max_length=OpenAIPreferenceData.RM_MAX_INPUT_LENGTH,
+                return_tensors="pt"
+            )
+
+                # Append to lists (squeeze to remove batch dimension from tokenizer)
+            preferred_input_ids.append(preferred_tokens["input_ids"].squeeze(0))
+            preferred_attention_mask.append(preferred_tokens["attention_mask"].squeeze(0))
+            rejected_input_ids.append(rejected_tokens["input_ids"].squeeze(0))
+            rejected_attention_mask.append(rejected_tokens["attention_mask"].squeeze(0))
+            queries.append(query_text)
+        
+        # Return the processed batch as a dictionary
+        return {
+            "preferred_input_ids": torch.stack(preferred_input_ids),
+            "preferred_attention_mask": torch.stack(preferred_attention_mask),
+            "rejected_input_ids": torch.stack(rejected_input_ids),
+            "rejected_attention_mask": torch.stack(rejected_attention_mask),
+            "queries": queries,
+        }
+        
+    
+    def _format_query(self, subreddit, title, post):
+        return f"SUBREDDIT: r/{subreddit}\n\nTITLE: {title}\n\nPOST: {post}\n\nTL;DR:"
+    
+    def get_query_text(self, subreddit, title, post):
+        return self._format_query(subreddit, title, post)
+
+
 
 class Dolly15kData():
     

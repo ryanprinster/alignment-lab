@@ -1,4 +1,5 @@
 from experiments.sft_model_trainer import SFTTrainer
+from experiments.rm_model_trainer import RMTrainer
 from experiments.config import SFTConfig2
 from experiments.runpod_utils import stop_runpod
 import argparse
@@ -72,7 +73,8 @@ def main():
 
         print_config(config)
 
-        SFTTrainer(config).evaluate()
+        RMTrainer(config).train()
+        # SFTTrainer(config).evaluate()
         # SFTTrainer(config).train()
         print("Training Done! Woweee")
         

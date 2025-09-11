@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from functools import reduce
 import gymnasium as gym
 import torch
@@ -7,6 +8,8 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn.init as init
+
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
 from experiments.profiler import profile
@@ -65,29 +68,45 @@ class MLPPolicy(nn.Module):
             x = x.squeeze(dim=0)
         return x
 
-class Llama_3p2_1B(nn.Module):
-    def __init__(self, config, hf_model_name="meta-llama/Llama-3.2-1B"):
+
+
+class Llama_3p2_1B(nn.Module, ABC):
+    HF_MODEL_NAME = "meta-llama/Llama-3.2-1B"
+    
+    def __init__(self, config):
         super().__init__()
-        self.transformer = AutoModelForCausalLM.from_pretrained(hf_model_name)
+        self.transformer = self._load_model()
         if config.enable_gradient_checkpointing:
             self.transformer.gradient_checkpointing_enable()
-        self.tokenizer = AutoTokenizer.from_pretrained(hf_model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
         
-        # # NOTE: NOT advised by (https://arxiv.org/pdf/2403.17031) detail 3
-        # self.tokenizer.pad_token = self.tokenizer.eos_token 
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         self.transformer.resize_token_embeddings(len(self.tokenizer))
+
+    @abstractmethod
+    def _load_model(self):
+        pass
+
+    @abstractmethod
+    def forward(self, input_ids, attention_mask, labels):
+        pass
+
+    def generate(self, inputs, max_length, temp):
+        pass
+        
+
+class Llama_3p2_1B_SFT(Llama_3p2_1B):
+    def __init__(self, config):
+        super().__init__(config)
         self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
 
-    # @detect_nans
+    @profile   
+    def _load_model(self):
+        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+
     @profile
     def forward(self, input_ids, attention_mask, labels):
-        """
-        Note for learning:
-        Since this is a Causal LM, therefore in this case labels are likely the data itself
-        (input_ids), shifted by one place. 
-        """
         outputs = self.transformer(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -105,4 +124,34 @@ class Llama_3p2_1B(nn.Module):
             temperature=temp
         )
         return generated_ids
+    
+
+class Llama_3p2_1B_RM(Llama_3p2_1B):
+    def __init__(self, config):
+        super().__init__(config)
+        self._init_head_weights()
+
+    def _init_head_weights(self):
+        # Detail 11 (Reward head initialization)
+        d_model = self.transformer.classifier.in_features
+        std = 1.0 / (d_model + 1) ** 0.5
         
+        init.normal_(self.transformer.classifier.weight, mean=0, std=std)
+        init.zeros_(self.transformer.classifier.bias)
+
+
+    @profile   
+    def _load_model(self):
+        return AutoModelForSequenceClassification.from_pretrained(
+            Llama_3p2_1B.HF_MODEL_NAME, 
+            num_labels=1
+        )
+
+    @profile
+    def forward(self, input_ids, attention_mask):
+        outputs = self.transformer(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        )
+        torch.cuda.empty_cache() #TODO: Check how this actually impacts memory
+        return outputs

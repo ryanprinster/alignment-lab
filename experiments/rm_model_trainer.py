@@ -6,28 +6,29 @@ from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
 
 
-from experiments.models import Llama_3p2_1B_SFT
+from experiments.models import Llama_3p2_1B_RM
 from experiments.config import SFTConfig2
-from experiments.datasets import TLDRFilteredData
+from experiments.datasets import OpenAIPreferenceData
 from experiments.logger import Logger
 from experiments.checkpointer import Checkpointer
 from experiments.profiler import profile
 from experiments.monitor import detect_nans
 
 
-class SFTTrainer():
+class RMTrainer():
     def __init__(self, config):
         self.config = config
+        self.checkpointer = Checkpointer(self.config)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model = Llama_3p2_1B_SFT(self.config).to(self.device)
-        self.data = TLDRFilteredData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
+        self.model = Llama_3p2_1B_RM(self.config).to(self.device)
+        self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
+        self.data = OpenAIPreferenceData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         self.optimizer = optim.AdamW(self.model.parameters(), 
                                     lr = self.config.lr)
         self.lr_scheduler = CosineAnnealingLR(self.optimizer, 
                                               T_max=len(self.data.dataset["train"]) / self.config._virtual_batch_size,
                                             #   self.config.num_epochs, # might end up not doing anything, need to do based on global steps
                                               eta_min=self.config.lr_final_ratio * self.config.lr)
-        self.checkpointer = Checkpointer(self.config)
         self.logger = Logger(self.config)
 
         # Mixed precision training
@@ -36,14 +37,17 @@ class SFTTrainer():
 
     @profile
     def to_device(self, batch):
-        batch['input_ids'] = batch['input_ids'].to(self.device)
-        batch['attention_mask'] = batch['attention_mask'].to(self.device)
-        batch['labels'] = batch['input_ids']  # reference
+        batch['preferred_input_ids'] = batch['preferred_input_ids'].to(self.device)
+        batch['preferred_attention_mask'] = batch['preferred_attention_mask'].to(self.device)
+        batch['rejected_input_ids'] = batch['rejected_input_ids'].to(self.device)
+        batch['rejected_attention_mask'] = batch['rejected_attention_mask'].to(self.device)
+
         return batch
 
     @detect_nans
     def loss(self, outputs):
         # This model does CE loss under the hood
+        assert(False) #not implemented yet
         return outputs.loss
 
     @profile
@@ -83,11 +87,13 @@ class SFTTrainer():
                 
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
-                    outputs = self.model.forward(input_ids=batch['input_ids'], 
-                                        attention_mask=batch['attention_mask'], 
-                                        labels=batch['labels']) 
+                    preferred_outputs = self.model.forward(input_ids=batch['preferred_input_ids'], 
+                                        attention_mask=batch['preferred_attention_mask']) 
                     
-                    loss = self.loss(outputs)
+                    rejected_outputs = self.model.forward(input_ids=batch['rejected_input_ids'], 
+                                        attention_mask=batch['rejected_attention_mask'])
+        
+                    loss = self.loss((preferred_outputs, rejected_outputs))
 
                 self.backward(loss)
                 
@@ -126,34 +132,5 @@ class SFTTrainer():
                     final_checkpoint=True
                 )
                             
-
-    @profile
-    def evaluate(self):
-        max_summary_length = TLDRFilteredData.SFT_MAX_INPUT_LENGTH
-
-        self.sft = Llama_3p2_1B(self.config).to(self.device)
-        self.gpt = Llama_3p2_1B(self.config).to(self.device)
-        
-        self.checkpointer.load_model(self.config.load_checkpoint_path, self.sft, self.device)
-    
-        test_loader = DataLoader(self.data.dataset['test'], shuffle=True)
-        for _batch_idx, batch in enumerate(test_loader):
-            for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
-
-                query_text = self.data.get_query_text(subreddit, title, post)
-                
-                inputs = self.data.tokenizer(query_text, return_tensors="pt")
-                sft_gen_ids = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
-                gpt_gen_ids = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
-
-                gpt_text = self.data.tokenizer.decode(gpt_gen_ids, skip_special_tokens=True)[len(query_text):]
-                sft_text = self.data.tokenizer.decode(sft_gen_ids, skip_special_tokens=True)[len(query_text):]
-
-                print(f"Batch #{_batch_idx}\n")
-                print(f"Prompt: {query_text}\n\n")
-                print(f"Label: {summary}\n")
-                print(f"SFT Response: {sft_text}\n")
-                print(f"GPT Response: {gpt_text}\n")
-                print(f"===================")
             
             
