@@ -2,6 +2,7 @@ import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.amp import GradScaler, autocast
+from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
 
 
@@ -128,25 +129,31 @@ class SFTTrainer():
 
     @profile
     def evaluate(self):
+        max_summary_length = TLDRFilteredData.SFT_MAX_INPUT_LENGTH
 
         self.sft = Llama_3p2_1B(self.config).to(self.device)
         self.gpt = Llama_3p2_1B(self.config).to(self.device)
         
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.sft, self.device)
     
-        batch = self.data.validation_loader.__next__
+        test_loader = DataLoader(self.data.dataset['test'], shuffle=True)
+        for _batch_idx, batch in enumerate(test_loader):
+            for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
 
-        prompt_ids = batch['input_ids']
-        sft_gen_ids = self.sft.generate(prompt_ids)
-        gpt_gen_ids = self.gpt.generate(prompt_ids)
-        
-        prompt_text = self.sft.token_ids_to_text(prompt_ids)
-        sft_text = self.sft.token_ids_to_text(sft_gen_ids)
-        gpt_text = self.gpt.token_ids_to_text(gpt_gen_ids)
+                query_text = self.data.get_query_text(subreddit, title, post)
+                
+                inputs = self.data.tokenizer(query_text, return_tensors="pt")
+                sft_gen_ids = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
+                gpt_gen_ids = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
 
-        # Log a few examples
-        for i in range(min(3, len(prompt_text))):
-            print(f"\nSample {i}:")
-            print(f"Prompt: {prompt_text[i][:200]}...")
-            print(f"Prompt: {sft_text[i][:200]}...")
-            print(f"Prompt: {gpt_text[i][:200]}...")
+                gpt_text = self.data.tokenizer.decode(gpt_gen_ids, skip_special_tokens=True)[len(query_text):]
+                sft_text = self.data.tokenizer.decode(sft_gen_ids, skip_special_tokens=True)[len(query_text):]
+
+                print(f"Batch #{_batch_idx}\n")
+                print(f"Prompt: {query_text}\n\n")
+                print(f"Label: {summary}\n")
+                print(f"SFT Response: {sft_text}\n")
+                print(f"GPT Response: {gpt_text}\n")
+                print(f"===================")
+            
+            

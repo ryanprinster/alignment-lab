@@ -23,6 +23,7 @@ class TLDRFilteredData():
     @profile
     def __init__(self, tokenizer, batch_size):
         self.dataset = load_dataset("vwxyzjn/summarize_from_feedback_tldr_3_filtered")
+        self.tokenizer = tokenizer
         
         preprocess_func = partial(self._sft_tldr_filtered_preprocessor, tokenizer=tokenizer)
         
@@ -33,26 +34,17 @@ class TLDRFilteredData():
         self.validation_loader = ProfiledDataLoader(dataset["validation"], batch_size=batch_size, shuffle=True, num_workers=0)
         self.test_loader = ProfiledDataLoader(dataset["test"], batch_size=batch_size, shuffle=True, num_workers=0)
         
-    @profile
-    def _sft_tldr_filtered_preprocessor(self, batch, tokenizer):
+    def _sft_tldr_filtered_preprocessor(self, batch, tokenizer=None):
+        tokenizer = tokenizer or self.tokenizer
         #  Detail 1 (Dataset -> Specification)
         texts = []
 
         for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
-            truncated_post = self._truncate_post(subreddit, title, post, tokenizer)
-            formatted_query = self._format_query(subreddit, title, truncated_post)
+            formatted_query = self.get_query_text(subreddit, title, post, tokenizer)
             # Detail 3 (Prepend a leading space to completion; append an EOS token to the completions)
             summary = " " + summary + tokenizer.eos_token
             full_text = formatted_query + summary
             texts.append(full_text)
-
-            num_tokens = tokenizer(full_text, return_tensors="pt")['input_ids'].shape[1]
-            if num_tokens > TLDRFilteredData.SFT_MAX_INPUT_LENGTH:
-                num_tokens = tokenizer(full_text, return_tensors="pt")['input_ids'].shape[1]
-                num_tokens_formatted_query = tokenizer(formatted_query, return_tensors="pt")['input_ids'].shape[1]
-                num_tokens_summary = tokenizer(summary, return_tensors="pt")['input_ids'].shape[1]
-                print(f"Total: {num_tokens}, Query: {num_tokens_formatted_query}, Summary: {num_tokens_summary}" )
-
 
             # Note: Detail 4 (Dataset -> SFT and preference datasets have different tokenization length)
             #   --> TODO: add check to ensure that full_text is <= SFT_MAX_INPUT_LENGTH
@@ -67,7 +59,12 @@ class TLDRFilteredData():
             max_length=TLDRFilteredData.SFT_MAX_INPUT_LENGTH,
             return_tensors="pt"
         )
-
+    
+    def get_query_text(self, subreddit, title, post, tokenizer=None):
+        tokenizer = tokenizer or self.tokenizer
+        truncated_post = self._truncate_post(subreddit, title, post, tokenizer)
+        formatted_query = self._format_query(subreddit, title, truncated_post)
+        return formatted_query
     
     # Detail 2.1 (Format the query), 2.3 (No trailing space after “TL;DR:”)
     def _format_query(self, subreddit, title, post):

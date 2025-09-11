@@ -78,6 +78,7 @@ class Llama_3p2_1B(nn.Module):
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         self.transformer.resize_token_embeddings(len(self.tokenizer))
+        self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
 
     # @detect_nans
     @profile
@@ -96,18 +97,12 @@ class Llama_3p2_1B(nn.Module):
         return outputs
 
     @profile
-    def generate(self, input_ids, max_length):
-        outputs = self.transformer.generate(
-            input_ids=input_ids,
+    def generate(self, inputs, max_length, temp):
+        generated_ids = self.transformer.generate(
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
             max_length=max_length,
-            temperature=self.config.generation_temperature
+            temperature=temp
         )
-        generated_ids = torch.argmax(outputs.logits, dim=-1)
         return generated_ids
-
-    @profile
-    def token_ids_to_text(self, token_ids):
-        text = self.tokenizer.batch_decode(token_ids, skip_special_tokens=True)
-        return text
-        
         
