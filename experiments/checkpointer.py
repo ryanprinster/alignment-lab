@@ -62,10 +62,10 @@ class Checkpointer:
         if global_step % self.save_freq_steps == 0:
             path = os.path.join(self.checkpoint_dir, f"checkpoint_step_{global_step}.pt")
             should_save_checkpoint = True
-        elif time.time() - self.last_save_time >= self.save_interval_secs:
-            path = os.path.join(self.checkpoint_dir, f"checkpoint_at_{datetime.now().isoformat()}.pt")
-            self.last_save_time = time.time()
-            should_save_checkpoint = True
+        # elif time.time() - self.last_save_time >= self.save_interval_secs:
+        #     path = os.path.join(self.checkpoint_dir, f"checkpoint_at_{datetime.now().isoformat()}.pt")
+        #     self.last_save_time = time.time()
+        #     should_save_checkpoint = True
         
         return should_save_checkpoint, path
 

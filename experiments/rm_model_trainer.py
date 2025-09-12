@@ -145,13 +145,13 @@ class RMTrainer():
                 
                 self.global_step += 1
 
-                self.checkpointer.save_checkpoint(
-                    self.model,
-                    self.optimizer,
-                    self.global_step,
-                    epoch,
-                    loss.item()
-                )
+                # self.checkpointer.save_checkpoint(
+                #     self.model,
+                #     self.optimizer,
+                #     self.global_step,
+                #     epoch,
+                #     loss.item()
+                # )
 
                 self.logger.log(
                     scalars={
