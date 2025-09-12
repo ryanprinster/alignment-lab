@@ -114,14 +114,11 @@ class OpenAIPreferenceData():
         
         preprocess_func = partial(self._extract_preference_data, tokenizer=tokenizer)
         
-        # The comparisons dataset has a different structure - we need to extract post-summary pairs
         dataset = self.dataset.map(preprocess_func, batched=True, remove_columns=self.dataset["train"].column_names)
         c = self.dataset["train"].column_names
-        print(f"self.dataset['train'].column_names {c}")
         dataset.set_format(type="torch", columns=["preferred_input_ids", "preferred_attention_mask",
                                                   "rejected_input_ids", "rejected_attention_mask"])
 
-        # Create dataloaders
         self.train_loader = ProfiledDataLoader(dataset["train"], batch_size=batch_size, shuffle=True, num_workers=0)
         self.validation_loader = ProfiledDataLoader(dataset["validation"], batch_size=batch_size, shuffle=True, num_workers=0)
 
@@ -135,19 +132,23 @@ class OpenAIPreferenceData():
         queries = []
         
         for meta, responses, label in zip(batch["meta"], batch["responses"], batch["label"]):
-            # Extract post information
             post = meta["post"]
             subreddit = meta["subreddit"]
             title = meta["title"]
             preferred_summary = responses[label]["text"]
             rejected_summary = responses[1 - label]["text"]
 
+            query_text = self._truncate_post(subreddit, title, post, tokenizer)
             query_text = self._format_query(subreddit, title, post)
 
             preferred_text = query_text + " " + preferred_summary + self.tokenizer.eos_token
             rejected_text = query_text + " " + rejected_summary + self.tokenizer.eos_token
 
             #TODO: Padding and truncation
+            # Detail 14 (Minor numerical differences between extracting reward with
+            #   left and right padded queries) 
+            # Note that tokenizer right pads by default
+            # TODO: verify padding with doing PPO/RL training, and that every sequence has an EOS token
             preferred_tokens = self.tokenizer(
                     preferred_text,
                     truncation=True,
@@ -164,14 +165,12 @@ class OpenAIPreferenceData():
                 return_tensors="pt"
             )
 
-                # Append to lists (squeeze to remove batch dimension from tokenizer)
             preferred_input_ids.append(preferred_tokens["input_ids"].squeeze(0))
             preferred_attention_mask.append(preferred_tokens["attention_mask"].squeeze(0))
             rejected_input_ids.append(rejected_tokens["input_ids"].squeeze(0))
             rejected_attention_mask.append(rejected_tokens["attention_mask"].squeeze(0))
             queries.append(query_text)
         
-        # Return the processed batch as a dictionary
         return {
             "preferred_input_ids": torch.stack(preferred_input_ids),
             "preferred_attention_mask": torch.stack(preferred_attention_mask),
@@ -186,6 +185,36 @@ class OpenAIPreferenceData():
     
     def get_query_text(self, subreddit, title, post):
         return self._format_query(subreddit, title, post)
+    
+    # TODO: This is copy and pasted from above, make a better structure to make this reusable
+    # Detail 2.2 (Clever truncation)
+    def _truncate_post(self, subreddit, title, post, tokenizer):
+
+        test_query = self._format_query(subreddit, title, post)
+        tokens = tokenizer(test_query, return_tensors="pt")
+        
+        if tokens['input_ids'].shape[1] <= TLDRFilteredData.SFT_MAX_QUERY_LENGTH:
+            return post
+        
+        truncate_char = '\n'
+        while tokens['input_ids'].shape[1] > TLDRFilteredData.SFT_MAX_QUERY_LENGTH:
+            last_newline = post.rfind(truncate_char)
+            if last_newline == -1:
+                # In the rare case that a single paragraph has too many tokens, 
+                # naively truncate that paragraph to the last period instead
+                truncate_char = '.'
+                # print("Post: ", 
+                #       repr(self._format_query(subreddit, title, post)),
+                #       tokenizer(self._format_query(subreddit, title, post), return_tensors="pt")['input_ids'].shape[1])
+                continue
+                raise RuntimeError("All paragraphs removed, post will be empty")
+                
+            
+            post = post[:last_newline]
+            test_query = self._format_query(subreddit, title, post)
+            tokens = tokenizer(test_query, return_tensors="pt")
+        
+        return post
 
 
 

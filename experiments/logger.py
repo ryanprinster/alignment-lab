@@ -15,6 +15,7 @@ class Logger():
         self.config = config
         self.writer = SummaryWriter()
         self.best_loss = float('inf')
+        self.init_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         self._closed = False
         # Thanks to Claude here:
@@ -115,5 +116,5 @@ class Logger():
         
     def _write_step_data(self, step, loss, lr):
         log_data = {"step": step, "loss": loss, "lr": lr, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-        with open(self.config.log_file_name + ".jsonl", "a") as f:
+        with open(f"{self.config.log_file_name}_{self.init_time}.jsonl", "a") as f:
             f.write(json.dumps(log_data) + "\n")

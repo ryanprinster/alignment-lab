@@ -35,6 +35,38 @@ class RMTrainer():
         self.mixed_precision_context = autocast("cuda") if self.config.enable_mixed_precision_training else nullcontext()
         self.scaler = GradScaler("cuda") 
 
+        # self._compute_model_bias()
+
+    def _compute_model_bias(self):
+        with torch.no_grad():
+            total_reward = 0
+
+            for _batch_idx, batch in enumerate(self.data.train_loader):
+                
+                # test
+                for seq in batch['preferred_input_ids'][:5]:
+                    decoded = self.model.tokenizer.decode(seq)
+                    print(f"Pad token Id: {self.model.tokenizer.pad_token_id}")
+                    print(f"EOS token Id: {self.model.tokenizer.eos_token_id}")
+                    print(f"Last token id: {seq[-1]}")
+                    print(f"Ends with EOS: {seq[-1] == self.model.tokenizer.eos_token_id or (seq == self.model.tokenizer.eos_token_id).any()}")
+                    print(f"Model's pad_token_id: {self.model.transformer.config.pad_token_id}")
+                    print(f"Tokenizer EOS token: '{self.model.tokenizer.eos_token}' -> {self.model.tokenizer.eos_token_id}")
+                    print(f"Tokenizer PAD token: '{self.model.tokenizer.pad_token}' -> {self.model.tokenizer.pad_token_id}")
+                    print(f"Last 10 tokens: {seq[-10:]}")
+
+
+
+                reward_logit = self.model.forward(input_ids=batch['preferred_input_ids'], 
+                            attention_mask=batch['preferred_attention_mask']).logits 
+                total_reward += reward_logit
+            
+                running_reward_bias = total_reward / (_batch_idx + 1)
+                print(f"running_reward_bias {running_reward_bias}")
+
+                
+
+
     @profile
     def to_device(self, batch):
         batch['preferred_input_ids'] = batch['preferred_input_ids'].to(self.device)
@@ -44,11 +76,23 @@ class RMTrainer():
 
         return batch
 
+    @profile
+    def forward(self, batch):
+        preferred_outputs = self.model.forward(input_ids=batch['preferred_input_ids'], 
+                            attention_mask=batch['preferred_attention_mask']) 
+        
+        rejected_outputs = self.model.forward(input_ids=batch['rejected_input_ids'], 
+                            attention_mask=batch['rejected_attention_mask'])
+
+        return (preferred_outputs, rejected_outputs)
+
     @detect_nans
     def loss(self, outputs):
-        # This model does CE loss under the hood
-        assert(False) #not implemented yet
-        return outputs.loss
+        preferred_outputs, rejected_outputs = outputs
+        r_preferred = preferred_outputs.logits
+        r_rejected = rejected_outputs.logits
+        loss = -torch.mean(torch.log(torch.sigmoid(r_preferred - r_rejected)))
+        return loss
 
     @profile
     def backward(self, loss):
@@ -71,8 +115,12 @@ class RMTrainer():
     @profile
     def zero_grad(self):
         self.optimizer.zero_grad()
-        
-    
+
+    def _accuracy(self, r_preferred, r_rejected):
+        correct = (r_preferred > r_rejected).float()
+        accuracy = correct.mean()
+        return accuracy
+
     @profile
     def train(self):
         print("Starting Training!")
@@ -87,13 +135,8 @@ class RMTrainer():
                 
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
-                    preferred_outputs = self.model.forward(input_ids=batch['preferred_input_ids'], 
-                                        attention_mask=batch['preferred_attention_mask']) 
-                    
-                    rejected_outputs = self.model.forward(input_ids=batch['rejected_input_ids'], 
-                                        attention_mask=batch['rejected_attention_mask'])
-        
-                    loss = self.loss((preferred_outputs, rejected_outputs))
+                    outputs = self.forward(batch)
+                    loss = self.loss(outputs)
 
                 self.backward(loss)
                 
@@ -112,7 +155,11 @@ class RMTrainer():
 
                 self.logger.log(
                     scalars={
-                        "loss": loss.item()},
+                        "loss": loss.item(),
+                        "accuracy": self._accuracy(outputs[0].logits, outputs[1].logits),
+                        "r_preferred": torch.mean(outputs[0]),
+                        "r_rejected": torch.mean(outputs[1])
+                        },
                     models=[self.model],
                     epoch=epoch,
                     global_step=self.global_step,
@@ -131,6 +178,3 @@ class RMTrainer():
                     loss.item(),
                     final_checkpoint=True
                 )
-                            
-            
-            

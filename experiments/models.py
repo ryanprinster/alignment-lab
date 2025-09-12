@@ -130,14 +130,23 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
     def __init__(self, config):
         super().__init__(config)
         self._init_head_weights()
+        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
 
     def _init_head_weights(self):
         # Detail 11 (Reward head initialization)
-        d_model = self.transformer.classifier.in_features
+        print("Initializing Head Weights...")
+
+        d_model = self.transformer.score.in_features
         std = 1.0 / (d_model + 1) ** 0.5
         
-        init.normal_(self.transformer.classifier.weight, mean=0, std=std)
-        init.zeros_(self.transformer.classifier.bias)
+        # score layer doesn't come with a bias
+        if self.transformer.score.bias is None:
+            self.transformer.score.bias = nn.Parameter(torch.zeros(1))
+
+        init.normal_(self.transformer.score.weight, mean=0, std=std)
+        init.zeros_(self.transformer.score.bias)
+
+         
 
 
     @profile   
@@ -146,8 +155,9 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
             Llama_3p2_1B.HF_MODEL_NAME, 
             num_labels=1
         )
+        # Detail 12 (Extract reward from the EOS token) Done by default
+        # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
-    @profile
     def forward(self, input_ids, attention_mask):
         outputs = self.transformer(
             input_ids=input_ids,
