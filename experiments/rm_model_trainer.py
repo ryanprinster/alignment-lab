@@ -157,8 +157,8 @@ class RMTrainer():
                     scalars={
                         "loss": loss.item(),
                         "accuracy": self._accuracy(outputs[0].logits, outputs[1].logits),
-                        "r_preferred": torch.mean(outputs[0]),
-                        "r_rejected": torch.mean(outputs[1])
+                        "r_preferred": torch.mean(outputs[0].logits),
+                        "r_rejected": torch.mean(outputs[1].logits)
                         },
                     models=[self.model],
                     epoch=epoch,
