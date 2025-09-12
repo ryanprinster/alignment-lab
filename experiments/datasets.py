@@ -123,7 +123,7 @@ class OpenAIPreferenceData():
         self.validation_loader = ProfiledDataLoader(dataset["validation"], batch_size=batch_size, shuffle=True, num_workers=0)
 
         
-    @profile
+    # @profile
     def _extract_preference_data(self, batch, tokenizer):
         preferred_input_ids = []
         preferred_attention_mask = []
