@@ -45,7 +45,7 @@ class RMTrainer(BaseTrainer):
             start = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             with open(f"compute_rm_bias{start}.jsonl", "a") as f:
                 @profile
-                def process_batch(_batch_idx, batch):
+                def process_batch(total_reward, _batch_idx, batch):
                     batch = self._to_device(batch)
                     reward_logit = self.model.forward(input_ids=batch['preferred_input_ids'], 
                                 attention_mask=batch['preferred_attention_mask']).logits 
@@ -60,8 +60,10 @@ class RMTrainer(BaseTrainer):
 
                     print(f"running_reward_bias {running_reward_bias}")
 
+                    return total_reward
+
                 for _batch_idx, batch in enumerate(self.data.train_loader):
-                    process_batch(_batch_idx, batch)
+                    total_reward = process_batch(total_reward, _batch_idx, batch)
                     
                     # test
                     # for seq in batch['preferred_input_ids'][:5]:
