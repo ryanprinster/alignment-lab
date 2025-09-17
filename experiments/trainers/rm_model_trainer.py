@@ -60,6 +60,7 @@ class RMTrainer(BaseTrainer):
                     print(f"running_reward_bias {running_reward_bias}")
 
                 for _batch_idx, batch in enumerate(self.data.train_loader):
+                    process_batch(_batch_idx, batch)
                     
                     # test
                     # for seq in batch['preferred_input_ids'][:5]:
