@@ -118,7 +118,8 @@ class OpenAIPreferenceData():
         
         dataset = self.dataset.map(preprocess_func, 
                                    batched=True, 
-                                   remove_columns=self.dataset["train"].column_names
+                                   remove_columns=self.dataset["train"].column_names,
+                                   cache_file_name="./.cache/processed_open_ai_preference_data.arrow"
                                    )
         c = self.dataset["train"].column_names
         dataset.set_format(type="torch", columns=["preferred_input_ids", "preferred_attention_mask",
