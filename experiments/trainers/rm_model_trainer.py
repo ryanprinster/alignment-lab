@@ -36,7 +36,7 @@ class RMTrainer(BaseTrainer):
         self.scaler = GradScaler("cuda") 
 
     def compute_model_bias(self):
-        import datetime
+        from datetime import datetime
         import json
 
         with torch.no_grad():
