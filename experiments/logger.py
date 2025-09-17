@@ -45,8 +45,9 @@ class Logger():
     def log(self, scalars, models, epoch, global_step, lr):
         if not self._closed:
             self.log_to_tensorboard(global_step, models, scalars)
-            self.log_to_terminal(epoch, global_step, scalars['loss'], lr)
-            self._write_step_data(global_step, scalars["loss"], lr)
+            if hasattr(scalars, "loss"):
+                self.log_to_terminal(epoch, global_step, scalars['loss'], lr)
+                self._write_step_data(global_step, scalars["loss"], lr)
      
     ### Console/Terminal Logging
 

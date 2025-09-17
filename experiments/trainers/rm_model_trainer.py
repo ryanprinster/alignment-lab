@@ -36,29 +36,39 @@ class RMTrainer(BaseTrainer):
         self.scaler = GradScaler("cuda") 
 
     def compute_model_bias(self):
+        import datetime
+        import json
+
         with torch.no_grad():
             total_reward = 0
+            start = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            with open(f"compute_rm_bias{start}.jsonl", "a") as f:
+                for _batch_idx, batch in enumerate(self.data.train_loader):
+                    
+                    # test
+                    # for seq in batch['preferred_input_ids'][:5]:
+                    #     decoded = self.model.tokenizer.decode(seq)
+                    #     print(f"Pad token Id: {self.model.tokenizer.pad_token_id}")
+                    #     print(f"EOS token Id: {self.model.tokenizer.eos_token_id}")
+                    #     print(f"Last token id: {seq[-1]}")
+                    #     print(f"Ends with EOS: {seq[-1] == self.model.tokenizer.eos_token_id or (seq == self.model.tokenizer.eos_token_id).any()}")
+                    #     print(f"Model's pad_token_id: {self.model.transformer.config.pad_token_id}")
+                    #     print(f"Tokenizer EOS token: '{self.model.tokenizer.eos_token}' -> {self.model.tokenizer.eos_token_id}")
+                    #     print(f"Tokenizer PAD token: '{self.model.tokenizer.pad_token}' -> {self.model.tokenizer.pad_token_id}")
+                    #     print(f"Last 10 tokens: {seq[-10:]}")
 
-            for _batch_idx, batch in enumerate(self.data.train_loader):
+                    reward_logit = self.model.forward(input_ids=batch['preferred_input_ids'], 
+                                attention_mask=batch['preferred_attention_mask']).logits 
+                    total_reward += reward_logit
                 
-                # test
-                # for seq in batch['preferred_input_ids'][:5]:
-                #     decoded = self.model.tokenizer.decode(seq)
-                #     print(f"Pad token Id: {self.model.tokenizer.pad_token_id}")
-                #     print(f"EOS token Id: {self.model.tokenizer.eos_token_id}")
-                #     print(f"Last token id: {seq[-1]}")
-                #     print(f"Ends with EOS: {seq[-1] == self.model.tokenizer.eos_token_id or (seq == self.model.tokenizer.eos_token_id).any()}")
-                #     print(f"Model's pad_token_id: {self.model.transformer.config.pad_token_id}")
-                #     print(f"Tokenizer EOS token: '{self.model.tokenizer.eos_token}' -> {self.model.tokenizer.eos_token_id}")
-                #     print(f"Tokenizer PAD token: '{self.model.tokenizer.pad_token}' -> {self.model.tokenizer.pad_token_id}")
-                #     print(f"Last 10 tokens: {seq[-10:]}")
+                    running_reward_bias = total_reward / (_batch_idx + 1)
+                    
+                    log_data = {"batch_idx": _batch_idx,
+                                "running_reward_bias": running_reward_bias,
+                                "timestamp": datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}
+                    f.write(json.dumps(log_data) + "\n")
 
-                reward_logit = self.model.forward(input_ids=batch['preferred_input_ids'], 
-                            attention_mask=batch['preferred_attention_mask']).logits 
-                total_reward += reward_logit
-            
-                running_reward_bias = total_reward / (_batch_idx + 1)
-                print(f"running_reward_bias {running_reward_bias}")
+                    print(f"running_reward_bias {running_reward_bias}")
 
 
     @profile
