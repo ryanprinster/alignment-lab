@@ -113,8 +113,8 @@ class Logger():
 
 
     ### File Logging
-        
+    # TODO: Add to specific directory
     def _write_step_data(self, step, loss, lr):
-        log_data = {"step": step, "loss": loss, "lr": lr, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        log_data = {"step": step, "loss": loss, "lr": lr, "timestamp": datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}
         with open(f"{self.config.log_file_name}_{self.init_time}.jsonl", "a") as f:
             f.write(json.dumps(log_data) + "\n")

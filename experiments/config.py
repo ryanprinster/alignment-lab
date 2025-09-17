@@ -1,4 +1,16 @@
-class PPOConfig():
+class SFTConfigBase:
+    def __init__(self):
+        raise NotImplementedError("Use a concrete config subclass")
+
+class RMConfigBase:
+    def __init__(self):
+        raise NotImplementedError("Use a concrete config subclass")
+
+class PPOConfigBase:
+    def __init__(self):
+        raise NotImplementedError("Use a concrete config subclass")
+
+class PPOConfig(PPOConfigBase):
     def __init__(self):
         self.eps = 0.2 
         self.N = 32 # parallel actors
@@ -11,7 +23,8 @@ class PPOConfig():
         self.alpha = 3e-4 # lr
         self.lam = 0.95
 
-class SFTConfig1():
+
+class SFTConfig1(SFTConfigBase):
     def __init__(self):
         # Based on https://arxiv.org/pdf/2203.02155 (See Section C)
 
@@ -26,9 +39,8 @@ class SFTConfig1():
         self.test_pct = 0.1
         # self.eps = 1e-4
 
-      
 
-class SFTConfig2():
+class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
     def __init__(self):
         # Based on https://arxiv.org/pdf/2403.17031
 

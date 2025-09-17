@@ -1,15 +1,21 @@
-from experiments.sft_model_trainer import SFTTrainer
-from experiments.rm_model_trainer import RMTrainer
-from experiments.config import SFTConfig2
+from experiments.trainers.sft_model_trainer import SFTTrainer
+from experiments.trainers.rm_model_trainer import RMTrainer
 from experiments.runpod_utils import stop_runpod
+
 import argparse
 import subprocess
 import sys
 import traceback
 from datetime import datetime
 import torch
+import typing
 
-def create_parser(config_class):
+import os
+import importlib
+import inspect
+from pathlib import Path
+
+def create_config_parser(config_class):
     config = config_class()
     parser = argparse.ArgumentParser(description='Parser created automatically from config class attributes')
         
@@ -39,14 +45,8 @@ def create_parser(config_class):
                                help=f'{attr} (default: {value})')
 
         # TODO: Computed values such as accumulation_steps might have weird behavior here
+
     return parser
-
-
-def update_config_from_cmd_line_args(config, args):
-    for key, value in vars(args).items():
-        if hasattr(config, key):
-            setattr(config, key, value)
-    return config
 
 def print_config(config):
     print("Configuration:")
@@ -55,27 +55,104 @@ def print_config(config):
     for key, value in sorted(config_vars.items()):
         print(f"  {key}: {value}")
 
+def parse_cli_args():
+    if len(sys.argv) < 5 or sys.argv[3] != '--config':
+        raise ValueError("Usage: python -m experiments <TrainerName> <method> --config <ConfigName> [options]")
+    
+    trainer_name = sys.argv[1]
+    method_name = sys.argv[2] 
+    config_name = sys.argv[4]
+    config_args = sys.argv[5:]  # Everything after the required --config ConfigName
+    
+    return trainer_name, method_name, config_name, config_args
+
+def get_trainer_class(trainer_name):
+
+    available_trainers = {}
+    trainers_dir = Path('experiments/trainers')
+    
+    # Find available trainers
+    for file_path in trainers_dir.glob('*.py'):
+        if file_path.name == '__init__.py':
+            continue
+            
+        module_name = f'experiments.trainers.{file_path.stem}'
+        module = importlib.import_module(module_name)
+        
+        for name, cls in inspect.getmembers(module, inspect.isclass):
+            if (hasattr(cls, '__bases__') and 
+                any(base.__name__ == 'BaseTrainer' for base in cls.__mro__)):
+                available_trainers[name] = cls
+
+    if trainer_name not in available_trainers:
+        raise ValueError(f"Unknown trainer '{trainer_name}'. Available: {list(available_trainers.keys())}")
+
+    return available_trainers[trainer_name]
+
+def get_config_class(trainer_class, config_name):
+    
+    # Get base_config_class for trainer_class
+    try:
+        type_hints = typing.get_type_hints(trainer_class.__init__)
+        base_config_class = type_hints['config']
+    except (KeyError, AttributeError):
+        raise ValueError(f"Trainer {trainer_class.__name__} must have a type-hinted 'config' parameter")
+    
+    # Find all concrete subclasses of base_config_class
+    available_configs = base_config_class.__subclasses__()
+    
+    if not available_configs:
+        raise ValueError(f"No concrete config classes found for {base_config_class.__name__}")
+    
+    # Get the config_class corresponding to config_name
+    config_class = next((c for c in available_configs if c.__name__ == config_name), None)
+    if config_class is None:
+        raise ValueError(f"Unknown config '{config_name}'. Available: {[c.__name__ for c in available_configs]}")
+    
+    return config_class
+
+
+def create_and_configure(config_class, config_args):
+    # Create instance
+    config = config_class()
+    
+    # Parse command line args and update config
+    parser = create_config_parser(config_class)
+    args = parser.parse_args(config_args)
+
+    # Init config from cmd line args
+    for key, value in vars(args).items():
+        if hasattr(config, key):
+            setattr(config, key, value)
+    
+    print_config(config)
+    
+    return config
+
+def get_method(trainer, method_name):
+    if not hasattr(trainer, method_name) or method_name.startswith('_'):
+        available = [m for m in dir(trainer) if not m.startswith('_') and callable(getattr(trainer, m))]
+        raise ValueError(f"Method '{method_name}' not available. Available: {available}")
+    
+    return getattr(trainer, method_name)
+
 def main():
 
-    # agent = Trainer()
-    # agent.model_weights_folder_name='model_weights'
-    # agent.video_folder_name='cartpole-ppo-videos'
-    # agent.train()
-    # agent.save_model_weights()
-    # # agent.demonstrate(10)    
-    # agent.record(10)  
-
-
     try:
-        config = SFTConfig2()
-        parser = create_parser(config.__class__)
-        config = update_config_from_cmd_line_args(config, parser.parse_args())
+        trainer_name, method_name, config_name, config_args = parse_cli_args()
+        
+        trainer_class = get_trainer_class(trainer_name)
+        config = create_and_configure(
+                    get_config_class(trainer_class, config_name),
+                    config_args)
+        
+        method = get_method(
+                    trainer_class(config), 
+                    method_name)
 
-        print_config(config)
-
-        RMTrainer(config).train()
-        # SFTTrainer(config).evaluate()
-        # SFTTrainer(config).train()
+        # Execute
+        method()
+        
         print("Training Done! Woweee")
         
     except Exception as e:

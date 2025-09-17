@@ -7,16 +7,17 @@ from contextlib import nullcontext
 
 
 from experiments.models import Llama_3p2_1B_SFT
-from experiments.config import SFTConfig2
+from experiments.config import SFTConfigBase
 from experiments.datasets import TLDRFilteredData
 from experiments.logger import Logger
 from experiments.checkpointer import Checkpointer
 from experiments.profiler import profile
 from experiments.monitor import detect_nans
+from experiments.trainers.base_trainer import BaseTrainer
 
 
-class SFTTrainer():
-    def __init__(self, config):
+class SFTTrainer(BaseTrainer):
+    def __init__(self, config: SFTConfigBase):
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = Llama_3p2_1B_SFT(self.config).to(self.device)
@@ -35,19 +36,19 @@ class SFTTrainer():
         self.scaler = GradScaler("cuda") 
 
     @profile
-    def to_device(self, batch):
+    def _to_device(self, batch):
         batch['input_ids'] = batch['input_ids'].to(self.device)
         batch['attention_mask'] = batch['attention_mask'].to(self.device)
         batch['labels'] = batch['input_ids']  # reference
         return batch
 
     @detect_nans
-    def loss(self, outputs):
+    def _loss(self, outputs):
         # This model does CE loss under the hood
         return outputs.loss
 
     @profile
-    def backward(self, loss):
+    def _backward(self, loss):
         if self.config.enable_mixed_precision_training:
             # Loss scaling for mixed precision training
             # Note: do this only in backward pass, because otherwise we are logging with a scaled loss 
@@ -55,7 +56,7 @@ class SFTTrainer():
         loss.backward()
     
     @profile
-    def update_weights(self):
+    def _update_weights(self):
         if self.config.enable_mixed_precision_training:
             # Unscale gradient, take optimizer step, and update scale factor
             self.scaler.step(self.optimizer)
@@ -65,7 +66,7 @@ class SFTTrainer():
         self.lr_scheduler.step()
     
     @profile
-    def zero_grad(self):
+    def _zero_grad(self):
         self.optimizer.zero_grad()
         
     
@@ -79,7 +80,7 @@ class SFTTrainer():
                      
             for _batch_idx, batch in enumerate(self.data.train_loader):
 
-                batch = self.to_device(batch)
+                batch = self._to_device(batch)
                 
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
@@ -87,12 +88,12 @@ class SFTTrainer():
                                         attention_mask=batch['attention_mask'], 
                                         labels=batch['labels']) 
                     
-                    loss = self.loss(outputs)
+                    loss = self._loss(outputs)
 
-                self.backward(loss)
+                self._backward(loss)
                 
                 if (self.global_step+1) % self.config.accumulation_steps == 0:
-                    self.update_weights()
+                    self._update_weights()
                 
                 self.global_step += 1
 
@@ -131,8 +132,8 @@ class SFTTrainer():
     def evaluate(self):
         max_summary_length = TLDRFilteredData.SFT_MAX_INPUT_LENGTH
 
-        self.sft = Llama_3p2_1B(self.config).to(self.device)
-        self.gpt = Llama_3p2_1B(self.config).to(self.device)
+        self.sft = Llama_3p2_1B_SFT(self.config).to(self.device)
+        self.gpt = Llama_3p2_1B_SFT(self.config).to(self.device)
         
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.sft, self.device)
     
