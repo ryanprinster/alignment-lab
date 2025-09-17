@@ -109,15 +109,16 @@ class OpenAIPreferenceData():
     @profile
     def __init__(self, tokenizer, batch_size, subset="comparisons"):
         # openai/summarize_from_feedback is not really supported by hf anymore
-        self.dataset = load_dataset("HuggingFaceH4/summarize-from-feedback")
+        self.dataset = load_dataset("HuggingFaceH4/summarize-from-feedback",
+                                    cache_dir="./.cache")
+
         self.tokenizer = tokenizer
         
         preprocess_func = partial(self._extract_preference_data, tokenizer=tokenizer)
         
         dataset = self.dataset.map(preprocess_func, 
                                    batched=True, 
-                                   remove_columns=self.dataset["train"].column_names,
-                                   cache_dir="./.cache"
+                                   remove_columns=self.dataset["train"].column_names
                                    )
         c = self.dataset["train"].column_names
         dataset.set_format(type="torch", columns=["preferred_input_ids", "preferred_attention_mask",
