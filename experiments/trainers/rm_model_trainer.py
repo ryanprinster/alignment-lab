@@ -41,7 +41,7 @@ class RMTrainer(BaseTrainer):
 
         with torch.no_grad():
             
-            total_reward = 0
+            total_reward = torch.tensor(0.0, device=self.device)
             start = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             with open(f"compute_rm_bias{start}.jsonl", "a") as f:
                 @profile
@@ -49,9 +49,9 @@ class RMTrainer(BaseTrainer):
                     batch = self._to_device(batch)
                     reward_logit = self.model.forward(input_ids=batch['preferred_input_ids'], 
                                 attention_mask=batch['preferred_attention_mask']).logits 
-                    total_reward += reward_logit
+                    total_reward += reward_logit.sum()
                 
-                    running_reward_bias = total_reward / (_batch_idx + 1)
+                    running_reward_bias = (total_reward / (_batch_idx + 1)).cpu().item()
                     
                     log_data = {"batch_idx": _batch_idx,
                                 "running_reward_bias": running_reward_bias,
