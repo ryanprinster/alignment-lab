@@ -46,6 +46,7 @@ class RMTrainer(BaseTrainer):
             with open(f"compute_rm_bias{start}.jsonl", "a") as f:
                 @profile
                 def process_batch(_batch_idx, batch):
+                    batch = self._to_device(batch)
                     reward_logit = self.model.forward(input_ids=batch['preferred_input_ids'], 
                                 attention_mask=batch['preferred_attention_mask']).logits 
                     total_reward += reward_logit

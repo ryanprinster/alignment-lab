@@ -114,7 +114,11 @@ class OpenAIPreferenceData():
         
         preprocess_func = partial(self._extract_preference_data, tokenizer=tokenizer)
         
-        dataset = self.dataset.map(preprocess_func, batched=True, remove_columns=self.dataset["train"].column_names)
+        dataset = self.dataset.map(preprocess_func, 
+                                   batched=True, 
+                                   remove_columns=self.dataset["train"].column_names,
+                                   cache_dir="./.cache"
+                                   )
         c = self.dataset["train"].column_names
         dataset.set_format(type="torch", columns=["preferred_input_ids", "preferred_attention_mask",
                                                   "rejected_input_ids", "rejected_attention_mask"])
