@@ -129,7 +129,7 @@ class Llama_3p2_1B_SFT(Llama_3p2_1B):
 class Llama_3p2_1B_RM(Llama_3p2_1B):
     def __init__(self, config):
         super().__init__(config)
-        self._init_head_weights(self.config.calculated_sft_bias)
+        self._init_head_weights(config.calculated_sft_bias)
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
 
     def _init_head_weights(self, calculated_sft_bias):
