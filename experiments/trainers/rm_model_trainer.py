@@ -197,6 +197,7 @@ class RMTrainer(BaseTrainer):
         
     @profile
     def validation(self):
+        # 0.6812722161559371
         from datetime import datetime
         import json
         print("Starting Validation!")
@@ -225,6 +226,7 @@ class RMTrainer(BaseTrainer):
                 
                 print(f"step: {_batch_idx}, cumulative accuracy: {1.0 * total_correct / total_examples}")
             
-        log_data = {"step": _batch_idx, "cumulative_accuracy": 1.0 * total_correct / total_examples, "timestamp": datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}
-        with open(f"rm_validation_{self.init_time}.jsonl", "a") as f:
+        now = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        log_data = {"step": _batch_idx, "cumulative_accuracy": 1.0 * total_correct / total_examples, "timestamp": now}
+        with open(f"rm_validation_{now}.jsonl", "a") as f:
             f.write(json.dumps(log_data) + "\n")
