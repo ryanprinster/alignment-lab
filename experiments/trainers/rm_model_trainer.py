@@ -39,6 +39,7 @@ class RMTrainer(BaseTrainer):
         from datetime import datetime
         import json
 
+        self.model.eval()
         with torch.no_grad():
             
             total_reward = torch.tensor(0.0, device=self.device)
@@ -47,6 +48,8 @@ class RMTrainer(BaseTrainer):
                 @profile
                 def process_batch(total_reward, _batch_idx, batch):
                     batch = self._to_device(batch)
+                    
+                    # Logits are scalar rewards
                     reward_logit = self.model.forward(input_ids=batch['preferred_input_ids'], 
                                 attention_mask=batch['preferred_attention_mask']).logits 
                     total_reward += reward_logit.mean()
@@ -191,3 +194,37 @@ class RMTrainer(BaseTrainer):
                     loss.item(),
                     final_checkpoint=True
                 )
+        
+    @profile
+    def validation(self):
+        from datetime import datetime
+        import json
+        print("Starting Validation!")
+        self.model.eval()
+
+        total_correct = 0
+        total_examples = 0
+        with torch.no_grad():                     
+            for _batch_idx, batch in enumerate(self.data.validation_loader):
+
+                batch = self._to_device(batch)
+                
+                # FP32 --> FP16 for mixed precision training
+                with self.mixed_precision_context: 
+                    outputs = self._forward(batch)
+                
+                    # Logits are scalar rewards
+                    r_preferred = outputs[0].logits
+                    r_rejected = outputs[1].logits
+
+                    correct = (r_preferred > r_rejected).float()
+                    
+                    total_correct += correct.sum().item()
+                    total_examples += correct.size(0)
+
+                
+                print(f"step: {_batch_idx}, cumulative accuracy: {1.0 * total_correct / total_examples}")
+            
+        log_data = {"step": _batch_idx, "cumulative_accuracy": 1.0 * total_correct / total_examples, "timestamp": datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}
+        with open(f"rm_validation_{self.init_time}.jsonl", "a") as f:
+            f.write(json.dumps(log_data) + "\n")

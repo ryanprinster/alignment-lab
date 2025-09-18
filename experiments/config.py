@@ -71,6 +71,9 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.enable_gradient_checkpointing = False
         self.enable_mixed_precision_training = True
 
+        # RM 
+        self.calculated_sft_bias = 6.49
+
         # TODO: Could move optimizer, lr scheduler, data to config
 
         # Detail 7 (Disable dropout) aka there is no dropout

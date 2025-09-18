@@ -144,9 +144,8 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
             self.transformer.score.bias = nn.Parameter(torch.zeros(1))
 
         init.normal_(self.transformer.score.weight, mean=0, std=std)
-        init.zeros_(self.transformer.score.bias)
-
-         
+        self.transformer.score.bias.data.fill_(-1.0 * self.config.calculated_sft_bias)
+        # Calculated from the cu         
 
 
     @profile   
