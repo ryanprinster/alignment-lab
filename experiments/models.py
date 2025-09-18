@@ -129,11 +129,10 @@ class Llama_3p2_1B_SFT(Llama_3p2_1B):
 class Llama_3p2_1B_RM(Llama_3p2_1B):
     def __init__(self, config):
         super().__init__(config)
-        self._init_head_weights()
+        self._init_head_weights(self.config.calculated_sft_bias)
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
-        self.calculated_sft_bias = self.config.calculated_sft_bias
 
-    def _init_head_weights(self):
+    def _init_head_weights(self, calculated_sft_bias):
         # Detail 11 (Reward head initialization)
         print("Initializing Head Weights...")
 
@@ -145,7 +144,7 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
             self.transformer.score.bias = nn.Parameter(torch.zeros(1))
 
         init.normal_(self.transformer.score.weight, mean=0, std=std)
-        self.transformer.score.bias.data.fill_(-1.0 * self.calculated_sft_bias)
+        self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
         # Calculated from the cu         
 
 
