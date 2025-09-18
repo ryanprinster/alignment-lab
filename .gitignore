@@ -8,6 +8,7 @@ crash_log.txt
 sft_training_log.jsonl
 startup_1.md
 startup.sh
+sft_training_log*
 
 # OS files
 .DS_Store

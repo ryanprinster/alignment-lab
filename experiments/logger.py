@@ -42,18 +42,22 @@ class Logger():
     
     ### Logging Entrypoint    
     
-    def log(self, scalars, models, epoch, global_step, lr):
+    def log(self, scalars, models, log_file_name=None):
         if not self._closed:
-            self.log_to_tensorboard(global_step, models, scalars)
-            if hasattr(scalars, "loss"):
-                self.log_to_terminal(epoch, global_step, scalars['loss'], lr)
-                self._write_step_data(global_step, scalars["loss"], lr)
+            self.log_to_tensorboard(models, scalars)
+            self.log_to_terminal(scalars)
+            self.log_to_file(scalars, log_file_name)
      
     ### Console/Terminal Logging
 
-    def log_to_terminal(self, epoch, global_step, loss, lr):
-            mem_info_str = self._get_memory_usage_info()
-            print(f"\n\n\n epoch: {epoch}, global_step: {global_step}, loss: {loss}, last lr: {lr}, {mem_info_str}\n\n\n")
+    def log_to_terminal(self, scalars):
+        log_str = "\n\n\n"
+        for key in scalars.keys():
+            log_str += f"{key}: {scalars[key]}, "
+        
+        mem_info_str = self._get_memory_usage_info()
+        log_str += f"{mem_info_str}\n\n\n"
+        print(log_str)
         
     def _get_memory_usage_info(self):
         mem_usage_info_str = ""
@@ -83,16 +87,23 @@ class Logger():
 
     ### Tensorboard Logging
 
-    def log_to_tensorboard(self, global_step, models, scalars):
-        if hasattr(self, 'writer'):
-            if hasattr(self.config, 'log_weights_freq'):
-                if global_step % self.config.log_weights_freq == 0: 
-                    self._log_weights_and_grads_to_tensorboard(models, global_step)
-            if hasattr(self.config, 'log_scalars_freq'):
-                if global_step % self.config.log_scalars_freq == 0: 
-                    self._log_scalars_to_tensorboard(scalars, global_step)
+    def log_to_tensorboard(self, models, scalars):
+        if not hasattr(self, 'writer'):
+            print("No valid Tensorboard writer. Skipping tensorboard logging.")
+            return
 
-            self.writer.flush()
+        if not 'global_step' in scalars.keys():
+            print("No global_step scalar. Skipping tensorboard logging.")
+            return
+    
+        if hasattr(self.config, 'log_weights_freq'):
+            if scalars['global_step'] % self.config.log_weights_freq == 0: 
+                self._log_weights_and_grads_to_tensorboard(models, scalars['global_step'])
+        if hasattr(self.config, 'log_scalars_freq'):
+            if scalars['global_step'] % self.config.log_scalars_freq == 0: 
+                self._log_scalars_to_tensorboard(scalars, scalars['global_step'])
+        
+        self.writer.flush()
 
     @profile 
     def _log_weights_and_grads_to_tensorboard(self, models, global_step):
@@ -114,8 +125,14 @@ class Logger():
 
 
     ### File Logging
-    # TODO: Add to specific directory
-    def _write_step_data(self, step, loss, lr):
-        log_data = {"step": step, "loss": loss, "lr": lr, "timestamp": datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}
-        with open(f"{self.config.log_file_name}_{self.init_time}.jsonl", "a") as f:
+
+    def log_to_file(self, scalars, log_file_name=None):
+        log_data = {}
+        for key in scalars.keys():
+            log_data[key] = scalars[key]
+            log_data["timestamp"]= datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        
+        log_file_name = log_file_name or self.config.log_file_name
+
+        with open(f"{log_file_name}_{self.init_time}.jsonl", "a") as f:
             f.write(json.dumps(log_data) + "\n")

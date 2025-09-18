@@ -107,15 +107,16 @@ class SFTTrainer(BaseTrainer):
 
                 self.logger.log(
                     scalars={
-                        "loss": loss.item()},
-                    models=[self.model],
-                    epoch=epoch,
-                    global_step=self.global_step,
-                    lr=self.lr_scheduler.get_last_lr()[0]
+                        "loss": loss.item(),
+                        "epoch": epoch,
+                        "global_step": self.global_step,
+                        "lr": self.lr_scheduler.get_last_lr()[0]
+                        },
+                    models=[self.model]
                 )
 
                 if (self.global_step+1) % self.config.accumulation_steps == 0:
-                    self.zero_grad()
+                    self._zero_grad()
         
         # Final checkpoint
         self.checkpointer.save_checkpoint(

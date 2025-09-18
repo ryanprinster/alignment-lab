@@ -144,7 +144,6 @@ class RMTrainer(BaseTrainer):
         self.model.train()
 
         for epoch in range(self.config.num_epochs):   
-                     
             for _batch_idx, batch in enumerate(self.data.train_loader):
 
                 batch = self._to_device(batch)
@@ -174,12 +173,12 @@ class RMTrainer(BaseTrainer):
                         "loss": loss.item(),
                         "accuracy": self._accuracy(outputs[0].logits, outputs[1].logits),
                         "r_preferred": torch.mean(outputs[0].logits),
-                        "r_rejected": torch.mean(outputs[1].logits)
+                        "r_rejected": torch.mean(outputs[1].logits),
+                        "epoch": epoch,
+                        "global_step": self.global_step,
+                        "lr": self.lr_scheduler.get_last_lr()[0]
                         },
-                    models=[self.model],
-                    epoch=epoch,
-                    global_step=self.global_step,
-                    lr=self.lr_scheduler.get_last_lr()[0]
+                    models=[self.model]
                 )
 
                 if (self.global_step+1) % self.config.accumulation_steps == 0:
