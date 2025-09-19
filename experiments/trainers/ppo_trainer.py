@@ -20,7 +20,7 @@ from experiments.environment import Environment
 
 
 # Absolute imports from your package
-from experiments.models import MLPValue, MLPPolicy, MLPSimple
+from experiments.models import MLPSimple
 from experiments.trajectory import Trajectory, BatchTrajectory
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
@@ -31,7 +31,6 @@ class PPOTrainer(BaseTrainer):
         self.logger = Logger(self.config)
 
         # Class members
-        self.tjs = []
         self.env = Environment(self.config)
 
         # Models
@@ -44,7 +43,7 @@ class PPOTrainer(BaseTrainer):
         self.optimizer_policy = optim.Adam(self.policy_model.parameters(), lr = self.config.alpha)
         self.optimizer_value = optim.Adam(self.value_model.parameters(), lr = self.config.alpha)
 
-    def gen_trajectory(self):
+    def _generate_trajectory(self):
         observation, info = self.env.reset()
         tj = Trajectory(init_state=observation, obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
 
@@ -70,14 +69,29 @@ class PPOTrainer(BaseTrainer):
         tj.compute_R(gamma=self.config.gamma)
 
         return tj
+    
+    def _generate_n_trajectories(self, N=None, M=None):
+        # Parallelism is simulated for now
+        batched_tj = BatchTrajectory([self._generate_trajectory() for _ in range(N or self.config.N)])
+        loader = DataLoader(batched_tj, batch_size=(M or self.config.M), shuffle=True)
+        return batched_tj, loader
+    
+    def _zero_grad(self):
+        self.optimizer_policy.zero_grad()
+        self.optimizer_value.zero_grad()
 
-    def compute_value_loss_mse(self, states, R):
+    def _forward(self, states):
         new_values = self.value_model.forward(states).squeeze(1)
+        new_policies = self.policy_model.forward(states)
+
+        return new_values, new_policies
+
+
+    def compute_value_loss_mse(self, R, new_values):
         loss_value = torch.mean(F.mse_loss(new_values, R))
         return loss_value
 
-    def compute_policy_loss_ppo(self, states, old_actions, old_probs, A):
-        new_policies = self.policy_model.forward(states)
+    def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies):
         new_probs = new_policies.gather(1, old_actions.long().unsqueeze(1)).squeeze(1)
         r = new_probs / old_probs.detach()
 
@@ -91,12 +105,19 @@ class PPOTrainer(BaseTrainer):
         loss_ppo -= self.config.beta * entropy
 
         return loss_ppo, entropy
+    
+    def _backward(self, loss_value, loss_ppo):
+        loss_value.backward()
+        loss_ppo.backward()
+        
+    def _step(self, optimizer_policy, optimizer_value):
+        optimizer_policy.step()
+        optimizer_value.step()
 
     def train(self):
+        self.global_step = 0
         for epoch in range(self.config.num_train_iter):
             print("train_iter: ", epoch)
-            
-            self.global_step = 0
 
             if self.global_step > self.config.max_env_steps: 
                 break 
@@ -104,34 +125,26 @@ class PPOTrainer(BaseTrainer):
             # 1. N "parallel" actors each generate a trajectory
             #       - runs policy on environment until failure
             #       - computes advantage estimates
-            #      Note: Parallelism is simulated for now
-            tjs = [self.gen_trajectory() for _ in range(self.config.N)]
-
-            # 1.1 Merge and load recent trajectory data 
-            batched_tj = BatchTrajectory(tjs)
-            loader = DataLoader(batched_tj, batch_size=self.config.M, shuffle=True)
+            batched_tj, tj_loader = self._generate_n_trajectories(N=self.config.N)
 
             # 2. Optimize loss, for K epochs
             for k in range(self.config.K):
                 # Update new policy for each minibatch
-                for _, data in enumerate(loader):
+                for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
 
-                    self.optimizer_policy.zero_grad()
-                    self.optimizer_value.zero_grad()
+                    self._zero_grad()
 
-                    states, old_actions, rewards, old_policies, old_values, old_probs, R, A = data
+                    new_values, new_policies = self._forward(states)
 
                     # 2.1 Compute mse loss for value model
-                    loss_value = self.compute_value_loss_mse(states, R)
+                    loss_value = self.compute_value_loss_mse(R, new_values)
           
                     # 2.2 Compute ppo loss for policy model
-                    loss_ppo, entropy = self.compute_policy_loss_ppo(states, old_actions, old_probs, A)
+                    loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies)
 
                     # 2.3 Update models
-                    loss_value.backward()
-                    loss_ppo.backward()
-                    self.optimizer_policy.step()
-                    self.optimizer_value.step()
+                    self._backward(loss_value, loss_ppo)
+                    self._step(self.optimizer_policy, self.optimizer_value)
 
                     self.global_step += len(rewards) # could alternatively just increment by 1
                 
