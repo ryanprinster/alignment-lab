@@ -9,6 +9,7 @@ sft_training_log.jsonl
 startup_1.md
 startup.sh
 sft_training_log*
+log_at_*
 
 # OS files
 .DS_Store

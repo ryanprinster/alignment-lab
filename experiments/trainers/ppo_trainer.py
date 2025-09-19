@@ -20,7 +20,7 @@ from experiments.environment import Environment
 
 
 # Absolute imports from your package
-from experiments.models import MLPValue, MLPPolicy
+from experiments.models import MLPValue, MLPPolicy, MLPSimple
 from experiments.trajectory import Trajectory, BatchTrajectory
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
@@ -35,10 +35,10 @@ class PPOTrainer(BaseTrainer):
         self.env = Environment(self.config)
 
         # Models
-        self.policy_model = MLPPolicy(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
-        self.value_model = MLPValue(obs_dim=self.env.obs_dim)
-        self.old_policy_model = MLPPolicy(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
-        self.old_value_model = MLPValue(obs_dim=self.env.obs_dim)
+        self.policy_model = MLPSimple(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
+        self.value_model = MLPSimple(obs_dim=self.env.obs_dim)
+        self.old_policy_model = MLPSimple(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
+        self.old_value_model = MLPSimple(obs_dim=self.env.obs_dim)
 
         # Optimizers
         self.optimizer_policy = optim.Adam(self.policy_model.parameters(), lr = self.config.alpha)
