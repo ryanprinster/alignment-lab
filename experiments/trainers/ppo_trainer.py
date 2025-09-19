@@ -16,7 +16,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from experiments.logger import Logger
-from experiments.environment import Environment
+from experiments.environment import GymEnvironment
 from experiments.profiler import profile
 
 
@@ -32,7 +32,7 @@ class PPOTrainer(BaseTrainer):
         self.logger = Logger(self.config)
 
         # Class members
-        self.env = Environment(self.config)
+        self.env = GymEnvironment(self.config)
 
         # Models
         self.policy_model = MLPSimple(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
@@ -79,9 +79,9 @@ class PPOTrainer(BaseTrainer):
         loader = DataLoader(batched_tj, batch_size=(M or self.config.M), shuffle=True)
         return batched_tj, loader
     
-    def _zero_grad(self):
-        self.optimizer_policy.zero_grad()
-        self.optimizer_value.zero_grad()
+    def _zero_grad(self, optimizer_policy, optimizer_value):
+        optimizer_policy.zero_grad()
+        optimizer_value.zero_grad()
 
     @profile
     def _forward(self, states):
@@ -121,6 +121,11 @@ class PPOTrainer(BaseTrainer):
         optimizer_value.step()
 
     @profile
+    def _update_old_models(self, old_value_model, old_policy_model, value_model, policy_model):
+        old_policy_model.load_state_dict(policy_model.state_dict())
+        old_value_model.load_state_dict(value_model.state_dict())
+
+    @profile
     def train(self):
         self.global_step = 0
         for i in range(self.config.num_train_iter):
@@ -139,7 +144,7 @@ class PPOTrainer(BaseTrainer):
                 # Update new policy for each minibatch
                 for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
 
-                    self._zero_grad()
+                    self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                     new_values, new_policies = self._forward(states)
 
@@ -173,14 +178,18 @@ class PPOTrainer(BaseTrainer):
                 )
                 
             # 3. Theta old <-- theta new
-            self.old_policy_model.load_state_dict(self.policy_model.state_dict())
-            self.old_value_model.load_state_dict(self.value_model.state_dict())
+            self._update_old_models(
+                self.old_value_model,
+                self.old_policy_model,
+                self.value_model,
+                self.policy_model
+            )
 
         return self.policy_model      
 
         
     def demonstrate(self, num_demonstrations):
-        self.demonstrate_env = Environment(render_mode = 'human')
+        self.demonstrate_env = GymEnvironment(render_mode = 'human')
 
         for i in range(num_demonstrations):
             observation, info = self.demonstrate_env.reset()
@@ -195,7 +204,7 @@ class PPOTrainer(BaseTrainer):
                     episode_finished = True
     
     def record(self, num_videos=10, name_prefix="eval"):
-        self.record_env = Environment(render_mode = 'rgb_array')
+        self.record_env = GymEnvironment(render_mode = 'rgb_array')
         self.record_env = RecordVideo(
             self.record_env.env, # Havent made it truly inherit at the moment
             video_folder=self.config.video_folder_name, 
