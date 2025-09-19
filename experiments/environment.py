@@ -10,7 +10,7 @@ import gymnasium as gym
 
 
 class Environment():
-    def __init__(self, config):
+    def __init__(self, config, render_mode=None):
         ### Cleanup 
         # Thanks to Claude here:
         self._closed = False
@@ -20,7 +20,7 @@ class Environment():
     
 
         self.config = config
-        self.env = gym.make(self.config.gymnasium_env_name)
+        self.env = gym.make(self.config.gymnasium_env_name, render_mode)
 
         self.obs_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.n
@@ -45,5 +45,6 @@ class Environment():
     def reset(self):
         return self.env.reset()
 
+    @profile
     def step(self, action):
         return self.env.step(action)

@@ -17,6 +17,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from experiments.logger import Logger
 from experiments.environment import Environment
+from experiments.profiler import profile
 
 
 # Absolute imports from your package
@@ -43,6 +44,7 @@ class PPOTrainer(BaseTrainer):
         self.optimizer_policy = optim.Adam(self.policy_model.parameters(), lr = self.config.alpha)
         self.optimizer_value = optim.Adam(self.value_model.parameters(), lr = self.config.alpha)
 
+    @profile
     def _generate_trajectory(self):
         observation, info = self.env.reset()
         tj = Trajectory(init_state=observation, obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
@@ -70,6 +72,7 @@ class PPOTrainer(BaseTrainer):
 
         return tj
     
+    @profile
     def _generate_n_trajectories(self, N=None, M=None):
         # Parallelism is simulated for now
         batched_tj = BatchTrajectory([self._generate_trajectory() for _ in range(N or self.config.N)])
@@ -80,6 +83,7 @@ class PPOTrainer(BaseTrainer):
         self.optimizer_policy.zero_grad()
         self.optimizer_value.zero_grad()
 
+    @profile
     def _forward(self, states):
         new_values = self.value_model.forward(states).squeeze(1)
         new_policies = self.policy_model.forward(states)
@@ -106,18 +110,21 @@ class PPOTrainer(BaseTrainer):
 
         return loss_ppo, entropy
     
+    @profile
     def _backward(self, loss_value, loss_ppo):
         loss_value.backward()
         loss_ppo.backward()
-        
+    
+    @profile
     def _step(self, optimizer_policy, optimizer_value):
         optimizer_policy.step()
         optimizer_value.step()
 
+    @profile
     def train(self):
         self.global_step = 0
-        for epoch in range(self.config.num_train_iter):
-            print("train_iter: ", epoch)
+        for i in range(self.config.num_train_iter):
+            print("train_iter: ", i) 
 
             if self.global_step > self.config.max_env_steps: 
                 break 
@@ -153,7 +160,8 @@ class PPOTrainer(BaseTrainer):
                     scalars={
                         "loss_value": loss_value.item(),
                         "loss_ppo": loss_ppo.item(),
-                        "epoch": epoch,
+                        "train_iter": i,
+                        "epoch": k,
                         "global_step": self.global_step,
                         "A": torch.mean(A).item(),
                         "policy_entropy": entropy.item(),
@@ -172,7 +180,7 @@ class PPOTrainer(BaseTrainer):
 
         
     def demonstrate(self, num_demonstrations):
-        self.demonstrate_env = gym.make('CartPole-v1', render_mode = 'human')
+        self.demonstrate_env = Environment(render_mode = 'human')
 
         for i in range(num_demonstrations):
             observation, info = self.demonstrate_env.reset()
@@ -185,12 +193,11 @@ class PPOTrainer(BaseTrainer):
 
                 if terminated or truncated:
                     episode_finished = True
-        self.demonstrate_env.close()
     
     def record(self, num_videos=10, name_prefix="eval"):
-        self.record_env = gym.make('CartPole-v1', render_mode = 'rgb_array')
+        self.record_env = Environment(render_mode = 'rgb_array')
         self.record_env = RecordVideo(
-            self.record_env,
+            self.record_env.env, # Havent made it truly inherit at the moment
             video_folder=self.config.video_folder_name, 
             name_prefix=name_prefix + "_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_",
             episode_trigger=lambda x: True
@@ -207,6 +214,5 @@ class PPOTrainer(BaseTrainer):
 
                 if terminated or truncated:
                     episode_finished = True
-        self.record_env.close()
 
 
