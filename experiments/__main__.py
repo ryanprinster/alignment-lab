@@ -85,7 +85,7 @@ def get_trainer_class(trainer_name):
                 available_trainers[name] = cls
 
     if trainer_name not in available_trainers:
-        raise ValueError(f"Unknown trainer '{trainer_name}'. Available: {list(available_trainers.keys())}")
+        raise ValueError(f"Unknown trainer '{trainer_name}'. Available: {list(available_trainers.keys())}. Does your trainer class inhert from BaseTrainer?")
 
     return available_trainers[trainer_name]
 

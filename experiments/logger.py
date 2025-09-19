@@ -11,18 +11,18 @@ from experiments.profiler import profile
 
 class Logger():
     def __init__(self, config):
-
+        # Thanks to Claude here:
+        self._closed = False
+        atexit.register(self.close)  # Normal exit
+        signal.signal(signal.SIGTERM, self._cleanup_signal)  # Pod termination
+        signal.signal(signal.SIGINT, self._cleanup_signal)   # Ctrl+C
+    
         self.config = config
         self.writer = SummaryWriter()
         self.best_loss = float('inf')
         self.init_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        self._closed = False
-        # Thanks to Claude here:
-        atexit.register(self.close)  # Normal exit
-        signal.signal(signal.SIGTERM, self._cleanup_signal)  # Pod termination
-        signal.signal(signal.SIGINT, self._cleanup_signal)   # Ctrl+C
-    
+
     ### Cleanup handling
 
     def __del__(self):
@@ -132,7 +132,11 @@ class Logger():
             log_data[key] = scalars[key]
             log_data["timestamp"]= datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         
-        log_file_name = log_file_name or self.config.log_file_name
+        log_file_name = (
+            log_file_name 
+            or getattr(self.config, 'log_file_name', None) 
+            or "log_at"
+        )         
 
         with open(f"{log_file_name}_{self.init_time}.jsonl", "a") as f:
             f.write(json.dumps(log_data) + "\n")

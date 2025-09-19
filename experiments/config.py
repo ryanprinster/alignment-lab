@@ -17,11 +17,16 @@ class PPOConfig(PPOConfigBase):
         self.K = 10 # epochs
         self.M = 64 # minibatch
         self.num_train_iter = 75 
-        self.beta = 0.01
+        self.beta = 0.01 # entropy regularization
 
-        self.gamma = 0.99
+        self.gamma = 0.99 # GAE gamma
         self.alpha = 3e-4 # lr
-        self.lam = 0.95
+        self.lam = 0.95 # GAE lambda
+
+        self.gymnasium_env_name = 'CartPole-v1'
+        self.max_env_steps = 1e6 # Original paper benchmarks at 1 million steps
+        self.video_folder_name = 'cartpole-ppo-videos'
+
 
 
 class SFTConfig1(SFTConfigBase):

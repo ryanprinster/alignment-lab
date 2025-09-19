@@ -15,63 +15,38 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from experiments.logger import Logger
+from experiments.environment import Environment
+
 
 # Absolute imports from your package
 from experiments.models import MLPValue, MLPPolicy
 from experiments.trajectory import Trajectory, BatchTrajectory
-from experiments.config import PPOConfig
+from experiments.config import PPOConfigBase
+from experiments.trainers.base_trainer import BaseTrainer
 
-class Trainer():
-    # TODO: Update with new logger class, etc
-    def __init__(self):
-
-        # PPO Hyperparams
-        self.config = PPOConfig()
-        self.eps = self.config.eps 
-        self.N = self.config.N
-        self.K = self.config.K
-        self.M = self.config.M
-        self.num_train_iter = self.config.num_train_iter
-        self.beta = self.config.beta
+class PPOTrainer(BaseTrainer):
+    def __init__(self, config: PPOConfigBase):
+        self.config = config
+        self.logger = Logger(self.config)
 
         # Class members
         self.tjs = []
-        self.global_step = 0
-        self.writer = SummaryWriter()
-        self.env = gym.make('CartPole-v1')
-        self.model_weights_folder_name = 'model_weights'
-        self.video_folder_name = 'cartpole-ppo-videos'
-
-        # Environment members
-        self.max_env_steps = 1e6 # Original paper benchmarks at 1 million steps
-        self.obs_dim = self.env.observation_space.shape[0]
-        self.action_dim = self.env.action_space.n
+        self.env = Environment(self.config)
 
         # Models
-        self.policy_model = MLPPolicy(obs_dim=self.obs_dim, action_dim=self.action_dim)
-        self.value_model = MLPValue(obs_dim=self.obs_dim)
-        self.old_policy_model = MLPPolicy(obs_dim=self.obs_dim, action_dim=self.action_dim)
-        self.old_value_model = MLPValue(obs_dim=self.obs_dim)
+        self.policy_model = MLPPolicy(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
+        self.value_model = MLPValue(obs_dim=self.env.obs_dim)
+        self.old_policy_model = MLPPolicy(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
+        self.old_value_model = MLPValue(obs_dim=self.env.obs_dim)
 
+        # Optimizers
         self.optimizer_policy = optim.Adam(self.policy_model.parameters(), lr = self.config.alpha)
         self.optimizer_value = optim.Adam(self.value_model.parameters(), lr = self.config.alpha)
 
-    # TODO: Switch to logger class
-    def log_weights_and_grads(self, models, epoch):
-        for model in models:
-            model_name = model.__class__.__name__
-            for name, param in model.named_parameters():
-                if param.grad is not None:
-                    self.writer.add_histogram(f'{model_name}{name}.grad', param.grad, global_step=epoch)
-                    self.writer.add_histogram(f'{model_name}{name}.weight', param.data, global_step=epoch)
-    
-    def log_scalars(self, scalars, step_num):
-        for name, value in scalars:
-            self.writer.add_scalar(name, value, step_num)
-
     def gen_trajectory(self):
         observation, info = self.env.reset()
-        tj = Trajectory(init_state=observation, obs_dim=self.obs_dim, action_dim=self.action_dim)
+        tj = Trajectory(init_state=observation, obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
 
         # Generate an episode
         episode_finished = False
@@ -108,40 +83,36 @@ class Trainer():
 
         # Compute ppo loss
         loss_ppo = torch.min(r * A.detach(), \
-                            torch.clamp(r, 1-self.eps, 1+self.eps) * A.detach())
+                            torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A.detach())
         loss_ppo = -torch.mean(loss_ppo)
 
         # Entropy regularization
         entropy = -torch.mean(new_policies * torch.log2(new_policies))
-        loss_ppo -= self.beta * entropy
+        loss_ppo -= self.config.beta * entropy
 
         return loss_ppo, entropy
 
-    def save_model_weights(self):
-        os.makedirs(self.model_weights_folder_name, exist_ok=True)
-        now_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        torch.save(self.policy_model.state_dict(), self.model_weights_folder_name + "/policy_model" + now_str + ".pth")
-        torch.save(self.value_model.state_dict(), self.model_weights_folder_name + "/value_model" + now_str + ".pth") 
-        print("saved")
-
     def train(self):
-        for i in range(self.num_train_iter):
-            print("train_iter: ", i)
-            if self.global_step > self.max_env_steps: 
+        for epoch in range(self.config.num_train_iter):
+            print("train_iter: ", epoch)
+            
+            self.global_step = 0
+
+            if self.global_step > self.config.max_env_steps: 
                 break 
             
             # 1. N "parallel" actors each generate a trajectory
             #       - runs policy on environment until failure
             #       - computes advantage estimates
             #      Note: Parallelism is simulated for now
-            tjs = [self.gen_trajectory() for _ in range(self.N)]
+            tjs = [self.gen_trajectory() for _ in range(self.config.N)]
 
             # 1.1 Merge and load recent trajectory data 
             batched_tj = BatchTrajectory(tjs)
-            loader = DataLoader(batched_tj, batch_size=self.M, shuffle=True)
+            loader = DataLoader(batched_tj, batch_size=self.config.M, shuffle=True)
 
             # 2. Optimize loss, for K epochs
-            for k in range(self.K):
+            for k in range(self.config.K):
                 # Update new policy for each minibatch
                 for _, data in enumerate(loader):
 
@@ -164,25 +135,25 @@ class Trainer():
 
                     self.global_step += len(rewards) # could alternatively just increment by 1
                 
-                
                 # Logging
-                self.log_scalars([("loss_ppo", loss_ppo),\
-                                  ("loss_value", loss_value),\
-                                  ("A", torch.mean(A)),\
-                                  ("policy_entropy", entropy),\
-                                  ("total_reward", 1.0 * len(batched_tj) / self.N),\
-                                  ], self.global_step)
-                                                
-                self.log_weights_and_grads([self.policy_model, self.value_model], self.global_step)
+                self.logger.log(
+                    scalars={
+                        "loss_value": loss_value.item(),
+                        "loss_ppo": loss_ppo.item(),
+                        "epoch": epoch,
+                        "global_step": self.global_step,
+                        "A": torch.mean(A).item(),
+                        "policy_entropy": entropy.item(),
+                        "total_reward": (1.0 * len(batched_tj) / self.config.N),
+                        "global_step": self.global_step
+                        # "lr": self.lr_scheduler.get_last_lr()[0]
+                        },
+                    models=[self.policy_model, self.value_model]
+                )
                 
             # 3. Theta old <-- theta new
             self.old_policy_model.load_state_dict(self.policy_model.state_dict())
             self.old_value_model.load_state_dict(self.value_model.state_dict())
-
-            self.writer.flush()
-
-        self.env.close()
-        self.writer.close()
 
         return self.policy_model      
 
@@ -207,7 +178,7 @@ class Trainer():
         self.record_env = gym.make('CartPole-v1', render_mode = 'rgb_array')
         self.record_env = RecordVideo(
             self.record_env,
-            video_folder=self.video_folder_name, 
+            video_folder=self.config.video_folder_name, 
             name_prefix=name_prefix + "_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_",
             episode_trigger=lambda x: True
         )
