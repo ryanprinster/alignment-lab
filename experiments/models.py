@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import os
 from functools import reduce
 import gymnasium as gym
 import torch
@@ -11,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.nn.init as init
 
 
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForTokenClassification
 from experiments.profiler import profile
 from experiments.monitor import detect_nans
 
@@ -134,5 +135,78 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
             input_ids=input_ids,
             attention_mask=attention_mask
         )
-        torch.cuda.empty_cache() #TODO: Check how this actually impacts memory
         return outputs
+
+
+class Llama_3p2_1B_Value(Llama_3p2_1B):
+    def __init__(self, config, rm_model_path, device):
+        super().__init__(config)
+        self.rm_model_path = rm_model_path
+        self.device = device
+        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+
+    @profile   
+    def _load_model(self):
+        if not os.path.exists(self.rm_model_path):
+            raise FileNotFoundError(f"Model not found: {self.rm_model_path}")
+        
+        # This should share the weights of the RM model head
+        # between each token prediction head
+        return AutoModelForTokenClassification.from_pretrained(
+            self.rm_model_path, 
+            num_labels=1
+        )
+
+    def forward(self, input_ids, attention_mask):
+        outputs = self.transformer(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        )
+        return outputs # -> (batch, seq_len, 1)
+
+
+class Llama_3p2_1B_Policy(Llama_3p2_1B):
+    def __init__(self, config, sft_model_path, device):
+        super().__init__(config)
+        self.sft_model_path = sft_model_path
+        self.device = device
+        self._init_head_weights(config.calculated_sft_bias)
+        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+
+    @profile   
+    def _load_model(self):
+        if not os.path.exists(self.sft_model_path):
+            raise FileNotFoundError(f"Model not found: {self.sft_model_path}")
+
+        return AutoModelForCausalLM.from_pretrained(
+            self.sft_model_path
+        )
+  
+
+    def generate(self, inputs, max_length, temp):
+        # generate autoregressively
+        generation_obj = self.transformer.generate(
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
+            max_length=max_length,
+            temperature=temp,
+            do_sample=True,
+            return_dict_in_generate=True,
+            output_scores=True
+        )
+
+        policies = torch.softmax(torch.stack(generation_obj.scores, dim=1), dim=-1)
+        return generation_obj.sequences, policies
+
+    def forward(self, input_ids, attention_mask):
+       # Forward parallel decode
+        outputs = self.transformer(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        )
+        
+        logits = outputs.logits
+        policies = torch.softmax(logits, dim=-1)
+        return policies 
+    
+    #TODO: Standardize return types

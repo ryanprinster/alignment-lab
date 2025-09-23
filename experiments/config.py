@@ -92,6 +92,57 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         #     Memory and implementation time of ZeRO
         
 
+class RLFHPPOConfig(PPOConfigBase):
+    def __init__(self):
+        # Detail 20 (PPO Training -> Setups) 
+        # Closely follows Stiennon et al. (2020) with modified learning rate
+        # See Table 7 of https://arxiv.org/pdf/2403.17031
+
+
+        # Detail 21 (PPO Training -> Re-use the SFT dataset and shuffle when reaches the end)
+        # Note: PPO trains for 8.56 epochs relative to SFT. However, the 1B model
+        # becomes over-optimized (7.1 point 3). 
+        # Additionally, 8.56 epochs creates a training scale factor of 8.56x time and $$.
+        # For these reasons, we train for 1 epoch.
+        self.num_epochs = 1 # (or 116,722 episodes)
+
+        # Adam W Optimizer
+        self.eps = 1e-5
+        self.lr = 3e-6
+
+        # TODO: lr scheduler - linear
+        self.batch_size = 32
+        self.accumulation_steps = 16
+        self._virtual_batch_size = self.batch_size * self.accumulation_steps # = 516
+
+        self.beta = 0.05 # KL Penalty Coefficient for RLHF
+        self.gamma = 1.0 # Discount factor
+        self.lam = 0.95 # GAE
+        
+        self.N = 1 # Number of mini batches
+        self.K = 4 # PPO update per epoch
+        self.M = 64 # minibatch
+
+        self.eps_policy_clipping = 0.2
+        self.eps_value_clipping = 0.2
+        self.c1 = 0.1 # value func coeff
+        self.clip_value_func_loss = True
+        self.generation_temperature = 0.7 # Sampling temp
+        
+        # Checkpointing
+        self.save_freq_steps = 100 * self.accumulation_steps
+        self.save_interval_min = 60
+        self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
+
+        # Logging
+        # self.log_weights_freq=None
+        self.log_scalars_freq=self.accumulation_steps
+        self.log_file_name="sft_training_log"
+
+        # Efficiency
+        self.enable_gradient_checkpointing = False
+        self.enable_mixed_precision_training = True
+
 
 class CartPoleConfig():
     def __init__(self):

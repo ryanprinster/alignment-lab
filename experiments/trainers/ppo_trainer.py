@@ -53,7 +53,7 @@ class PPOTrainer(BaseTrainer):
         episode_finished = False
         while not episode_finished:
 
-            old_value = self.old_value_model.forward(torch.from_numpy(observation))
+            # old_value = self.old_value_model.forward(torch.from_numpy(observation))
             old_policy = self.old_policy_model.forward(torch.from_numpy(observation))
             
             # Act on old policy
@@ -67,6 +67,8 @@ class PPOTrainer(BaseTrainer):
 
 
         # Episode finished
+        # TODO: Compute values
+        # self.old_value_model.forward_parallel_decode()
         tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
         tj.compute_R(gamma=self.config.gamma)
 
@@ -75,6 +77,7 @@ class PPOTrainer(BaseTrainer):
     @profile
     def _generate_n_trajectories(self, N=None, M=None):
         # Parallelism is simulated for now
+        # TODO: Review batching logic
         batched_tj = BatchTrajectory([self._generate_trajectory() for _ in range(N or self.config.N)])
         loader = DataLoader(batched_tj, batch_size=(M or self.config.M), shuffle=True)
         return batched_tj, loader
@@ -85,6 +88,9 @@ class PPOTrainer(BaseTrainer):
 
     @profile
     def _forward(self, states):
+        # new_values = self.value_model.forward_parallel_decode(states).squeeze(1)
+        # new_policies = self.policy_model.forward_parallel_decode(states)
+
         new_values = self.value_model.forward(states).squeeze(1)
         new_policies = self.policy_model.forward(states)
 

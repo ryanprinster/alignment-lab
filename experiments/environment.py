@@ -81,8 +81,13 @@ class RLHFEnvironment(BaseEnvironment):
         pass
     
     def reset(self): # --> observation, info 
+        # Need a prompt to reset?
         pass
 
     @profile
     def step(self, action): #  --> observation, reward, terminated, truncated, info
         pass
+        # model.generate_autoregressive
+        # reward = None (reward to be computed after)
+        # if most recent token is EOS, terminated = True
+        # if most recent token brings us to max token length, truncated = True
