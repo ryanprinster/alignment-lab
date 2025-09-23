@@ -105,10 +105,11 @@ class RLFHPPOConfig(PPOConfigBase):
         # Additionally, 8.56 epochs creates a training scale factor of 8.56x time and $$.
         # For these reasons, we train for 1 epoch.
         self.num_epochs = 1 # (or 116,722 episodes)
+        self.max_episodes = 1e7
 
         # Adam W Optimizer
         self.eps = 1e-5
-        self.lr = 3e-6
+        self.lr = self.alpha = 3e-6
 
         # TODO: lr scheduler - linear
         self.batch_size = 32
@@ -132,7 +133,9 @@ class RLFHPPOConfig(PPOConfigBase):
         # Checkpointing
         self.save_freq_steps = 100 * self.accumulation_steps
         self.save_interval_min = 60
-        self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
+        # self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
+        self.rm_model_path = "/Users/ryanprinster/Projects/trained_models/sft/checkpoint_step_4800.pt"
+        self.sft_model_path = "/Users/ryanprinster/Projects/trained_models/sft/checkpoint_step_4800.pt"
 
         # Logging
         # self.log_weights_freq=None

@@ -48,6 +48,7 @@ class Llama_3p2_1B(nn.Module, ABC):
     
     def __init__(self, config):
         super().__init__()
+        self.config = config
         self.transformer = self._load_model()
         if config.enable_gradient_checkpointing:
             self.transformer.gradient_checkpointing_enable()
@@ -139,48 +140,65 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
 
 
 class Llama_3p2_1B_Value(Llama_3p2_1B):
-    def __init__(self, config, rm_model_path, device):
+    def __init__(self, config):
         super().__init__(config)
-        self.rm_model_path = rm_model_path
-        self.device = device
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
 
     @profile   
     def _load_model(self):
-        if not os.path.exists(self.rm_model_path):
-            raise FileNotFoundError(f"Model not found: {self.rm_model_path}")
-        
-        # This should share the weights of the RM model head
-        # between each token prediction head
+        # if not os.path.exists(self.config.rm_model_path):
+        #     raise FileNotFoundError(f"Model not found: {self.config.rm_model_path}")
+    
+        # # This should share the weights of the RM model head
+        # # between each token prediction head
+        # model = AutoModelForTokenClassification.from_pretrained(
+        #     Llama_3p2_1B.HF_MODEL_NAME,
+        #     num_labels=1
+        # )
+    
+        # model.load_state_dict(
+        #     torch.load(self.config.rm_model_path, map_location='cpu')['model_state_dict'])
+
+        # return model
+    
+         # TODO: Load from SFT
         return AutoModelForTokenClassification.from_pretrained(
-            self.rm_model_path, 
+            Llama_3p2_1B.HF_MODEL_NAME,
             num_labels=1
         )
 
-    def forward(self, input_ids, attention_mask):
+    def forward(self, inputs):
+        # Forward parallel decode
+
         outputs = self.transformer(
-            input_ids=input_ids,
-            attention_mask=attention_mask
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
+            # A causual attention mask is built in here
         )
-        return outputs # -> (batch, seq_len, 1)
+        
+        return outputs.logits.squeeze(-1) # -> (batch, seq_len)
 
 
 class Llama_3p2_1B_Policy(Llama_3p2_1B):
-    def __init__(self, config, sft_model_path, device):
+    def __init__(self, config):
         super().__init__(config)
-        self.sft_model_path = sft_model_path
-        self.device = device
-        self._init_head_weights(config.calculated_sft_bias)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
 
     @profile   
     def _load_model(self):
-        if not os.path.exists(self.sft_model_path):
-            raise FileNotFoundError(f"Model not found: {self.sft_model_path}")
+        # if not os.path.exists(self.config.sft_model_path):
+        #     raise FileNotFoundError(f"Model not found: {self.config.sft_model_path}")
 
-        return AutoModelForCausalLM.from_pretrained(
-            self.sft_model_path
-        )
+        # model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+    
+        # model.load_state_dict(
+        #     torch.load(self.config.sft_model_path, map_location='cpu')['model_state_dict'])
+
+        # return model
+        # TODO: Load from SFT
+        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
   
 
     def generate(self, inputs, max_length, temp):
@@ -198,15 +216,14 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B):
         policies = torch.softmax(torch.stack(generation_obj.scores, dim=1), dim=-1)
         return generation_obj.sequences, policies
 
-    def forward(self, input_ids, attention_mask):
+    def forward(self, input_ids):
        # Forward parallel decode
         outputs = self.transformer(
-            input_ids=input_ids,
-            attention_mask=attention_mask
+            input_ids=input_ids
+            # A causual attention mask is built in here
         )
         
-        logits = outputs.logits
-        policies = torch.softmax(logits, dim=-1)
+        policies = torch.softmax(outputs.logits, dim=-1)
         return policies 
     
     #TODO: Standardize return types

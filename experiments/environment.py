@@ -5,7 +5,7 @@ import sys
 import psutil
 
 from experiments.profiler import profile
-from experiments.trajectory import Trajectory
+from experiments.trajectory import Trajectory, BatchTrajectory
 import gymnasium as gym
 
 from abc import ABC, abstractmethod
@@ -63,15 +63,16 @@ class GymEnvironment(BaseEnvironment):
 
 
 class RLHFEnvironment(BaseEnvironment):
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, config, data):
+        super().__init__()
 
         self.config = config
-        self.obs_dim = self.env.observation_space.shape[0]
-        self.action_dim = self.env.action_space.n
+        self.data = data
+        self.obs_dim = self.data.__class__.SFT_MAX_INPUT_LENGTH
+        self.action_dim = self.data.tokenizer.vocab_size
 
     def _close(self):
-        pass
+        self._closed = True
     
     def reset(self, prompt): # --> observation, info 
         # Need a prompt to reset?
@@ -86,21 +87,49 @@ class RLHFEnvironment(BaseEnvironment):
         # if most recent token brings us to max token length, truncated = True
 
     @profile
-    def generate_trajectory(self, prompt, policy_model):
-        tj = Trajectory(init_state=observation, obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
+    def generate_trajectory(self, 
+                            batch, 
+                            policy_model, 
+                            value_model, 
+                            temp):
 
-        old_observations, old_policies = self.old_policy_model.generate(
-            inputs,
-            max_length,
+
+        # tj = Trajectory(init_state=tokenized_prompt, 
+        #                 obs_dim=self.obs_dim, 
+        #                 action_dim=self.action_dim,
+        #                 max_length=max_sequence_length)
+
+        states, policies = policy_model.generate(
+            batch,
+            self.data.__class__.SFT_MAX_INPUT_LENGTH,
             temp,
         )
 
-        old_values = self.old_value_model.forward(
-            input_ids,
-            attention_mask
+        values = value_model.forward(
+            batch
         )
 
+        print(f"Shapes {states.shape}, {policies.shape}, {values.shape}")
+        assert(False)
         tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
         tj.compute_R(gamma=self.config.gamma)
 
         return tj
+    
+    @profile
+    def generate_trajectories(self, 
+                                tokenized_prompts, 
+                                policy_model, 
+                                value_model, 
+                                max_response_length,
+                                N=None, 
+                                M=None):
+        # Parallelism is simulated for now
+        # TODO: Review batching logic
+
+        batched_tj = BatchTrajectory([self._generate_trajectory(tokenized_prompts, 
+                                                                policy_model, 
+                                                                value_model, 
+                                                                max_response_length) 
+                                        for _ in range(N or self.config.N)])
+        return batched_tj

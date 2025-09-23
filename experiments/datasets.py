@@ -2,6 +2,7 @@ from functools import partial
 from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader
 import torch
+from abc import ABC, abstractmethod
 
 from experiments.profiler import profile
 
@@ -17,16 +18,17 @@ class ProfiledDataLoader(DataLoader):
 
 #TODO make subclasses?
 
-class TLDRFilteredData():
+class TLDRFilteredDataBase(ABC):
     SFT_MAX_QUERY_LENGTH = 512
     SFT_MAX_INPUT_LENGTH = 562
+    SFT_MAX_REPONSE_LENGTH = SFT_MAX_INPUT_LENGTH - SFT_MAX_QUERY_LENGTH
     
     @profile
     def __init__(self, tokenizer, batch_size):
         self.dataset = load_dataset("vwxyzjn/summarize_from_feedback_tldr_3_filtered")
         self.tokenizer = tokenizer
         
-        preprocess_func = partial(self._sft_tldr_filtered_preprocessor, tokenizer=tokenizer)
+        preprocess_func = partial(self.preprocess_func, tokenizer=tokenizer)
         
         dataset = self.dataset.map(preprocess_func, batched=True)
         dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
@@ -34,8 +36,57 @@ class TLDRFilteredData():
         self.train_loader = ProfiledDataLoader(dataset["train"], batch_size=batch_size, shuffle=True, num_workers=0)
         self.validation_loader = ProfiledDataLoader(dataset["validation"], batch_size=batch_size, shuffle=True, num_workers=0)
         self.test_loader = ProfiledDataLoader(dataset["test"], batch_size=batch_size, shuffle=True, num_workers=0)
+
+    @abstractmethod
+    def preprocess_func(self, batch, tokenizer=None):
+        pass
+    
+    def get_query_text(self, subreddit, title, post, tokenizer=None):
+        tokenizer = tokenizer or self.tokenizer
+        truncated_post = self._truncate_post(subreddit, title, post, tokenizer)
+        formatted_query = self._format_query(subreddit, title, truncated_post)
+        return formatted_query
+    
+    # Detail 2.1 (Format the query), 2.3 (No trailing space after “TL;DR:”)
+    def _format_query(self, subreddit, title, post):
+        return f"SUBREDDIT: r/{subreddit}\n\nTITLE: {title}\n\nPOST: {post}\n\nTL;DR:"
+
+    # Detail 2.2 (Clever truncation)
+    def _truncate_post(self, subreddit, title, post, tokenizer):
+
+        test_query = self._format_query(subreddit, title, post)
+        tokens = tokenizer(test_query, return_tensors="pt")
         
-    def _sft_tldr_filtered_preprocessor(self, batch, tokenizer=None):
+        if tokens['input_ids'].shape[1] <= TLDRFilteredDataBase.SFT_MAX_QUERY_LENGTH:
+            return post
+        
+        truncate_char = '\n'
+        while tokens['input_ids'].shape[1] > TLDRFilteredDataBase.SFT_MAX_QUERY_LENGTH:
+            last_newline = post.rfind(truncate_char)
+            if last_newline == -1:
+                # In the rare case that a single paragraph has too many tokens, 
+                # naively truncate that paragraph to the last period instead
+                truncate_char = '.'
+                # print("Post: ", 
+                #       repr(self._format_query(subreddit, title, post)),
+                #       tokenizer(self._format_query(subreddit, title, post), return_tensors="pt")['input_ids'].shape[1])
+                continue
+                raise RuntimeError("All paragraphs removed, post will be empty")
+                
+            
+            post = post[:last_newline]
+            test_query = self._format_query(subreddit, title, post)
+            tokens = tokenizer(test_query, return_tensors="pt")
+        
+        return post
+
+
+class TLDRFilteredDataSFT(TLDRFilteredDataBase):
+
+    def __init__(self, tokenizer, batch_size):
+        super().__init__(tokenizer, batch_size)
+
+    def preprocess_func(self, batch, tokenizer=None):
         tokenizer = tokenizer or self.tokenizer
         #  Detail 1 (Dataset -> Specification)
         texts = []
@@ -57,49 +108,38 @@ class TLDRFilteredData():
             texts,
             truncation=False, # Already did ~clever truncation~
             padding="max_length", # Should use tokenizer.pad_token_id
-            max_length=TLDRFilteredData.SFT_MAX_INPUT_LENGTH,
+            max_length=TLDRFilteredDataBase.SFT_MAX_INPUT_LENGTH,
             return_tensors="pt"
         )
     
-    def get_query_text(self, subreddit, title, post, tokenizer=None):
+class TLDRFilteredDataPPO(TLDRFilteredDataBase):
+
+    def __init__(self, tokenizer, batch_size):
+        super().__init__(tokenizer, batch_size)
+
+    def preprocess_func(self, batch, tokenizer=None):
         tokenizer = tokenizer or self.tokenizer
-        truncated_post = self._truncate_post(subreddit, title, post, tokenizer)
-        formatted_query = self._format_query(subreddit, title, truncated_post)
-        return formatted_query
-    
-    # Detail 2.1 (Format the query), 2.3 (No trailing space after “TL;DR:”)
-    def _format_query(self, subreddit, title, post):
-        return f"SUBREDDIT: r/{subreddit}\n\nTITLE: {title}\n\nPOST: {post}\n\nTL;DR:"
+        texts = []
 
-    # Detail 2.2 (Clever truncation)
-    def _truncate_post(self, subreddit, title, post, tokenizer):
+        for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
+            formatted_query = self.get_query_text(subreddit, title, post, tokenizer)
+            texts.append(formatted_query)
 
-        test_query = self._format_query(subreddit, title, post)
-        tokens = tokenizer(test_query, return_tensors="pt")
+        # Pad Left
+        original_padding_side = tokenizer.padding_side
+        tokenizer.padding_side = 'left'
+        inputs = tokenizer(
+            texts,
+            truncation=False, # Already did ~clever truncation~
+            padding="max_length", # Should use tokenizer.pad_token_id
+            max_length=TLDRFilteredDataBase.SFT_MAX_QUERY_LENGTH,
+            return_tensors="pt"
+        )
         
-        if tokens['input_ids'].shape[1] <= TLDRFilteredData.SFT_MAX_QUERY_LENGTH:
-            return post
-        
-        truncate_char = '\n'
-        while tokens['input_ids'].shape[1] > TLDRFilteredData.SFT_MAX_QUERY_LENGTH:
-            last_newline = post.rfind(truncate_char)
-            if last_newline == -1:
-                # In the rare case that a single paragraph has too many tokens, 
-                # naively truncate that paragraph to the last period instead
-                truncate_char = '.'
-                # print("Post: ", 
-                #       repr(self._format_query(subreddit, title, post)),
-                #       tokenizer(self._format_query(subreddit, title, post), return_tensors="pt")['input_ids'].shape[1])
-                continue
-                raise RuntimeError("All paragraphs removed, post will be empty")
-                
-            
-            post = post[:last_newline]
-            test_query = self._format_query(subreddit, title, post)
-            tokens = tokenizer(test_query, return_tensors="pt")
-        
-        return post
-        
+        # Reset original padding
+        tokenizer.padding_side = original_padding_side
+        return inputs
+
         
 class OpenAIPreferenceData():
 

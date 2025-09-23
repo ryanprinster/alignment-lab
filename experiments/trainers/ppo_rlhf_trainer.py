@@ -16,12 +16,12 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from experiments.logger import Logger
-from experiments.environment import GymEnvironment
+from experiments.environment import RLHFEnvironment
 from experiments.profiler import profile
+from experiments.datasets import TLDRFilteredDataPPO
 
 
-# Absolute imports from your package
-from experiments.models import MLPSimple
+from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value
 from experiments.trajectory import Trajectory, BatchTrajectory
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
@@ -31,57 +31,21 @@ class PPORLHFTrainer(BaseTrainer):
         self.config = config
         self.logger = Logger(self.config)
 
-        # Class members
-        self.env = GymEnvironment(self.config)
-
         # Models
-        self.policy_model = MLPSimple(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
-        self.value_model = MLPSimple(obs_dim=self.env.obs_dim)
-        self.old_policy_model = MLPSimple(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
-        self.old_value_model = MLPSimple(obs_dim=self.env.obs_dim)
+        self.policy_model = Llama_3p2_1B_Policy(self.config)
+        self.value_model = Llama_3p2_1B_Value(self.config)
+        # self.old_policy_model = MLPSimple(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
+        # self.old_value_model = MLPSimple(obs_dim=self.env.obs_dim)
+
+        # Class members
+        self.data = TLDRFilteredDataPPO(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
+        self.env = RLHFEnvironment(self.config, self.data)
+
 
         # Optimizers
         self.optimizer_policy = optim.Adam(self.policy_model.parameters(), lr = self.config.alpha)
         self.optimizer_value = optim.Adam(self.value_model.parameters(), lr = self.config.alpha)
 
-    @profile
-    def _generate_trajectory(self):
-        observation, info = self.env.reset()
-        tj = Trajectory(init_state=observation, obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
-
-        # Generate an episode
-        episode_finished = False
-        while not episode_finished:
-
-            old_value = self.old_value_model.forward(torch.from_numpy(observation))
-            old_policy = self.old_policy_model.forward(torch.from_numpy(observation))
-            
-            # Act on old policy
-            action = np.random.choice([0,1], size=1, p=old_policy.detach().numpy())[0]
-            observation, reward, terminated, truncated, info = self.env.step(action)
-
-            tj.add_step(observation, action, reward, old_policy, old_value, 0)
-
-            if terminated or truncated:
-                episode_finished = True
-
-
-        # Episode finished
-        # TODO: Compute values
-        # self.old_value_model.forward_parallel_decode()
-        tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
-        tj.compute_R(gamma=self.config.gamma)
-
-        return tj
-    
-    @profile
-    def _generate_n_trajectories(self, N=None, M=None):
-        # Parallelism is simulated for now
-        # TODO: Review batching logic
-        batched_tj = BatchTrajectory([self._generate_trajectory() for _ in range(N or self.config.N)])
-        loader = DataLoader(batched_tj, batch_size=(M or self.config.M), shuffle=True)
-        return batched_tj, loader
-    
     def _zero_grad(self, optimizer_policy, optimizer_value):
         optimizer_policy.zero_grad()
         optimizer_value.zero_grad()
@@ -95,7 +59,6 @@ class PPORLHFTrainer(BaseTrainer):
         new_policies = self.policy_model.forward(states)
 
         return new_values, new_policies
-
 
     def compute_value_loss_mse(self, R, new_values):
         loss_value = torch.mean(F.mse_loss(new_values, R))
@@ -134,62 +97,70 @@ class PPORLHFTrainer(BaseTrainer):
     @profile
     def train(self):
         self.global_step = 0
-        for i in range(self.config.num_train_iter):
-            print("train_iter: ", i) 
 
-            if self.global_step > self.config.max_env_steps: 
-                break 
+        # Go through the data num_epochs times, or max_episodes steps
+        for i in range(self.config.num_epochs):
+            for _, batch in enumerate(self.data.train_loader):
+                if self.global_step * self.data.train_loader.batch_size > self.config.max_episodes: 
+                    break 
+                
+                # batch = self._to_device(batch)
+
+                # 1. N "parallel" actors each generate a trajectory
+                #       - runs policy on environment until failure
+                #       - computes advantage estimates
+                # TODO: Data is formatted for SFT
+                batched_tj = self.env.generate_trajectory(
+                    batch, 
+                    self.policy_model,
+                    self.value_model,
+                    self.config.generation_temperature)
+
+                # 2. Optimize loss, for K epochs
+                for k in range(self.config.K):
+                    # Update new policy for each minibatch
+                    for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
+
+                        self._zero_grad(self.optimizer_policy, self.optimizer_value)
+
+                        new_values, new_policies = self._forward(states)
+
+                        # 2.1 Compute mse loss for value model
+                        loss_value = self.compute_value_loss_mse(R, new_values)
             
-            # 1. N "parallel" actors each generate a trajectory
-            #       - runs policy on environment until failure
-            #       - computes advantage estimates
-            batched_tj, tj_loader = self._generate_n_trajectories(N=self.config.N)
+                        # 2.2 Compute ppo loss for policy model
+                        loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies)
 
-            # 2. Optimize loss, for K epochs
-            for k in range(self.config.K):
-                # Update new policy for each minibatch
-                for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
+                        # 2.3 Update models
+                        self._backward(loss_value, loss_ppo)
+                        self._step(self.optimizer_policy, self.optimizer_value)
 
-                    self._zero_grad(self.optimizer_policy, self.optimizer_value)
-
-                    new_values, new_policies = self._forward(states)
-
-                    # 2.1 Compute mse loss for value model
-                    loss_value = self.compute_value_loss_mse(R, new_values)
-          
-                    # 2.2 Compute ppo loss for policy model
-                    loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies)
-
-                    # 2.3 Update models
-                    self._backward(loss_value, loss_ppo)
-                    self._step(self.optimizer_policy, self.optimizer_value)
-
-                    self.global_step += len(rewards) # could alternatively just increment by 1
-                
-                # Logging
-                self.logger.log(
-                    scalars={
-                        "loss_value": loss_value.item(),
-                        "loss_ppo": loss_ppo.item(),
-                        "train_iter": i,
-                        "epoch": k,
-                        "global_step": self.global_step,
-                        "A": torch.mean(A).item(),
-                        "policy_entropy": entropy.item(),
-                        "total_reward": (1.0 * len(batched_tj) / self.config.N),
-                        "global_step": self.global_step
-                        # "lr": self.lr_scheduler.get_last_lr()[0]
-                        },
-                    models=[self.policy_model, self.value_model]
+                        self.global_step += len(rewards) # could alternatively just increment by 1
+                    
+                    # Logging
+                    self.logger.log(
+                        scalars={
+                            "loss_value": loss_value.item(),
+                            "loss_ppo": loss_ppo.item(),
+                            "train_iter": i,
+                            "epoch": k,
+                            "global_step": self.global_step,
+                            "A": torch.mean(A).item(),
+                            "policy_entropy": entropy.item(),
+                            "total_reward": (1.0 * len(batched_tj) / self.config.N),
+                            "global_step": self.global_step
+                            # "lr": self.lr_scheduler.get_last_lr()[0]
+                            },
+                        models=[self.policy_model, self.value_model]
+                    )
+                    
+                # 3. Theta old <-- theta new
+                self._update_old_models(
+                    self.old_value_model,
+                    self.old_policy_model,
+                    self.value_model,
+                    self.policy_model
                 )
-                
-            # 3. Theta old <-- theta new
-            self._update_old_models(
-                self.old_value_model,
-                self.old_policy_model,
-                self.value_model,
-                self.policy_model
-            )
 
         return self.policy_model      
 
