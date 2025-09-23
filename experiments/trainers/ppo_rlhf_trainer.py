@@ -26,7 +26,7 @@ from experiments.trajectory import Trajectory, BatchTrajectory
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
 
-class PPOTrainer(BaseTrainer):
+class PPORLHFTrainer(BaseTrainer):
     def __init__(self, config: PPOConfigBase):
         self.config = config
         self.logger = Logger(self.config)
@@ -44,6 +44,7 @@ class PPOTrainer(BaseTrainer):
         self.optimizer_policy = optim.Adam(self.policy_model.parameters(), lr = self.config.alpha)
         self.optimizer_value = optim.Adam(self.value_model.parameters(), lr = self.config.alpha)
 
+    @profile
     def _generate_trajectory(self):
         observation, info = self.env.reset()
         tj = Trajectory(init_state=observation, obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
@@ -66,6 +67,8 @@ class PPOTrainer(BaseTrainer):
 
 
         # Episode finished
+        # TODO: Compute values
+        # self.old_value_model.forward_parallel_decode()
         tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
         tj.compute_R(gamma=self.config.gamma)
 
@@ -74,6 +77,7 @@ class PPOTrainer(BaseTrainer):
     @profile
     def _generate_n_trajectories(self, N=None, M=None):
         # Parallelism is simulated for now
+        # TODO: Review batching logic
         batched_tj = BatchTrajectory([self._generate_trajectory() for _ in range(N or self.config.N)])
         loader = DataLoader(batched_tj, batch_size=(M or self.config.M), shuffle=True)
         return batched_tj, loader
@@ -82,7 +86,11 @@ class PPOTrainer(BaseTrainer):
         optimizer_policy.zero_grad()
         optimizer_value.zero_grad()
 
+    @profile
     def _forward(self, states):
+        # new_values = self.value_model.forward_parallel_decode(states).squeeze(1)
+        # new_policies = self.policy_model.forward_parallel_decode(states)
+
         new_values = self.value_model.forward(states).squeeze(1)
         new_policies = self.policy_model.forward(states)
 
@@ -108,14 +116,17 @@ class PPOTrainer(BaseTrainer):
 
         return loss_ppo, entropy
     
+    @profile
     def _backward(self, loss_value, loss_ppo):
         loss_value.backward()
         loss_ppo.backward()
     
+    @profile
     def _step(self, optimizer_policy, optimizer_value):
         optimizer_policy.step()
         optimizer_value.step()
 
+    @profile
     def _update_old_models(self, old_value_model, old_policy_model, value_model, policy_model):
         old_policy_model.load_state_dict(policy_model.state_dict())
         old_value_model.load_state_dict(value_model.state_dict())

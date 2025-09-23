@@ -5,6 +5,7 @@ import sys
 import psutil
 
 from experiments.profiler import profile
+from experiments.trajectory import Trajectory
 import gymnasium as gym
 
 from abc import ABC, abstractmethod
@@ -39,15 +40,6 @@ class BaseEnvironment(ABC):
     def _close(self):
         pass
 
-    @abstractmethod
-    def reset(self):
-        pass
-
-    @abstractmethod
-    def step(self, action):
-        pass
-
-
 
 class GymEnvironment(BaseEnvironment):
     def __init__(self, config, render_mode=None):
@@ -64,14 +56,15 @@ class GymEnvironment(BaseEnvironment):
     def reset(self):
         return self.env.reset()
 
-    @profile
     def step(self, action):
         return self.env.step(action)
+    
+
 
 
 class RLHFEnvironment(BaseEnvironment):
     def __init__(self, config):
-        super().__init__()
+        super().__init__(config)
 
         self.config = config
         self.obs_dim = self.env.observation_space.shape[0]
@@ -80,7 +73,7 @@ class RLHFEnvironment(BaseEnvironment):
     def _close(self):
         pass
     
-    def reset(self): # --> observation, info 
+    def reset(self, prompt): # --> observation, info 
         # Need a prompt to reset?
         pass
 
@@ -91,3 +84,23 @@ class RLHFEnvironment(BaseEnvironment):
         # reward = None (reward to be computed after)
         # if most recent token is EOS, terminated = True
         # if most recent token brings us to max token length, truncated = True
+
+    @profile
+    def generate_trajectory(self, prompt, policy_model):
+        tj = Trajectory(init_state=observation, obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
+
+        old_observations, old_policies = self.old_policy_model.generate(
+            inputs,
+            max_length,
+            temp,
+        )
+
+        old_values = self.old_value_model.forward(
+            input_ids,
+            attention_mask
+        )
+
+        tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
+        tj.compute_R(gamma=self.config.gamma)
+
+        return tj
