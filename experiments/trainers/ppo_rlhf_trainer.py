@@ -34,6 +34,7 @@ class PPORLHFTrainer(BaseTrainer):
         # Models
         self.policy_model = Llama_3p2_1B_Policy(self.config)
         self.value_model = Llama_3p2_1B_Value(self.config)
+        self.reward_model = Llama_3p2_1B_Value(self.config) # TODO: This is a placeholder
         # self.old_policy_model = MLPSimple(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
         # self.old_value_model = MLPSimple(obs_dim=self.env.obs_dim)
 
@@ -114,6 +115,7 @@ class PPORLHFTrainer(BaseTrainer):
                     batch, 
                     self.policy_model,
                     self.value_model,
+                    self.reward_model,
                     self.config.generation_temperature)
 
                 # 2. Optimize loss, for K epochs

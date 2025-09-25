@@ -2,40 +2,67 @@ from dataclasses import dataclass
 import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
+import pdb
+import warnings
 
 
 @dataclass
 class Trajectory():
-    TIME_DIM = 0 
+    BATCH_DIM, TIME_DIM = 0, 1
     TORCH_FIELDS = ['states', 'actions', 'rewards', 'policies', 'values', 'probs', 'R', 'A'] 
 
-    def __init__(self, init_state, obs_dim, action_dim, max_length=500):
-        self._states = torch.zeros((max_length+1, obs_dim))
-        self._states[0] = torch.from_numpy(init_state) if isinstance(init_state, np.ndarray) else init_state
-        self._actions = torch.zeros((max_length))
-        self._rewards = torch.zeros((max_length))
-        self._policies = torch.zeros((max_length, action_dim))
-        self._values = torch.zeros((max_length))
-        self._probs = torch.zeros((max_length))
-        self._R = torch.zeros((max_length))
-        self._A = torch.zeros((max_length))
+    def __init__(self, init_state, action_dim, max_sequence_length, pad_token_id=None, values=None, policies=None, rewards=None):
+        """
+        init_state - tensor of shape (batch_size, max_sequence_length, obs_dim)
+            --> Assume for now that tensors are padded to be of max_sequence_length
+            --> Assume for now that we will not be adding to the trajectories after creation
+        """
+        
+        ### Verify base input
+        init_state = torch.from_numpy(init_state) if isinstance(init_state, np.ndarray) else init_state
 
-        self._length = 0
-        self._max_length=max_length
+        if init_state.dim() != 3:
+            raise ValueError("init_state.dim() should be 3")
 
-    def add_step(self, state, action, reward, policy, value, prob):
-        if self._length >= self._max_length:
-            raise ValueError("Trajectory exceeds max length")
+        device = init_state.device
+        self.batch_size = batch_size = init_state.shape[0]
+        # Should I require max sequence length?
+        assert init_state.shape[1] <= max_sequence_length
+        self.max_sequence_length = max_sequence_length
+        self.obs_dim = init_state.shape[2]
 
-        i = self._length
-        self._states[i+1] = torch.as_tensor(state)
-        self._actions[i] = action
-        self._rewards[i] = reward
-        self._policies[i] = torch.as_tensor(policy)
-        self._values[i] = value
-        self._probs[i] = policy[action]
 
-        self._length += 1
+        ### Handle padding
+        # TODO: double cehck this
+        if pad_token_id is not None:
+            # Auto-detect sequence lengths by finding first padding token
+            if self.obs_dim == 1: 
+                is_pad = (init_state.squeeze(-1) == pad_token_id)
+                first_pad_pos = torch.argmax(is_pad.int(), dim=1)
+                has_padding = is_pad.any(dim=1)
+                self._length = torch.where(has_padding, first_pad_pos, init_state.shape[1])
+            else:
+                raise ValueError("Padding detection only supported for obs_dim=1")
+        else:
+            # Assume no padding - all sequences use full length
+            warnings.warn(f"No pad_token_id provided. Assuming all sequences have length {init_state.shape[1]} (no padding)")
+            self._length = torch.full((batch_size,), init_state.shape[1], dtype=torch.long)
+
+
+        # Each different traj can have a different length, after init
+        self._length = torch.full((batch_size,), init_state.shape[1], dtype=torch.long) 
+
+        self._states = init_state
+        self._actions = torch.zeros((batch_size, max_sequence_length), device=device)
+        self._rewards = rewards if rewards is not None else \
+            torch.zeros((batch_size, max_sequence_length), device=device)
+        self._policies = policies if policies is not None else \
+            torch.zeros((batch_size, max_sequence_length, action_dim), device=device)
+        self._values = values if values is not None else \
+            torch.zeros((batch_size, max_sequence_length), device=device)
+        self._probs = torch.zeros((batch_size, max_sequence_length), device=device)
+        self._R = torch.zeros((batch_size, max_sequence_length), device=device)
+        self._A = torch.zeros((batch_size, max_sequence_length), device=device)
     
     def get_trajectory(self):
         return (
@@ -51,40 +78,64 @@ class Trajectory():
 
     # Calculate discounted rewards, aka rewards to go
     def compute_R(self, gamma):
+        if torch.all(self.rewards == 0).item():
+            raise ValueError("rewards is not set, set non-zero rewards attribute first")
+
         time_dim = Trajectory.TIME_DIM
-        r_rev = torch.flip(self.rewards, dims=[time_dim])
-        discounts_rev = torch.cumprod(torch.ones_like(self.rewards) * gamma,dim=time_dim) / gamma
+        mask = torch.arange(self.max_sequence_length).unsqueeze(0) < self._length.unsqueeze(1)
+
+        r = self.rewards * mask
+        r_rev = torch.flip(r, dims=[time_dim])
+        discounts_rev = torch.ones_like(self.rewards) * gamma * mask.flip(dims=[time_dim])
+        discounts_rev = torch.cumprod(discounts_rev,dim=time_dim) / gamma
         R_rev = torch.cumsum(discounts_rev * r_rev, dim=time_dim)
         self._R = torch.flip(R_rev, dims=[time_dim])
         return self.R
     
     def compute_gae(self, gamma, lam):
+        if torch.all(self.rewards == 0).item():
+            raise ValueError("rewards is not set, set non-zero rewards attribute first")
+        if torch.all(self.values == 0).item():
+            raise ValueError("values is not set, set non-zero values attribute first")
+               
         time_dim = Trajectory.TIME_DIM
+        mask = torch.arange(self.max_sequence_length).unsqueeze(0) < self._length.unsqueeze(1)
 
         # 0. Get V and r
         # len(V) = T+1
         # len(r) = T
-        V = self.values.detach()
-        r = self.rewards
+        V = self.values.detach() * mask
+        r = self.rewards * mask
 
         # 1. Compute delta_t (TD Error)
-        V_next = torch.cat([V[1:], torch.tensor([0])], dim=time_dim) # Would need to change to accommodate chanding input dims / batch dim
+        V_next = torch.cat([V[:,1:], torch.zeros(self.batch_size, 1)], dim=time_dim) # Assumes V(s_{T+1}) = 0 TODO: is this a good assumption for LLMs
         TD_error = r + gamma * V_next - V
 
         # 2. Get discounts 
         TD_rev = TD_error.flip(dims=[time_dim]) 
-        discounts_rev = torch.cumprod(torch.ones(r.size()) * lam * gamma,dim=time_dim)
+        discounts_rev = torch.ones(r.size()) * lam * gamma * mask.flip(dims=[time_dim])
+        discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
         
         # 2. Calculate GAE via cumulative sum in reverse
         A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
-        self._A = torch.flip(TD_rev, dims=[time_dim])
+        self._A = torch.flip(A_rev, dims=[time_dim])
 
         return self.A
+    
+    def compute_probs(self):
+        if torch.all(self.actions == 0).item():
+            raise ValueError("actions is not set, set non-zero actions attribute first")
+        if torch.all(self.policies == 0).item():
+            raise ValueError("policies is not set, set non-zero policies attribute first")
+        
+        self._probs = torch.gather(self.policies, dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
+        return self.probs
     
     def __len__(self):
         return self._length
     
     def __getitem__(self, idx):
+        #TODO: make this work with both cases
         return self.states[idx], \
             self.actions[idx], \
             self.rewards[idx], \
@@ -94,47 +145,135 @@ class Trajectory():
             self.R[idx], \
             self.A[idx]
 
+    # TODO: Review how returning whole tensor will interact with everything else
     @property
     def states(self):
-        return self._states[:self._length]
+        return self._states
     
     @property
     def actions(self):
-        return self._actions[:self._length]
+        return self._actions
     
+    @actions.setter
+    def actions(self, new_actions):
+        new_actions = torch.as_tensor(new_actions, device=self._actions.device, dtype=self._actions.dtype)
+        if new_actions.shape != self._actions.shape:
+            raise ValueError(f"Actions shape {new_actions.shape} doesn't match expected {self._actions.shape}")
+        self._actions = new_actions
+
     @property
     def rewards(self):
-        return self._rewards[:self._length]
+        return self._rewards
     
     @property
     def policies(self):
-        return self._policies[:self._length]
+        return self._policies
     
     @property
     def values(self):
-        return self._values[:self._length]
+        return self._values
     
     @property
     def probs(self):
-        return self._probs[:self._length]
+        # TODO: need to compute these
+        return self._probs
     
     @property
     def R(self):
-        return self._R[:self._length]
+        return self._R
 
     @property
     def A(self):
-        return self._A[:self._length]
+        return self._A
     
+
+    # def add_step(self, state, action, reward, policy, value, prob):
+    #     if self.batch_size != 1:
+    #         raise ValueError("add_step only works with batch_size=1")
+    #         # Simplify the logic for this case, for now
+    #     if self._length >= self._max_sequence_length:
+    #         raise ValueError("Trajectory exceeds max length")
+
+    #     i = self._length
+    #     self._states[i+1] = torch.as_tensor(state)
+    #     self._actions[i] = action
+    #     self._rewards[i] = reward
+    #     self._policies[i] = torch.as_tensor(policy)
+    #     self._values[i] = value
+    #     self._probs[i] = policy[action]
+
+    #     self._length += 1
+
+    #### TODO: Build this functionality in for a more flexible API
+    # def _init_state(self, init_state):
+    #     """
+    #     For sequence model rl:
+    #     (batch_size=1,init_state_seq_len=t,obs_dim=1) --squeeze--> (t)
+    #     (batch_size=1,init_state_seq_len=t,obs_dim=o) --squeeze--> (t, o)
+    #     (batch_size=m,init_state_seq_len=t,obs_dim=1) --squeeze--> (m, t)
+    #     (batch_size=m,init_state_seq_len=t,obs_dim=1) --squeeze--> (m, t, o)
+
+    #     For non-sequence model rl: (assume observation dimension)
+    #     (batch_size=1,init_state_seq_len=1,obs_dim=1) --squeeze--> 1 or scalar #unlikely to have a non-sequence model with obs dim = 1
+    #     (batch_size=m,init_state_seq_len=1,obs_dim=1) --squeeze--> (m) #unlikely to have a non-sequence model with obs dim = 1
+    #     (batch_size=1,init_state_seq_len=1,obs_dim=o) --squeeze--> (o)
+    #     (batch_size=m,init_state_seq_len=1,obs_dim=o) --squeeze--> (m, o)
+    #     """
+    #     init_state = torch.as_tensor(init_state)
+
+    #     # Determine what the dimensions likely represent based on our target shapes
+    #     if init_state.dim() == 1:  # (seq_len,) - common case for single sequence
+    #         if init_state.shape[0] == self.obs_dim:
+    #             print("Assuming input is of shape (obs_dim)")
+    #             init_state = init_state.unsqueeze(0).unsqueeze(1)  # -> (1, 1, obs_dim)
+    #         elif init_state.shape[0] == self.max_sequence_length:
+    #             print("Assuming input is of shape (max_sequence_length)")
+    #             init_state = init_state.unsqueeze(0).unsqueeze(-1)  # -> (1, seq_len, 1)
+    #         elif init_state.shape[0] == self.batch_size:
+    #             print("Assuming input is of shape (batch_size)")
+    #             init_state = init_state.unsqueeze(1).unsqueeze(-1)  # -> (batch_size, 1, 1)
+    #         else:
+    #             raise ValueError("Unable to infer init_state dimension meanings. " \
+    #                             "Check input shape, or give an unsqueezed tensor of shape (batch_size, max_sequence_length, obs_dim)")
+    #     elif init_state.dim() == 2:
+    #         # Could be (seq_len, obs_dim) or (batch_size, seq_len), or (batch_size, obs_dim)
+    #         if init_state.shape == (self.max_sequence_length, self.obs_dim):
+    #             print("Assuming input is of shape (max_sequence_length, obs_dim)")
+    #             init_state = init_state.unsqueeze(0)  # -> (1, seq_len, obs_dim)
+    #         elif init_state.shape == (self.batch_size, self.max_sequence_length):
+    #             print("Assuming input is of shape (batch_size, max_sequence_length)")
+    #             init_state = init_state.unsqueeze(-1) # -> (batch_size, seq_len, 1)
+    #         elif init_state.shape == (self.batch_size, self.obs_dim):
+    #             print("Assuming input is of shape (batch_size, obs_dim)")
+    #             init_state = init_state.unsqueeze(1) # -> (batch_size, 1, obs_dim)
+    #         else:
+    #             raise ValueError("Unable to infer init_state dimension meanings. " \
+    #                             "Check input shape, or give an unsqueezed tensor of shape (batch_size, max_sequence_length, obs_dim)")
+    #     elif init_state.dim() == 3:
+    #         if init_state.shape != (self.batch_size, self.max_sequence_length, self.obs_dim):
+    #             raise ValueError("Unable to infer init_state dimension meanings. " \
+    #                             "Check input shape, or give an unsqueezed tensor of shape (batch_size, max_sequence_length, obs_dim)")
+    #     else:
+    #         raise ValueError("Unable to infer init_state dimension meanings. " \
+    #                             "Check input shape, or give an unsqueezed tensor of shape (batch_size, max_sequence_length, obs_dim)")
+
+    #     # TODO: Now actually init state
+    #     return init_state
+
+
 @dataclass
 class BatchTrajectory(Dataset):
     def __init__(self, trajectories):
         self._tjs = trajectories
         self._batch()
+        pdb.set_trace()
 
     def _batch(self):
+        from torch.nn.utils.rnn import pad_sequence
+
         for field in Trajectory.TORCH_FIELDS:
             setattr(self, "_" + field, torch.cat([getattr(tj, field) for tj in self._tjs], dim=Trajectory.TIME_DIM))
+            # setattr(self, "_" + field, pad_sequence([getattr(tj, field) for tj in self._tjs], batch_first=True, padding_value=0))
 
     def __len__(self):
         return self._rewards.shape[Trajectory.TIME_DIM]

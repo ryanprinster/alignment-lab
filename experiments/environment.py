@@ -3,6 +3,7 @@ import signal
 import torch
 import sys
 import psutil
+import pdb
 
 from experiments.profiler import profile
 from experiments.trajectory import Trajectory, BatchTrajectory
@@ -68,7 +69,9 @@ class RLHFEnvironment(BaseEnvironment):
 
         self.config = config
         self.data = data
-        self.obs_dim = self.data.__class__.SFT_MAX_INPUT_LENGTH
+        self.max_sequence_length = self.data.__class__.SFT_MAX_INPUT_LENGTH
+        self.max_prompt_length = self.data.__class__.SFT_MAX_QUERY_LENGTH
+        self.max_response_length = self.data.__class__.SFT_MAX_REPONSE_LENGTH
         self.action_dim = self.data.tokenizer.vocab_size
 
     def _close(self):
@@ -91,28 +94,52 @@ class RLHFEnvironment(BaseEnvironment):
                             batch, 
                             policy_model, 
                             value_model, 
+                            reward_model,
                             temp):
-
-
-        # tj = Trajectory(init_state=tokenized_prompt, 
-        #                 obs_dim=self.obs_dim, 
-        #                 action_dim=self.action_dim,
-        #                 max_length=max_sequence_length)
+        
 
         states, policies = policy_model.generate(
             batch,
-            self.data.__class__.SFT_MAX_INPUT_LENGTH,
+            self.max_sequence_length,
             temp,
         )
 
+        # TODO: policy_model.generate only gives policies for generated tokens
+        # hence 
+
         values = value_model.forward(
-            batch
+            {'input_ids': states, 'attention_mask': batch['attention_mask']}
         )
 
+        rewards = reward_model.forward(
+            {'input_ids': states, 'attention_mask': batch['attention_mask']}
+        )
+
+        # Slice to get just the response data
+        # TODO: can I do this without creating additional computation or memory?
+        states = states[:,-self.max_response_length:]
+        policies = policies[:,-self.max_response_length:,:]
+        values = values[:,-self.max_response_length:]
+        rewards = rewards[:,-self.max_response_length:]
+
         print(f"Shapes {states.shape}, {policies.shape}, {values.shape}")
-        assert(False)
+        tj = Trajectory(init_state=states.unsqueeze(-1), 
+                action_dim=self.action_dim,
+                max_sequence_length=self.max_response_length,
+                pad_token_id=self.data.tokenizer.pad_token_id,
+                policies=policies,
+                values=values,
+                rewards=rewards)
+        
         tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
         tj.compute_R(gamma=self.config.gamma)
+        tj.actions = states
+
+        # TODO: remove computation of R and GAE on prompt portion?
+        # Could just pass in the sliced return values from the models
+        
+        tj.compute_probs()
+        pdb.set_trace()
 
         return tj
     
