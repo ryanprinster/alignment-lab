@@ -18,6 +18,25 @@ class ProfiledDataLoader(DataLoader):
 
 #TODO make subclasses?
 
+class ScoredData(Dataset):
+    # Note: This will not work if num_workers > 0, since that creates copies of the dataset
+    # would need to create the loader again
+    def __init__(self, dataset):
+        self.data = dataset 
+        self.rm_scores = [None] * len(self.data)
+        self.sft_policies = [None] * len(self.data)
+    
+    def __getitem__(self, idx):
+        item = self.data[idx]
+        rm_score = self.rm_scores[idx]
+        return {'data': item, 'rm_score': rm_score, 'idx': idx}  # return idx so you can map back
+    
+    def set_rm_score(self, idx, score):
+        self.rm_scores[idx] = score
+    
+    def __len__(self):
+        return len(self.data)
+
 class TLDRFilteredDataBase(ABC):
     SFT_MAX_QUERY_LENGTH = 512
     SFT_MAX_INPUT_LENGTH = 562
@@ -25,7 +44,7 @@ class TLDRFilteredDataBase(ABC):
     
     @profile
     def __init__(self, tokenizer, batch_size):
-        self.dataset = load_dataset("vwxyzjn/summarize_from_feedback_tldr_3_filtered")
+        self.dataset = ScoredData(load_dataset("vwxyzjn/summarize_from_feedback_tldr_3_filtered"))
         self.tokenizer = tokenizer
         
         preprocess_func = partial(self.preprocess_func, tokenizer=tokenizer)

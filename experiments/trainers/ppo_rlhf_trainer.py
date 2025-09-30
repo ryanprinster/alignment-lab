@@ -22,7 +22,7 @@ from experiments.datasets import TLDRFilteredDataPPO
 
 
 from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value
-from experiments.trajectory import Trajectory, BatchTrajectory
+from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
 
@@ -34,9 +34,13 @@ class PPORLHFTrainer(BaseTrainer):
         # Models
         self.policy_model = Llama_3p2_1B_Policy(self.config)
         self.value_model = Llama_3p2_1B_Value(self.config)
-        self.reward_model = Llama_3p2_1B_Value(self.config) # TODO: This is a placeholder
-        # self.old_policy_model = MLPSimple(obs_dim=self.env.obs_dim, action_dim=self.env.action_dim)
-        # self.old_value_model = MLPSimple(obs_dim=self.env.obs_dim)
+        self.old_policy_state_dict = self.policy_model.state_dict()
+        self.old_value_state_dict = self.value_model.state_dict()
+
+        # If pre-compute, don't keep these in memory
+        self.reward_model = Llama_3p2_1B_Value(self.config) # TODO: This is a placeholder'
+        self.sft_model = Llama_3p2_1B_Value(self.config) # TODO: This is a placeholder'
+
 
         # Class members
         self.data = TLDRFilteredDataPPO(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
@@ -91,9 +95,14 @@ class PPORLHFTrainer(BaseTrainer):
         optimizer_value.step()
 
     @profile
-    def _update_old_models(self, old_value_model, old_policy_model, value_model, policy_model):
-        old_policy_model.load_state_dict(policy_model.state_dict())
-        old_value_model.load_state_dict(value_model.state_dict())
+    def _update_old_models(self):
+        self.old_policy_state_dict = self.policy_model.state_dict()
+        self.old_value_state_dict = self.value_model.state_dict()
+
+
+    @profile
+    def _to_device(self, batch):
+        pass
 
     @profile
     def train(self):
@@ -105,25 +114,33 @@ class PPORLHFTrainer(BaseTrainer):
                 if self.global_step * self.data.train_loader.batch_size > self.config.max_episodes: 
                     break 
                 
+                # TODO:
                 # batch = self._to_device(batch)
 
                 # 1. N "parallel" actors each generate a trajectory
                 #       - runs policy on environment until failure
                 #       - computes advantage estimates
-                # TODO: Data is formatted for SFT
-                batched_tj = self.env.generate_trajectory(
+                tjs = self.env.generate_trajectory(
                     batch, 
                     self.policy_model,
                     self.value_model,
                     self.reward_model,
+                    #TODO: may need to be able to split this up
                     self.config.generation_temperature)
+                
+                tj_loader = DataLoader(TrajectorySet(tjs), batch_size=self.config._mini_batch_size, shuffle=True, num_workers=0)
 
                 # 2. Optimize loss, for K epochs
                 for k in range(self.config.K):
                     # Update new policy for each minibatch
+
+                    curr_accumulation_steps = 0
+                    self._zero_grad(self.optimizer_policy, self.optimizer_value)
+
                     for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
 
-                        self._zero_grad(self.optimizer_policy, self.optimizer_value)
+                        if curr_accumulation_steps >= self.config.accumulation_steps:
+                            self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                         new_values, new_policies = self._forward(states)
 
@@ -135,9 +152,11 @@ class PPORLHFTrainer(BaseTrainer):
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
-                        self._step(self.optimizer_policy, self.optimizer_value)
 
-                        self.global_step += len(rewards) # could alternatively just increment by 1
+                        if curr_accumulation_steps >= self.config.accumulation_steps:
+                            self._step(self.optimizer_policy, self.optimizer_value)
+                            self.global_step += len(rewards) # could alternatively just increment by 1
+                            curr_accumulation_steps = 0
                     
                     # Logging
                     self.logger.log(
@@ -149,7 +168,8 @@ class PPORLHFTrainer(BaseTrainer):
                             "global_step": self.global_step,
                             "A": torch.mean(A).item(),
                             "policy_entropy": entropy.item(),
-                            "total_reward": (1.0 * len(batched_tj) / self.config.N),
+                            # "total_reward": (1.0 * len(batched_tj) / self.config.N),
+                            # TODO: total reward is different here. Should perhaps take total rewards at eos tokens
                             "global_step": self.global_step
                             # "lr": self.lr_scheduler.get_last_lr()[0]
                             },
@@ -157,50 +177,19 @@ class PPORLHFTrainer(BaseTrainer):
                     )
                     
                 # 3. Theta old <-- theta new
-                self._update_old_models(
-                    self.old_value_model,
-                    self.old_policy_model,
-                    self.value_model,
-                    self.policy_model
-                )
+                self._update_old_models()
 
         return self.policy_model      
 
-        
-    def demonstrate(self, num_demonstrations):
-        self.demonstrate_env = GymEnvironment(render_mode = 'human')
+    @profile
+    def pre_compute_rewards_and_sft_policies(self):
+        print("Pre-computing rewards...")
 
-        for i in range(num_demonstrations):
-            observation, info = self.demonstrate_env.reset()
+        # load model
+        reward_model = Llama_3p2_1B_Value(self.config)
 
-            episode_finished = False
-            while not episode_finished:
-                policy = self.policy_model.forward(torch.from_numpy(observation))
-                action = np.argmax(policy.detach().numpy())
-                observation, reward, terminated, truncated, info = self.demonstrate_env.step(action)
+        for _, data in enumerate(self.data.train_loader):
+            rewards = reward_model.forward(data)
 
-                if terminated or truncated:
-                    episode_finished = True
-    
-    def record(self, num_videos=10, name_prefix="eval"):
-        self.record_env = GymEnvironment(render_mode = 'rgb_array')
-        self.record_env = RecordVideo(
-            self.record_env.env, # Havent made it truly inherit at the moment
-            video_folder=self.config.video_folder_name, 
-            name_prefix=name_prefix + "_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_",
-            episode_trigger=lambda x: True
-        )
-    
-        for i in range(num_videos):
-            observation, info = self.record_env.reset()
-
-            episode_finished = False
-            while not episode_finished:
-                policy = self.policy_model.forward(torch.from_numpy(observation))
-                action = np.argmax(policy.detach().numpy())
-                observation, reward, terminated, truncated, info = self.record_env.step(action)
-
-                if terminated or truncated:
-                    episode_finished = True
-
-
+            for idx, rm_score in zip(data['idx'], rewards):
+                self.data.set_score(idx, rm_score)

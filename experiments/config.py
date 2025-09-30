@@ -57,9 +57,18 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.lr_final_ratio = 0.1
         # self.batch_size = 32
         # self.virtual_batch_size = 128
-        self.batch_size = 2
-        self.accumulation_steps = 4
-        self._virtual_batch_size = self.batch_size * self.accumulation_steps
+
+        self.batch_size = 2 # Number of trajectories generated at a time
+        
+        self.num_mini_batches = 1 # N_mb = Number of mini-batches to process batch_size of trajectories
+        assert(self.batch_size % self.num_mini_batches == 0)
+        self._mini_batch_size = self.batch_size / self.num_mini_batches  # Size of minibatches when processing batch_size of trajectories
+        
+        # 
+        self.mini_batch_accumulation_steps = 4
+        assert(self._mini_batch_size / self.mini_batch_accumulation_steps == 0)
+        self._virtual_mini_batch_size = self._mini_batch_size / self.mini_batch_accumulation_steps # Batch size that is actually getting trained, and hence is in memory
+        
         self.generation_temperature = 0.7
 
         # Checkpointing

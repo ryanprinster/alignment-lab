@@ -11,6 +11,7 @@ import gymnasium as gym
 
 from abc import ABC, abstractmethod
 from typing import Any, Tuple
+import warnings
 
 class BaseEnvironment(ABC):
     def __init__(self):
@@ -89,14 +90,17 @@ class RLHFEnvironment(BaseEnvironment):
         # if most recent token is EOS, terminated = True
         # if most recent token brings us to max token length, truncated = True
 
+    def rewards_with_kl_penalty(self, rewards, policy, policy_sft):
+        return rewards - self.config.beta * torch.nn.functional.kl_div(policy, policy_sft)
+
     @profile
     def generate_trajectory(self, 
                             batch, 
                             policy_model, 
                             value_model, 
-                            reward_model,
-                            temp):
-        
+                            sft_model,
+                            temp,
+                            reward_model = None):
 
         states, policies = policy_model.generate(
             batch,
@@ -104,16 +108,24 @@ class RLHFEnvironment(BaseEnvironment):
             temp,
         )
 
-        # TODO: policy_model.generate only gives policies for generated tokens
-        # hence 
+        _, sft_policies = sft_model.generate(
+            batch,
+            self.max_sequence_length,
+            temp,
+        )
 
         values = value_model.forward(
             {'input_ids': states, 'attention_mask': batch['attention_mask']}
         )
 
-        rewards = reward_model.forward(
-            {'input_ids': states, 'attention_mask': batch['attention_mask']}
-        )
+        if batch['rm_score'] is None:
+            rewards = reward_model.forward(
+                {'input_ids': states, 'attention_mask': batch['attention_mask']}
+            )
+        print(f"rm_scores: {batch['rm_score']}")
+
+
+        # TODO: Add entropy bonus to SFT predictions
 
         # Slice to get just the response data
         # TODO: can I do this without creating additional computation or memory?
@@ -121,8 +133,8 @@ class RLHFEnvironment(BaseEnvironment):
         policies = policies[:,-self.max_response_length:,:]
         values = values[:,-self.max_response_length:]
         rewards = rewards[:,-self.max_response_length:]
+        rewards = self.rewards_with_kl_penalty(rewards, policies, sft_policies)
 
-        print(f"Shapes {states.shape}, {policies.shape}, {values.shape}")
         tj = Trajectory(init_state=states.unsqueeze(-1), 
                 action_dim=self.action_dim,
                 max_sequence_length=self.max_response_length,
@@ -143,20 +155,20 @@ class RLHFEnvironment(BaseEnvironment):
 
         return tj
     
-    @profile
-    def generate_trajectories(self, 
-                                tokenized_prompts, 
-                                policy_model, 
-                                value_model, 
-                                max_response_length,
-                                N=None, 
-                                M=None):
-        # Parallelism is simulated for now
-        # TODO: Review batching logic
+    # @profile
+    # def generate_trajectories(self, 
+    #                             tokenized_prompts, 
+    #                             policy_model, 
+    #                             value_model, 
+    #                             max_response_length,
+    #                             N=None, 
+    #                             M=None):
+    #     # Parallelism is simulated for now
+    #     # TODO: Review batching logic
 
-        batched_tj = BatchTrajectory([self._generate_trajectory(tokenized_prompts, 
-                                                                policy_model, 
-                                                                value_model, 
-                                                                max_response_length) 
-                                        for _ in range(N or self.config.N)])
-        return batched_tj
+    #     batched_tj = BatchTrajectory([self._generate_trajectory(tokenized_prompts, 
+    #                                                             policy_model, 
+    #                                                             value_model, 
+    #                                                             max_response_length) 
+    #                                     for _ in range(N or self.config.N)])
+    #     return batched_tj

@@ -11,11 +11,12 @@ class Trajectory():
     BATCH_DIM, TIME_DIM = 0, 1
     TORCH_FIELDS = ['states', 'actions', 'rewards', 'policies', 'values', 'probs', 'R', 'A'] 
 
-    def __init__(self, init_state, action_dim, max_sequence_length, pad_token_id=None, values=None, policies=None, rewards=None):
+    def __init__(self, init_state, action_dim, max_sequence_length, values, policies, rewards, pad_token_id=None):
         """
         init_state - tensor of shape (batch_size, max_sequence_length, obs_dim)
             --> Assume for now that tensors are padded to be of max_sequence_length
-            --> Assume for now that we will not be adding to the trajectories after creation
+            --> Assume for now that we will not be adding to the trajectories after creation, 
+                hence values, policies, rewards are required on init
         """
         
         ### Verify base input
@@ -23,34 +24,37 @@ class Trajectory():
 
         if init_state.dim() != 3:
             raise ValueError("init_state.dim() should be 3")
+        if init_state.shape[1] > max_sequence_length:
+            # Should I require max sequence length? --> Will be needed when making trajectories that we can add to after
+            raise ValueError("given trajectory length longer than max_sequence_length")
 
         device = init_state.device
         self.batch_size = batch_size = init_state.shape[0]
-        # Should I require max sequence length?
-        assert init_state.shape[1] <= max_sequence_length
         self.max_sequence_length = max_sequence_length
         self.obs_dim = init_state.shape[2]
-
 
         ### Handle padding
         # TODO: double cehck this
         if pad_token_id is not None:
-            # Auto-detect sequence lengths by finding first padding token
+            # Detect and create a mask
             if self.obs_dim == 1: 
                 is_pad = (init_state.squeeze(-1) == pad_token_id)
-                first_pad_pos = torch.argmax(is_pad.int(), dim=1)
-                has_padding = is_pad.any(dim=1)
-                self._length = torch.where(has_padding, first_pad_pos, init_state.shape[1])
+                self._mask = ~is_pad
+
+                # is_pad = (init_state.squeeze(-1) == pad_token_id)
+                # first_pad_pos = torch.argmax(is_pad.int(), dim=1)
+                # has_padding = is_pad.any(dim=1)
+                # self._length = torch.where(has_padding, first_pad_pos, init_state.shape[1])
             else:
                 raise ValueError("Padding detection only supported for obs_dim=1")
         else:
             # Assume no padding - all sequences use full length
-            warnings.warn(f"No pad_token_id provided. Assuming all sequences have length {init_state.shape[1]} (no padding)")
-            self._length = torch.full((batch_size,), init_state.shape[1], dtype=torch.long)
+            warnings.warn(f"No pad_token_id provided. Assuming all sequences are valid")
+            self._mask = torch.ones((batch_size, max_sequence_length), dtype=torch.bool)
 
 
         # Each different traj can have a different length, after init
-        self._length = torch.full((batch_size,), init_state.shape[1], dtype=torch.long) 
+        # self._length = torch.full((batch_size,), init_state.shape[1], dtype=torch.long) 
 
         self._states = init_state
         self._actions = torch.zeros((batch_size, max_sequence_length), device=device)
@@ -82,7 +86,7 @@ class Trajectory():
             raise ValueError("rewards is not set, set non-zero rewards attribute first")
 
         time_dim = Trajectory.TIME_DIM
-        mask = torch.arange(self.max_sequence_length).unsqueeze(0) < self._length.unsqueeze(1)
+        mask = self._mask #torch.arange(self.max_sequence_length).unsqueeze(0) < self._length.unsqueeze(1)
 
         r = self.rewards * mask
         r_rev = torch.flip(r, dims=[time_dim])
@@ -99,7 +103,7 @@ class Trajectory():
             raise ValueError("values is not set, set non-zero values attribute first")
                
         time_dim = Trajectory.TIME_DIM
-        mask = torch.arange(self.max_sequence_length).unsqueeze(0) < self._length.unsqueeze(1)
+        mask = self._mask #torch.arange(self.max_sequence_length).unsqueeze(0) < self._length.unsqueeze(1)
 
         # 0. Get V and r
         # len(V) = T+1
@@ -131,19 +135,20 @@ class Trajectory():
         self._probs = torch.gather(self.policies, dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
         return self.probs
     
-    def __len__(self):
-        return self._length
+    # def __len__(self):
+    #     # TODO: Decide what exactly length should return here
+    #     return self.batch_size
     
-    def __getitem__(self, idx):
-        #TODO: make this work with both cases
-        return self.states[idx], \
-            self.actions[idx], \
-            self.rewards[idx], \
-            self.policies[idx], \
-            self.values[idx], \
-            self.probs[idx], \
-            self.R[idx], \
-            self.A[idx]
+    # def __getitem__(self, idx):
+    #     #TODO: make this work with both PPO cartpole and PPO for RLHF
+    #     return self.states[idx,:,:], \
+    #         self.actions[idx,:], \
+    #         self.rewards[idx,:], \
+    #         self.policies[idx,:,:], \
+    #         self.values[idx,:], \
+    #         self.probs[idx,:], \
+    #         self.R[idx,:], \
+    #         self.A[idx,:]
 
     # TODO: Review how returning whole tensor will interact with everything else
     @property
@@ -261,29 +266,22 @@ class Trajectory():
     #     return init_state
 
 
-@dataclass
-class BatchTrajectory(Dataset):
-    def __init__(self, trajectories):
-        self._tjs = trajectories
-        self._batch()
-        pdb.set_trace()
-
-    def _batch(self):
-        from torch.nn.utils.rnn import pad_sequence
-
-        for field in Trajectory.TORCH_FIELDS:
-            setattr(self, "_" + field, torch.cat([getattr(tj, field) for tj in self._tjs], dim=Trajectory.TIME_DIM))
-            # setattr(self, "_" + field, pad_sequence([getattr(tj, field) for tj in self._tjs], batch_first=True, padding_value=0))
+class TrajectorySet(Dataset):
+    def __init__(self, trajectory: Trajectory):
+        self._tjs = trajectory
 
     def __len__(self):
-        return self._rewards.shape[Trajectory.TIME_DIM]
+        return self._tjs.batch_size
     
     def __getitem__(self, idx):
-        return self._states[idx], \
-            self._actions[idx], \
-            self._rewards[idx], \
-            self._policies[idx], \
-            self._values[idx], \
-            self._probs[idx], \
-            self._R[idx], \
-            self._A[idx]
+        return self.states[idx,:,:], \
+            self.actions[idx,:], \
+            self.rewards[idx,:], \
+            self.policies[idx,:,:], \
+            self.values[idx,:], \
+            self.probs[idx,:], \
+            self.R[idx,:], \
+            self.A[idx,:]
+
+# TODO: Make another TrajectorySet which shuffles the time dimension 
+# into the batch dimension for cartpole or non-sequence environments
