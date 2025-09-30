@@ -56,18 +56,19 @@ class Trajectory():
         # Each different traj can have a different length, after init
         # self._length = torch.full((batch_size,), init_state.shape[1], dtype=torch.long) 
 
-        self._states = init_state
-        self._actions = torch.zeros((batch_size, max_sequence_length), device=device)
-        self._rewards = rewards if rewards is not None else \
+        self._states = init_state * self._mask
+        self._actions = torch.zeros((batch_size, max_sequence_length), device=device) 
+        self._rewards = rewards * self._mask if rewards is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
-        self._policies = policies if policies is not None else \
+        self._policies = policies * self._mask if policies is not None else \
             torch.zeros((batch_size, max_sequence_length, action_dim), device=device)
-        self._values = values if values is not None else \
+        self._values = values * self._mask if values is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
         self._probs = torch.zeros((batch_size, max_sequence_length), device=device)
         self._R = torch.zeros((batch_size, max_sequence_length), device=device)
         self._A = torch.zeros((batch_size, max_sequence_length), device=device)
     
+
     def get_trajectory(self):
         return (
             self.states,
@@ -86,11 +87,10 @@ class Trajectory():
             raise ValueError("rewards is not set, set non-zero rewards attribute first")
 
         time_dim = Trajectory.TIME_DIM
-        mask = self._mask #torch.arange(self.max_sequence_length).unsqueeze(0) < self._length.unsqueeze(1)
 
-        r = self.rewards * mask
+        r = self.rewards
         r_rev = torch.flip(r, dims=[time_dim])
-        discounts_rev = torch.ones_like(self.rewards) * gamma * mask.flip(dims=[time_dim])
+        discounts_rev = torch.ones_like(self.rewards) * gamma * self._mask.flip(dims=[time_dim])
         discounts_rev = torch.cumprod(discounts_rev,dim=time_dim) / gamma
         R_rev = torch.cumsum(discounts_rev * r_rev, dim=time_dim)
         self._R = torch.flip(R_rev, dims=[time_dim])
@@ -103,13 +103,12 @@ class Trajectory():
             raise ValueError("values is not set, set non-zero values attribute first")
                
         time_dim = Trajectory.TIME_DIM
-        mask = self._mask #torch.arange(self.max_sequence_length).unsqueeze(0) < self._length.unsqueeze(1)
 
         # 0. Get V and r
         # len(V) = T+1
         # len(r) = T
-        V = self.values.detach() * mask
-        r = self.rewards * mask
+        V = self.values.detach()
+        r = self.rewards
 
         # 1. Compute delta_t (TD Error)
         V_next = torch.cat([V[:,1:], torch.zeros(self.batch_size, 1)], dim=time_dim) # Assumes V(s_{T+1}) = 0 TODO: is this a good assumption for LLMs
@@ -117,7 +116,7 @@ class Trajectory():
 
         # 2. Get discounts 
         TD_rev = TD_error.flip(dims=[time_dim]) 
-        discounts_rev = torch.ones(r.size()) * lam * gamma * mask.flip(dims=[time_dim])
+        discounts_rev = torch.ones(r.size()) * lam * gamma * self._mask.flip(dims=[time_dim])
         discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
         
         # 2. Calculate GAE via cumulative sum in reverse
@@ -164,7 +163,7 @@ class Trajectory():
         new_actions = torch.as_tensor(new_actions, device=self._actions.device, dtype=self._actions.dtype)
         if new_actions.shape != self._actions.shape:
             raise ValueError(f"Actions shape {new_actions.shape} doesn't match expected {self._actions.shape}")
-        self._actions = new_actions
+        self._actions = new_actions * self._mask
 
     @property
     def rewards(self):

@@ -6,7 +6,7 @@ import psutil
 import pdb
 
 from experiments.profiler import profile
-from experiments.trajectory import Trajectory, BatchTrajectory
+from experiments.trajectory import Trajectory
 import gymnasium as gym
 
 from abc import ABC, abstractmethod
@@ -77,21 +77,15 @@ class RLHFEnvironment(BaseEnvironment):
 
     def _close(self):
         self._closed = True
-    
-    def reset(self, prompt): # --> observation, info 
-        # Need a prompt to reset?
-        pass
-
-    @profile
-    def step(self, action): #  --> observation, reward, terminated, truncated, info
-        pass
-        # model.generate_autoregressive
-        # reward = None (reward to be computed after)
-        # if most recent token is EOS, terminated = True
-        # if most recent token brings us to max token length, truncated = True
 
     def rewards_with_kl_penalty(self, rewards, policy, policy_sft):
+        # TODO: condense rewards to one value
+        pdb.set_trace()
         return rewards - self.config.beta * torch.nn.functional.kl_div(policy, policy_sft)
+
+    def filter_no_eos(self, states, tokenizer, *tensors):
+        has_eos = (states == tokenizer.eos_token_id).any(dim=1)
+        return (states[has_eos],) + tuple(t[has_eos] for t in tensors)
 
     @profile
     def generate_trajectory(self, 
@@ -101,6 +95,7 @@ class RLHFEnvironment(BaseEnvironment):
                             sft_model,
                             temp,
                             reward_model = None):
+        tokenizer = policy_model.tokenizer
 
         states, policies = policy_model.generate(
             batch,
@@ -118,21 +113,28 @@ class RLHFEnvironment(BaseEnvironment):
             {'input_ids': states, 'attention_mask': batch['attention_mask']}
         )
 
-        if batch['rm_score'] is None:
-            rewards = reward_model.forward(
-                {'input_ids': states, 'attention_mask': batch['attention_mask']}
-            )
-        print(f"rm_scores: {batch['rm_score']}")
+        if None in batch['rm_score']:
+            # TODO: remove this, this is here for quick iteration testing
+            rewards = torch.ones_like(values)
 
+            # rewards = reward_model.forward(
+            #     {'input_ids': states, 'attention_mask': batch['attention_mask']}
+            # )
 
-        # TODO: Add entropy bonus to SFT predictions
+        else:
+            rewards = batch['rm_score']
 
-        # Slice to get just the response data
-        # TODO: can I do this without creating additional computation or memory?
+        # Filter out any trajectories that did not generate an EOS token as part of
+        # Detail 12 (RM Training -> Extract reward from the EOS token)
+        # states, policies, values, rewards, sft_policies = self.filter_no_eos(
+        #     states, tokenizer, policies, values, rewards, sft_policies
+        # )
+
         states = states[:,-self.max_response_length:]
         policies = policies[:,-self.max_response_length:,:]
         values = values[:,-self.max_response_length:]
-        rewards = rewards[:,-self.max_response_length:]
+        # Detail 12 (RM Training -> Extract reward from the EOS token)
+        rewards = rewards[:,-self.max_response_length:] * (states == tokenizer.eos_token_id) # create mask to get eos token rewards
         rewards = self.rewards_with_kl_penalty(rewards, policies, sft_policies)
 
         tj = Trajectory(init_state=states.unsqueeze(-1), 
@@ -146,29 +148,8 @@ class RLHFEnvironment(BaseEnvironment):
         tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
         tj.compute_R(gamma=self.config.gamma)
         tj.actions = states
-
-        # TODO: remove computation of R and GAE on prompt portion?
-        # Could just pass in the sliced return values from the models
         
         tj.compute_probs()
         pdb.set_trace()
 
         return tj
-    
-    # @profile
-    # def generate_trajectories(self, 
-    #                             tokenized_prompts, 
-    #                             policy_model, 
-    #                             value_model, 
-    #                             max_response_length,
-    #                             N=None, 
-    #                             M=None):
-    #     # Parallelism is simulated for now
-    #     # TODO: Review batching logic
-
-    #     batched_tj = BatchTrajectory([self._generate_trajectory(tokenized_prompts, 
-    #                                                             policy_model, 
-    #                                                             value_model, 
-    #                                                             max_response_length) 
-    #                                     for _ in range(N or self.config.N)])
-    #     return batched_tj

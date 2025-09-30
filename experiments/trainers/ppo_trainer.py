@@ -22,7 +22,7 @@ from experiments.profiler import profile
 
 # Absolute imports from your package
 from experiments.models import MLPSimple
-from experiments.trajectory import Trajectory, BatchTrajectory
+from experiments.trajectory import Trajectory
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
 
@@ -74,7 +74,9 @@ class PPOTrainer(BaseTrainer):
     @profile
     def _generate_n_trajectories(self, N=None, M=None):
         # Parallelism is simulated for now
-        batched_tj = BatchTrajectory([self._generate_trajectory() for _ in range(N or self.config.N)])
+
+        # TODO: Update for usage of trajectory
+        # batched_tj = BatchTrajectory([self._generate_trajectory() for _ in range(N or self.config.N)])
         loader = DataLoader(batched_tj, batch_size=(M or self.config.M), shuffle=True)
         return batched_tj, loader
     

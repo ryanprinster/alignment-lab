@@ -4,6 +4,7 @@
 import os
 from functools import reduce
 from datetime import datetime
+import pdb
 
 # Third-party imports
 import gymnasium as gym
@@ -37,9 +38,7 @@ class PPORLHFTrainer(BaseTrainer):
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
 
-        # If pre-compute, don't keep these in memory
-        self.reward_model = Llama_3p2_1B_Value(self.config) # TODO: This is a placeholder'
-        self.sft_model = Llama_3p2_1B_Value(self.config) # TODO: This is a placeholder'
+        self.sft_model = Llama_3p2_1B_Policy(self.config) # TODO: This is a placeholder'
 
 
         # Class members
@@ -106,6 +105,9 @@ class PPORLHFTrainer(BaseTrainer):
 
     @profile
     def train(self):
+        if self.config.pre_compute_rm_scores:
+            self.pre_compute_rewards()
+        
         self.global_step = 0
 
         # Go through the data num_epochs times, or max_episodes steps
@@ -124,7 +126,7 @@ class PPORLHFTrainer(BaseTrainer):
                     batch, 
                     self.policy_model,
                     self.value_model,
-                    self.reward_model,
+                    self.sft_model,
                     #TODO: may need to be able to split this up
                     self.config.generation_temperature)
                 
@@ -182,14 +184,14 @@ class PPORLHFTrainer(BaseTrainer):
         return self.policy_model      
 
     @profile
-    def pre_compute_rewards_and_sft_policies(self):
+    def pre_compute_rewards(self):
         print("Pre-computing rewards...")
 
         # load model
         reward_model = Llama_3p2_1B_Value(self.config)
 
-        for _, data in enumerate(self.data.train_loader):
+        for i, data in enumerate(self.data.train_loader):
+            print(f"i: {i}")
             rewards = reward_model.forward(data)
-
             for idx, rm_score in zip(data['idx'], rewards):
-                self.data.set_score(idx, rm_score)
+                self.data.dataset['train'].set_rm_score(idx, rm_score)

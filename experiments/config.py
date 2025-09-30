@@ -154,6 +154,7 @@ class RLFHPPOConfig(PPOConfigBase):
         # Efficiency
         self.enable_gradient_checkpointing = False
         self.enable_mixed_precision_training = True
+        self.pre_compute_rm_scores = True
 
 
 class CartPoleConfig():

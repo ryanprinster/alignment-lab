@@ -3,6 +3,10 @@ from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader
 import torch
 from abc import ABC, abstractmethod
+import pdb
+from collections import defaultdict
+from torch.utils.data.dataloader import default_collate
+
 
 from experiments.profiler import profile
 
@@ -18,18 +22,35 @@ class ProfiledDataLoader(DataLoader):
 
 #TODO make subclasses?
 
+def collate_with_none(batch):
+    d = defaultdict(list)
+    for item in batch:
+        for key in item.keys():
+            d[key].append(item[key])
+    
+    return {
+        key: (values if (key == 'rm_score' and None in values) 
+              else default_collate(values))
+        for key, values in d.items()
+    }
+
+
 class ScoredData(Dataset):
     # Note: This will not work if num_workers > 0, since that creates copies of the dataset
     # would need to create the loader again
     def __init__(self, dataset):
+        super().__init__()
         self.data = dataset 
         self.rm_scores = [None] * len(self.data)
         self.sft_policies = [None] * len(self.data)
     
     def __getitem__(self, idx):
-        item = self.data[idx]
-        rm_score = self.rm_scores[idx]
-        return {'data': item, 'rm_score': rm_score, 'idx': idx}  # return idx so you can map back
+        d = {}
+        d['rm_score'] = self.rm_scores[idx]
+        d['idx'] = idx
+        d.update(self.data[idx])
+        # pdb.set_trace()
+        return d
     
     def set_rm_score(self, idx, score):
         self.rm_scores[idx] = score
@@ -44,7 +65,8 @@ class TLDRFilteredDataBase(ABC):
     
     @profile
     def __init__(self, tokenizer, batch_size):
-        self.dataset = ScoredData(load_dataset("vwxyzjn/summarize_from_feedback_tldr_3_filtered"))
+        self.dataset = load_dataset("vwxyzjn/summarize_from_feedback_tldr_3_filtered")
+
         self.tokenizer = tokenizer
         
         preprocess_func = partial(self.preprocess_func, tokenizer=tokenizer)
@@ -52,9 +74,13 @@ class TLDRFilteredDataBase(ABC):
         dataset = self.dataset.map(preprocess_func, batched=True)
         dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
         
-        self.train_loader = ProfiledDataLoader(dataset["train"], batch_size=batch_size, shuffle=True, num_workers=0)
-        self.validation_loader = ProfiledDataLoader(dataset["validation"], batch_size=batch_size, shuffle=True, num_workers=0)
-        self.test_loader = ProfiledDataLoader(dataset["test"], batch_size=batch_size, shuffle=True, num_workers=0)
+        self.dataset["train"] = ScoredData(dataset["train"])
+        self.dataset["validation"] = ScoredData(self.dataset["validation"])
+        self.dataset["test"] = ScoredData(self.dataset["test"])
+
+        self.train_loader = DataLoader(self.dataset["train"], collate_fn=collate_with_none, batch_size=batch_size, shuffle=True, num_workers=0)
+        self.validation_loader = DataLoader(self.dataset["validation"], collate_fn=collate_with_none, batch_size=batch_size, shuffle=True, num_workers=0)
+        self.test_loader = DataLoader(self.dataset["test"], collate_fn=collate_with_none, batch_size=batch_size, shuffle=True, num_workers=0)
 
     @abstractmethod
     def preprocess_func(self, batch, tokenizer=None):
