@@ -10,6 +10,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.init as init
+import pdb
 
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForTokenClassification
@@ -68,6 +69,10 @@ class Llama_3p2_1B(nn.Module, ABC):
 
     def generate(self, inputs, max_length, temp):
         pass
+
+    def clean_logits(self, logits):
+        # clean scores, -inf --> 1e-9
+        return torch.where(torch.isinf(logits), torch.tensor(-1e9, device=logits.device), logits)
         
 
 class Llama_3p2_1B_SFT(Llama_3p2_1B):
@@ -87,7 +92,7 @@ class Llama_3p2_1B_SFT(Llama_3p2_1B):
             labels=labels
         )
         torch.cuda.empty_cache() #TODO: Check how this actually impacts memory
-        return outputs
+        return outputs.loss
 
     @profile
     def generate(self, inputs, max_length, temp):
@@ -136,7 +141,7 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
             input_ids=input_ids,
             attention_mask=attention_mask
         )
-        return outputs
+        return outputs.logits
 
 
 class Llama_3p2_1B_Value(Llama_3p2_1B):
@@ -168,13 +173,16 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
             num_labels=1
         )
 
-    def forward(self, inputs):
+    def forward(self, input_ids, attention_mask=None):
         # Forward parallel decode
 
+        # Mask pad tokens
+        if attention_mask is None:
+            attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
+
         outputs = self.transformer(
-            input_ids=inputs['input_ids'],
-            attention_mask=inputs['attention_mask'],
-            # A causual attention mask is built in here
+            input_ids=input_ids.squeeze(),
+            attention_mask=attention_mask.squeeze(),
         )
         
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
@@ -213,17 +221,19 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B):
             output_scores=True
         )
 
-        policies = torch.softmax(torch.stack(generation_obj.scores, dim=1), dim=-1)
-        return generation_obj.sequences, policies
+        policy_logits = torch.stack(generation_obj.scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
+        policy_logits = self.clean_logits(policy_logits)
 
-    def forward(self, input_ids):
-       # Forward parallel decode
+        return generation_obj.sequences, policy_logits
+
+    def forward(self, input_ids, attention_mask=None):
+
+        if attention_mask is None:
+            attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
+
+        # Forward parallel decode
         outputs = self.transformer(
-            input_ids=input_ids
-            # A causual attention mask is built in here
+            input_ids=input_ids.squeeze(),
+            attention_mask=attention_mask.squeeze()
         )
-        
-        policies = torch.softmax(outputs.logits, dim=-1)
-        return policies 
-    
-    #TODO: Standardize return types
+        return outputs.logits 

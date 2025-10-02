@@ -1,3 +1,4 @@
+import pdb
 class SFTConfigBase:
     def __init__(self):
         raise NotImplementedError("Use a concrete config subclass")
@@ -62,12 +63,12 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         
         self.num_mini_batches = 1 # N_mb = Number of mini-batches to process batch_size of trajectories
         assert(self.batch_size % self.num_mini_batches == 0)
-        self._mini_batch_size = self.batch_size / self.num_mini_batches  # Size of minibatches when processing batch_size of trajectories
+        self._mini_batch_size = int(self.batch_size / self.num_mini_batches)  # Size of minibatches when processing batch_size of trajectories
         
         # 
-        self.mini_batch_accumulation_steps = 4
+        self.mini_batch_accumulation_steps = 2
         assert(self._mini_batch_size / self.mini_batch_accumulation_steps == 0)
-        self._virtual_mini_batch_size = self._mini_batch_size / self.mini_batch_accumulation_steps # Batch size that is actually getting trained, and hence is in memory
+        self._virtual_mini_batch_size = int(self._mini_batch_size / self.mini_batch_accumulation_steps) # Batch size that is actually getting trained, and hence is in memory
         
         self.generation_temperature = 0.7
 
@@ -120,10 +121,15 @@ class RLFHPPOConfig(PPOConfigBase):
         self.eps = 1e-5
         self.lr = self.alpha = 3e-6
 
-        # TODO: lr scheduler - linear
-        self.batch_size = 32
-        self.accumulation_steps = 16
-        self._virtual_batch_size = self.batch_size * self.accumulation_steps # = 516
+        self.batch_size = 2 # Number of trajectories generated at a time
+
+        self.num_mini_batches = 1 # N_mb = Number of mini-batches to process batch_size of trajectories
+        assert(self.batch_size % self.num_mini_batches == 0)
+        self._mini_batch_size = int(self.batch_size / self.num_mini_batches)  # Size of minibatches when processing batch_size of trajectories
+        
+        self.mini_batch_accumulation_steps = 2
+        assert(self._mini_batch_size % self.mini_batch_accumulation_steps == 0)
+        self._virtual_mini_batch_size = int(self._mini_batch_size / self.mini_batch_accumulation_steps) # Batch size that is actually getting trained, and hence is in memory
 
         self.beta = 0.05 # KL Penalty Coefficient for RLHF
         self.gamma = 1.0 # Discount factor
@@ -138,9 +144,11 @@ class RLFHPPOConfig(PPOConfigBase):
         self.c1 = 0.1 # value func coeff
         self.clip_value_func_loss = True
         self.generation_temperature = 0.7 # Sampling temp
+
+        
         
         # Checkpointing
-        self.save_freq_steps = 100 * self.accumulation_steps
+        self.save_freq_steps = 100 * self.mini_batch_accumulation_steps
         self.save_interval_min = 60
         # self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
         self.rm_model_path = "/Users/ryanprinster/Projects/trained_models/sft/checkpoint_step_4800.pt"
@@ -148,7 +156,7 @@ class RLFHPPOConfig(PPOConfigBase):
 
         # Logging
         # self.log_weights_freq=None
-        self.log_scalars_freq=self.accumulation_steps
+        self.log_scalars_freq=self.mini_batch_accumulation_steps
         self.log_file_name="sft_training_log"
 
         # Efficiency

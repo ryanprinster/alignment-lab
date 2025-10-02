@@ -38,8 +38,8 @@ class Trajectory():
         if pad_token_id is not None:
             # Detect and create a mask
             if self.obs_dim == 1: 
-                is_pad = (init_state.squeeze(-1) == pad_token_id)
-                self._mask = ~is_pad
+                self._mask = ~(init_state.squeeze(-1) == pad_token_id)
+                self._mask_3d = ~(init_state == pad_token_id)
 
                 # is_pad = (init_state.squeeze(-1) == pad_token_id)
                 # first_pad_pos = torch.argmax(is_pad.int(), dim=1)
@@ -56,11 +56,12 @@ class Trajectory():
         # Each different traj can have a different length, after init
         # self._length = torch.full((batch_size,), init_state.shape[1], dtype=torch.long) 
 
-        self._states = init_state * self._mask
+        # pdb.set_trace()
+        self._states = init_state * self._mask_3d
         self._actions = torch.zeros((batch_size, max_sequence_length), device=device) 
         self._rewards = rewards * self._mask if rewards is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
-        self._policies = policies * self._mask if policies is not None else \
+        self._policies = policies * self._mask_3d if policies is not None else \
             torch.zeros((batch_size, max_sequence_length, action_dim), device=device)
         self._values = values * self._mask if values is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
@@ -83,8 +84,8 @@ class Trajectory():
 
     # Calculate discounted rewards, aka rewards to go
     def compute_R(self, gamma):
-        if torch.all(self.rewards == 0).item():
-            raise ValueError("rewards is not set, set non-zero rewards attribute first")
+        # if torch.all(self.rewards == 0).item():
+        #     raise ValueError("rewards is not set, set non-zero rewards attribute first")
 
         time_dim = Trajectory.TIME_DIM
 
@@ -97,10 +98,11 @@ class Trajectory():
         return self.R
     
     def compute_gae(self, gamma, lam):
-        if torch.all(self.rewards == 0).item():
-            raise ValueError("rewards is not set, set non-zero rewards attribute first")
-        if torch.all(self.values == 0).item():
-            raise ValueError("values is not set, set non-zero values attribute first")
+        
+        # if torch.all(self.rewards == 0).item():
+        #     raise ValueError("rewards is not set, set non-zero rewards attribute first")
+        # if torch.all(self.values == 0).item():
+        #     raise ValueError("values is not set, set non-zero values attribute first")
                
         time_dim = Trajectory.TIME_DIM
 
@@ -119,17 +121,17 @@ class Trajectory():
         discounts_rev = torch.ones(r.size()) * lam * gamma * self._mask.flip(dims=[time_dim])
         discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
         
-        # 2. Calculate GAE via cumulative sum in reverse
+        # 3. Calculate GAE via cumulative sum in reverse
         A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
         self._A = torch.flip(A_rev, dims=[time_dim])
 
         return self.A
     
     def compute_probs(self):
-        if torch.all(self.actions == 0).item():
-            raise ValueError("actions is not set, set non-zero actions attribute first")
-        if torch.all(self.policies == 0).item():
-            raise ValueError("policies is not set, set non-zero policies attribute first")
+        # if torch.all(self.actions == 0).item():
+        #     raise ValueError("actions is not set, set non-zero actions attribute first")
+        # if torch.all(self.policies == 0).item():
+        #     raise ValueError("policies is not set, set non-zero policies attribute first")
         
         self._probs = torch.gather(self.policies, dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
         return self.probs
@@ -273,14 +275,14 @@ class TrajectorySet(Dataset):
         return self._tjs.batch_size
     
     def __getitem__(self, idx):
-        return self.states[idx,:,:], \
-            self.actions[idx,:], \
-            self.rewards[idx,:], \
-            self.policies[idx,:,:], \
-            self.values[idx,:], \
-            self.probs[idx,:], \
-            self.R[idx,:], \
-            self.A[idx,:]
+        return self._tjs.states[idx,:,:], \
+            self._tjs.actions[idx,:], \
+            self._tjs.rewards[idx,:], \
+            self._tjs.policies[idx,:,:], \
+            self._tjs.values[idx,:], \
+            self._tjs.probs[idx,:], \
+            self._tjs.R[idx,:], \
+            self._tjs.A[idx,:]
 
 # TODO: Make another TrajectorySet which shuffles the time dimension 
 # into the batch dimension for cartpole or non-sequence environments

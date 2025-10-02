@@ -7,11 +7,14 @@ import pdb
 
 from experiments.profiler import profile
 from experiments.trajectory import Trajectory
+from experiments.monitor import detect_nans
+
 import gymnasium as gym
 
 from abc import ABC, abstractmethod
 from typing import Any, Tuple
 import warnings
+
 
 class BaseEnvironment(ABC):
     def __init__(self):
@@ -78,10 +81,20 @@ class RLHFEnvironment(BaseEnvironment):
     def _close(self):
         self._closed = True
 
-    def rewards_with_kl_penalty(self, rewards, policy, policy_sft):
-        # TODO: condense rewards to one value
-        pdb.set_trace()
-        return rewards - self.config.beta * torch.nn.functional.kl_div(policy, policy_sft)
+    @detect_nans
+    def rewards_with_kl_penalty(self, rewards, policy_logits, policies, sft_policy_logits):
+        """
+        Averages kl over action_space = vocab_size space, and over sequence space.
+        """
+        log_P= torch.nn.functional.log_softmax(policy_logits, dim=-1)
+        P = policies
+        log_Q = sft = torch.nn.functional.log_softmax(sft_policy_logits, dim=-1)
+        kl_div = (P * (log_P - log_Q)).mean(dim=(1,2))
+
+        has_reward_mask = (rewards != 0)
+        kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
+
+        return rewards - self.config.beta * (kl_div * has_reward_mask)
 
     def filter_no_eos(self, states, tokenizer, *tensors):
         has_eos = (states == tokenizer.eos_token_id).any(dim=1)
@@ -97,51 +110,49 @@ class RLHFEnvironment(BaseEnvironment):
                             reward_model = None):
         tokenizer = policy_model.tokenizer
 
-        states, policies = policy_model.generate(
+        states, policy_logits = policy_model.generate(
             batch,
             self.max_sequence_length,
             temp,
         )
 
-        _, sft_policies = sft_model.generate(
+        _, sft_policy_logits = sft_model.generate(
             batch,
             self.max_sequence_length,
             temp,
         )
 
-        values = value_model.forward(
-            {'input_ids': states, 'attention_mask': batch['attention_mask']}
-        )
+        values = value_model.forward(states, batch['attention_mask'])
 
         if None in batch['rm_score']:
             # TODO: remove this, this is here for quick iteration testing
             rewards = torch.ones_like(values)
-
             # rewards = reward_model.forward(
             #     {'input_ids': states, 'attention_mask': batch['attention_mask']}
             # )
-
         else:
             rewards = batch['rm_score']
+        
 
         # Filter out any trajectories that did not generate an EOS token as part of
         # Detail 12 (RM Training -> Extract reward from the EOS token)
         # states, policies, values, rewards, sft_policies = self.filter_no_eos(
         #     states, tokenizer, policies, values, rewards, sft_policies
         # )
-
+        
         states = states[:,-self.max_response_length:]
-        policies = policies[:,-self.max_response_length:,:]
+        policy_logits = policy_logits[:,-self.max_response_length:,:]
+        policies = torch.softmax(policy_logits, dim=-1)
         values = values[:,-self.max_response_length:]
         # Detail 12 (RM Training -> Extract reward from the EOS token)
         rewards = rewards[:,-self.max_response_length:] * (states == tokenizer.eos_token_id) # create mask to get eos token rewards
-        rewards = self.rewards_with_kl_penalty(rewards, policies, sft_policies)
+        rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits)
 
         tj = Trajectory(init_state=states.unsqueeze(-1), 
                 action_dim=self.action_dim,
                 max_sequence_length=self.max_response_length,
                 pad_token_id=self.data.tokenizer.pad_token_id,
-                policies=policies,
+                policies=policies, #TODO: should this take logits?
                 values=values,
                 rewards=rewards)
         
@@ -150,6 +161,6 @@ class RLHFEnvironment(BaseEnvironment):
         tj.actions = states
         
         tj.compute_probs()
-        pdb.set_trace()
+        # pdb.set_trace()
 
         return tj

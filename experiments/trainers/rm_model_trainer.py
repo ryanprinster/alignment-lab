@@ -94,19 +94,16 @@ class RMTrainer(BaseTrainer):
 
     @profile
     def _forward(self, batch):
-        preferred_outputs = self.model.forward(input_ids=batch['preferred_input_ids'], 
+        r_preferred = preferred_logits = self.model.forward(input_ids=batch['preferred_input_ids'], 
                             attention_mask=batch['preferred_attention_mask']) 
         
-        rejected_outputs = self.model.forward(input_ids=batch['rejected_input_ids'], 
+        r_rejected = rejected_logits = self.model.forward(input_ids=batch['rejected_input_ids'], 
                             attention_mask=batch['rejected_attention_mask'])
 
-        return (preferred_outputs, rejected_outputs)
+        return (r_preferred, r_rejected)
 
     @detect_nans
-    def _loss(self, outputs):
-        preferred_outputs, rejected_outputs = outputs
-        r_preferred = preferred_outputs.logits
-        r_rejected = rejected_outputs.logits
+    def _loss(self, r_preferred, r_rejected):
         loss = -torch.mean(torch.log(torch.sigmoid(r_preferred - r_rejected)))
         return loss
 
@@ -150,8 +147,8 @@ class RMTrainer(BaseTrainer):
                 
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
-                    outputs = self._forward(batch)
-                    loss = self._loss(outputs)
+                    r_preferred, r_rejected = self._forward(batch)
+                    loss = self._loss(r_preferred, r_rejected)
 
                 self._backward(loss)
                 

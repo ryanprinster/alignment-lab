@@ -43,9 +43,9 @@ class SFTTrainer(BaseTrainer):
         return batch
 
     @detect_nans
-    def _loss(self, outputs):
+    def _loss(self, loss):
         # This model does CE loss under the hood
-        return outputs.loss
+        return loss
 
     @profile
     def _backward(self, loss):
@@ -84,11 +84,11 @@ class SFTTrainer(BaseTrainer):
                 
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
-                    outputs = self.model.forward(input_ids=batch['input_ids'], 
+                    loss = self.model.forward(input_ids=batch['input_ids'], 
                                         attention_mask=batch['attention_mask'], 
                                         labels=batch['labels']) 
                     
-                    loss = self._loss(outputs)
+                    loss = self._loss(loss)
 
                 self._backward(loss)
                 
@@ -131,7 +131,7 @@ class SFTTrainer(BaseTrainer):
 
     @profile
     def evaluate(self):
-        max_summary_length = TLDRFilteredData.SFT_MAX_INPUT_LENGTH
+        max_summary_length = TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH
 
         self.sft = Llama_3p2_1B_SFT(self.config).to(self.device)
         self.gpt = Llama_3p2_1B_SFT(self.config).to(self.device)

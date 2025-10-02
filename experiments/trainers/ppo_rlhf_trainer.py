@@ -60,7 +60,8 @@ class PPORLHFTrainer(BaseTrainer):
         # new_policies = self.policy_model.forward_parallel_decode(states)
 
         new_values = self.value_model.forward(states).squeeze(1)
-        new_policies = self.policy_model.forward(states)
+        new_policy_logits = self.policy_model.forward(states)
+        new_policies = torch.softmax(new_policy_logits, dim=-1)
 
         return new_values, new_policies
 
@@ -69,7 +70,8 @@ class PPORLHFTrainer(BaseTrainer):
         return loss_value
 
     def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies):
-        new_probs = new_policies.gather(1, old_actions.long().unsqueeze(1)).squeeze(1)
+        
+        new_probs = torch.gather(new_policies, 2, old_actions.long().unsqueeze(1))
         r = new_probs / old_probs.detach()
 
         # Compute ppo loss
@@ -141,7 +143,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                     for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
 
-                        if curr_accumulation_steps >= self.config.accumulation_steps:
+                        if curr_accumulation_steps >= self.config.mini_batch_accumulation_steps:
                             self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                         new_values, new_policies = self._forward(states)
@@ -155,7 +157,7 @@ class PPORLHFTrainer(BaseTrainer):
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
 
-                        if curr_accumulation_steps >= self.config.accumulation_steps:
+                        if curr_accumulation_steps >= self.config.mini_batch_accumulation_steps:
                             self._step(self.optimizer_policy, self.optimizer_value)
                             self.global_step += len(rewards) # could alternatively just increment by 1
                             curr_accumulation_steps = 0
