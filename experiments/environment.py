@@ -136,6 +136,8 @@ class RLHFEnvironment(BaseEnvironment):
 
         # Filter out any trajectories that did not generate an EOS token as part of
         # Detail 12 (RM Training -> Extract reward from the EOS token)
+        # Detail 23 (PPO Training -> “EOS trick” to ensure scores from the RM is valid)
+        # TODO: No EOS should give reward = -1
         # states, policies, values, rewards, sft_policies = self.filter_no_eos(
         #     states, tokenizer, policies, values, rewards, sft_policies
         # )

@@ -84,8 +84,8 @@ class Trajectory():
 
     # Calculate discounted rewards, aka rewards to go
     def compute_R(self, gamma):
-        # if torch.all(self.rewards == 0).item():
-        #     raise ValueError("rewards is not set, set non-zero rewards attribute first")
+        if torch.all(self.rewards == 0).item():
+            raise ValueError("rewards is not set, set non-zero rewards attribute first")
 
         time_dim = Trajectory.TIME_DIM
 
@@ -99,10 +99,10 @@ class Trajectory():
     
     def compute_gae(self, gamma, lam):
         
-        # if torch.all(self.rewards == 0).item():
-        #     raise ValueError("rewards is not set, set non-zero rewards attribute first")
-        # if torch.all(self.values == 0).item():
-        #     raise ValueError("values is not set, set non-zero values attribute first")
+        if torch.all(self.rewards == 0).item():
+            raise ValueError("rewards is not set, set non-zero rewards attribute first")
+        if torch.all(self.values == 0).item():
+            raise ValueError("values is not set, set non-zero values attribute first")
                
         time_dim = Trajectory.TIME_DIM
 
@@ -128,13 +128,29 @@ class Trajectory():
         return self.A
     
     def compute_probs(self):
-        # if torch.all(self.actions == 0).item():
-        #     raise ValueError("actions is not set, set non-zero actions attribute first")
-        # if torch.all(self.policies == 0).item():
-        #     raise ValueError("policies is not set, set non-zero policies attribute first")
+        if torch.all(self.actions == 0).item():
+            raise ValueError("actions is not set, set non-zero actions attribute first")
+        if torch.all(self.policies == 0).item():
+            raise ValueError("policies is not set, set non-zero policies attribute first")
         
         self._probs = torch.gather(self.policies, dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
         return self.probs
+    
+    def whiten_rewards(self):
+        self._rewards = self._whiten(self._rewards)
+        return self._rewards
+
+    def whiten_advantages(self):
+        self._A = self._whiten(self._A)
+        return self._A
+
+    # Taken from https://arxiv.org/pdf/2403.17031
+    def _whiten(values, shift_mean=True):
+        mean, var = torch.mean(values), torch.var(values, unbiased=False)
+        whitened = (values - mean) * torch.rsqrt(var + 1e-8)
+        if not shift_mean:
+            whitened += mean
+        return whitened
     
     # def __len__(self):
     #     # TODO: Decide what exactly length should return here

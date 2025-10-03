@@ -56,9 +56,6 @@ class PPORLHFTrainer(BaseTrainer):
 
     @profile
     def _forward(self, states):
-        # new_values = self.value_model.forward_parallel_decode(states).squeeze(1)
-        # new_policies = self.policy_model.forward_parallel_decode(states)
-
         new_values = self.value_model.forward(states).squeeze(1)
         new_policy_logits = self.policy_model.forward(states)
         new_policies = torch.softmax(new_policy_logits, dim=-1)
@@ -131,6 +128,10 @@ class PPORLHFTrainer(BaseTrainer):
                     self.sft_model,
                     #TODO: may need to be able to split this up
                     self.config.generation_temperature)
+                
+                # TODO: Whiten rewards and advantages
+                tjs.whiten_rewards()
+                tjs.whiten_advantages()
                 
                 tj_loader = DataLoader(TrajectorySet(tjs), batch_size=self.config._mini_batch_size, shuffle=True, num_workers=0)
 
