@@ -96,9 +96,19 @@ class RLHFEnvironment(BaseEnvironment):
 
         return rewards - self.config.beta * (kl_div * has_reward_mask)
 
-    # def filter_no_eos(self, states, tokenizer, *tensors):
-    #     has_eos = (states == tokenizer.eos_token_id).any(dim=1)
-    #     return (states[has_eos],) + tuple(t[has_eos] for t in tensors)
+    def set_pad_after_eos(self, states, tokenizer):
+        eos_mask = (states == tokenizer.eos_token_id)
+        first_eos_pos = torch.where(
+            eos_mask.any(dim=1),
+            eos_mask.int().argmax(dim=1),
+            torch.full((states.size(0),), states.size(1), device=states.device)
+        )
+
+        pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
+        after_eos_mask = pos > first_eos_pos.unsqueeze(1)
+
+        states[after_eos_mask] = tokenizer.pad_token_id
+        return states
     
     def set_reward_for_no_eos(self, states, rewards):
         """ Assumes rewards as been set to all zeros for a given trajectory if no eos token"""
@@ -145,6 +155,7 @@ class RLHFEnvironment(BaseEnvironment):
         # Detail 23 (PPO Training -> “EOS trick” to ensure scores from the RM is valid)
         
         states = states[:,-self.max_response_length:]
+        states = self.set_pad_after_eos(states, tokenizer)
         policy_logits = policy_logits[:,-self.max_response_length:,:]
         policies = torch.softmax(policy_logits, dim=-1)
         values = values[:,-self.max_response_length:]
