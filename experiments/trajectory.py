@@ -46,11 +46,6 @@ class Trajectory():
             warnings.warn(f"No pad_token_id provided. Assuming all sequences are valid")
             self._mask = torch.ones((batch_size, max_sequence_length), dtype=torch.bool)
 
-
-        # Each different traj can have a different length, after init
-        # self._length = torch.full((batch_size,), init_state.shape[1], dtype=torch.long) 
-
-        # pdb.set_trace()
         self._states = init_state * self._mask_3d
         self._actions = torch.zeros((batch_size, max_sequence_length), device=device) 
         self._rewards = rewards * self._mask if rewards is not None else \

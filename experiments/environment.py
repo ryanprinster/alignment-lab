@@ -149,8 +149,6 @@ class RLHFEnvironment(BaseEnvironment):
         else:
             rewards = batch['rm_score']
         
-        pdb.set_trace()
-
         # Detail 12 (RM Training -> Extract reward from the EOS token)
         # Detail 23 (PPO Training -> “EOS trick” to ensure scores from the RM is valid)
         
