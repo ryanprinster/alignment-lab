@@ -114,7 +114,6 @@ class RLHFEnvironment(BaseEnvironment):
                             sft_model,
                             temp,
                             reward_model = None):
-        pdb.set_trace()
         tokenizer = policy_model.tokenizer
 
         states, policy_logits = policy_model.generate(
@@ -133,13 +132,14 @@ class RLHFEnvironment(BaseEnvironment):
 
         if None in batch['rm_score']:
             # TODO: remove this, this is here for quick iteration testing
-            rewards = torch.ones_like(values)
+            rewards = torch.ones_like(values, device=policy_model.device)
             # rewards = reward_model.forward(
             #     {'input_ids': states, 'attention_mask': batch['attention_mask']}
             # )
         else:
             rewards = batch['rm_score']
         
+        pdb.set_trace()
 
         # Detail 12 (RM Training -> Extract reward from the EOS token)
         # Detail 23 (PPO Training -> “EOS trick” to ensure scores from the RM is valid)
