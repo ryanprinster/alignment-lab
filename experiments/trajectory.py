@@ -28,7 +28,7 @@ class Trajectory():
             # Should I require max sequence length? --> Will be needed when making trajectories that we can add to after
             raise ValueError("given trajectory length longer than max_sequence_length")
 
-        device = init_state.device
+        self.device = device = init_state.device
         self.batch_size = batch_size = init_state.shape[0]
         self.max_sequence_length = max_sequence_length
         self.obs_dim = init_state.shape[2]
@@ -85,7 +85,7 @@ class Trajectory():
 
         r = self.rewards
         r_rev = torch.flip(r, dims=[time_dim])
-        discounts_rev = torch.ones_like(self.rewards) * gamma * self._mask.flip(dims=[time_dim])
+        discounts_rev = torch.ones_like(self.rewards, device=self.device) * gamma * self._mask.flip(dims=[time_dim])
         discounts_rev = torch.cumprod(discounts_rev,dim=time_dim) / gamma
         R_rev = torch.cumsum(discounts_rev * r_rev, dim=time_dim)
         self._R = torch.flip(R_rev, dims=[time_dim])
@@ -107,12 +107,12 @@ class Trajectory():
         r = self.rewards
 
         # 1. Compute delta_t (TD Error)
-        V_next = torch.cat([V[:,1:], torch.zeros(self.batch_size, 1)], dim=time_dim) # Assumes V(s_{T+1}) = 0 TODO: is this a good assumption for LLMs
+        V_next = torch.cat([V[:,1:], torch.zeros(self.batch_size, 1, device=self.device)], dim=time_dim) # Assumes V(s_{T+1}) = 0 TODO: is this a good assumption for LLMs
         TD_error = r + gamma * V_next - V
 
         # 2. Get discounts 
         TD_rev = TD_error.flip(dims=[time_dim]) 
-        discounts_rev = torch.ones(r.size()) * lam * gamma * self._mask.flip(dims=[time_dim])
+        discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma * self._mask.flip(dims=[time_dim])
         discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
         
         # 3. Calculate GAE via cumulative sum in reverse
