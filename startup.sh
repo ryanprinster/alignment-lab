@@ -17,4 +17,13 @@ python3 -m experiments --batch_size 16 --accumulation_steps 4 --load_checkpoint_
 python -m experiments RMTrainer compute_model_bias --config RLFHCaseStudyConfig --batch_size 8 --load_checkpoint_path "./checkpoints/final_checkpoint.pt"
 
 
-python -m experiments PPOTrainer compute_model_bias --config PPOConfig --batch_size 8
+
+python -m experiments PPOTrainer train --config PPOConfig --batch_size 8
+
+
+# SFT Trainer
+python -m experiments SFTTrainer --config RLFHCaseStudyConfig --batch_size 8 --load_checkpoint_path "./checkpoints/final_checkpoint.pt"
+
+
+# PPORLHFTrainer
+python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 2 --accumulation_steps 1 --no_pre_compute_rm_scores

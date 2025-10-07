@@ -195,16 +195,16 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B):
 
     @profile   
     def _load_model(self):
-        if not os.path.exists(self.config.sft_model_path):
-            raise FileNotFoundError(f"Model not found: {self.config.sft_model_path}")
+        # if not os.path.exists(self.config.sft_model_path):
+        #     raise FileNotFoundError(f"Model not found: {self.config.sft_model_path}")
 
-        model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+        # model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
     
-        model.load_state_dict(
-            torch.load(self.config.sft_model_path, map_location='cpu')['model_state_dict'])
+        # model.load_state_dict(
+        #     torch.load(self.config.sft_model_path, map_location='cpu')['model_state_dict'])
 
-        return model
-        # return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+        # return model
+        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
   
 
     def generate(self, inputs, max_length, temp):
