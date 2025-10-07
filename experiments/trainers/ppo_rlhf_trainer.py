@@ -147,7 +147,8 @@ class PPORLHFTrainer(BaseTrainer):
                     self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                     for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
-
+                        
+                        pdb.set_trace()
                         if curr_accumulation_steps >= self.config.mini_batch_accumulation_steps:
                             self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
