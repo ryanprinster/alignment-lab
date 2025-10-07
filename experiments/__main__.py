@@ -51,7 +51,7 @@ def create_config_parser(config_class):
 def print_config(config):
     print("Configuration:")
     config_vars = {k: v for k, v in vars(config).items() 
-                if not k.startswith('_') and not callable(v)}
+                if not callable(v)}
     for key, value in sorted(config_vars.items()):
         print(f"  {key}: {value}")
 
