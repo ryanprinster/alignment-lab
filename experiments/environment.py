@@ -175,6 +175,5 @@ class RLHFEnvironment(BaseEnvironment):
         tj.actions = states
         
         tj.compute_probs()
-        # pdb.set_trace()
 
         return tj

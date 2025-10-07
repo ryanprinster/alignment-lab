@@ -164,6 +164,8 @@ class RLFHPPOConfig(PPOConfigBase):
         self.enable_mixed_precision_training = True
         self.pre_compute_rm_scores = True
 
+        pdb.set_trace()
+
 
 class CartPoleConfig():
     def __init__(self):
