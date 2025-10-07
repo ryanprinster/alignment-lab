@@ -128,8 +128,6 @@ class RLFHPPOConfig(PPOConfigBase):
         self._mini_batch_size = int(self.batch_size / self.num_mini_batches)  # Size of minibatches when processing batch_size of trajectories
         
         self.mini_batch_accumulation_steps = 2
-        assert(self._mini_batch_size % self.mini_batch_accumulation_steps == 0)
-        self._virtual_mini_batch_size = int(self._mini_batch_size / self.mini_batch_accumulation_steps) # Batch size that is actually getting trained, and hence is in memory
 
         self.beta = 0.05 # KL Penalty Coefficient for RLHF
         self.gamma = 1.0 # Discount factor
@@ -164,7 +162,20 @@ class RLFHPPOConfig(PPOConfigBase):
         self.enable_mixed_precision_training = True
         self.pre_compute_rm_scores = True
 
+        self.compile()
+
+    def compile(self):
+        """
+        Computes derived values and re-checks assertions
+        """
         pdb.set_trace()
+
+        assert(self.batch_size % self.num_mini_batches == 0)
+        self._mini_batch_size = int(self.batch_size / self.num_mini_batches)
+
+        assert(self._mini_batch_size % self.mini_batch_accumulation_steps == 0)
+        self._virtual_mini_batch_size = int(self._mini_batch_size / self.mini_batch_accumulation_steps) # Batch size that is actually getting trained, and hence is in memory
+
 
 
 class CartPoleConfig():

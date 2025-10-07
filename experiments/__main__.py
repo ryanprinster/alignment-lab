@@ -125,6 +125,8 @@ def create_and_configure(config_class, config_args):
         if hasattr(config, key):
             setattr(config, key, value)
     
+    config.compile()
+    
     print_config(config)
     
     return config
