@@ -139,6 +139,8 @@ class PPORLHFTrainer(BaseTrainer):
                 
                 tj_loader = DataLoader(TrajectorySet(tjs), batch_size=self.config._mini_batch_size, shuffle=True, num_workers=0)
 
+                pdb.set_trace()
+                
                 # 2. Optimize loss, for K epochs
                 for k in range(self.config.K):
                     # Update new policy for each minibatch
@@ -148,7 +150,6 @@ class PPORLHFTrainer(BaseTrainer):
 
                     for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
                         
-                        pdb.set_trace()
                         if curr_accumulation_steps >= self.config.mini_batch_accumulation_steps:
                             self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
