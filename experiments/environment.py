@@ -96,9 +96,15 @@ class RLHFEnvironment(BaseEnvironment):
 
         return rewards - self.config.beta * (kl_div * has_reward_mask)
 
-    def filter_no_eos(self, states, tokenizer, *tensors):
-        has_eos = (states == tokenizer.eos_token_id).any(dim=1)
-        return (states[has_eos],) + tuple(t[has_eos] for t in tensors)
+    # def filter_no_eos(self, states, tokenizer, *tensors):
+    #     has_eos = (states == tokenizer.eos_token_id).any(dim=1)
+    #     return (states[has_eos],) + tuple(t[has_eos] for t in tensors)
+    
+    def set_reward_for_no_eos(self, states, rewards):
+        """ Assumes rewards as been set to all zeros for a given trajectory if no eos token"""
+        all_zero_no_eos = (rewards == 0).all(dim=1)
+        rewards[all_zero_no_eos, -1] = -1
+        return rewards
 
     @profile
     def generate_trajectory(self, 
@@ -108,6 +114,7 @@ class RLHFEnvironment(BaseEnvironment):
                             sft_model,
                             temp,
                             reward_model = None):
+        pdb.set_trace()
         tokenizer = policy_model.tokenizer
 
         states, policy_logits = policy_model.generate(
@@ -134,13 +141,8 @@ class RLHFEnvironment(BaseEnvironment):
             rewards = batch['rm_score']
         
 
-        # Filter out any trajectories that did not generate an EOS token as part of
         # Detail 12 (RM Training -> Extract reward from the EOS token)
         # Detail 23 (PPO Training -> “EOS trick” to ensure scores from the RM is valid)
-        # TODO: No EOS should give reward = -1
-        # states, policies, values, rewards, sft_policies = self.filter_no_eos(
-        #     states, tokenizer, policies, values, rewards, sft_policies
-        # )
         
         states = states[:,-self.max_response_length:]
         policy_logits = policy_logits[:,-self.max_response_length:,:]
@@ -149,6 +151,7 @@ class RLHFEnvironment(BaseEnvironment):
         # Detail 12 (RM Training -> Extract reward from the EOS token)
         rewards = rewards[:,-self.max_response_length:] * (states == tokenizer.eos_token_id) # create mask to get eos token rewards
         rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits)
+        rewards = self.set_reward_for_no_eos(states, rewards)
 
         tj = Trajectory(init_state=states.unsqueeze(-1), 
                 action_dim=self.action_dim,

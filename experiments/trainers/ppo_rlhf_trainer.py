@@ -22,7 +22,7 @@ from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO
 
 
-from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value
+from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_RM
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
@@ -31,6 +31,8 @@ class PPORLHFTrainer(BaseTrainer):
     def __init__(self, config: PPOConfigBase):
         self.config = config
         self.logger = Logger(self.config)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
         # Models
         self.policy_model = Llama_3p2_1B_Policy(self.config)
@@ -100,7 +102,10 @@ class PPORLHFTrainer(BaseTrainer):
 
     @profile
     def _to_device(self, batch):
-        pass
+        for k in batch.keys():
+            if isinstance(batch[k], torch.Tensor):
+                batch[k] = batch[k].to(self.device)
+        return batch
 
     @profile
     def train(self):
@@ -115,8 +120,7 @@ class PPORLHFTrainer(BaseTrainer):
                 if self.global_step * self.data.train_loader.batch_size > self.config.max_episodes: 
                     break 
                 
-                # TODO:
-                # batch = self._to_device(batch)
+                batch = self._to_device(batch)
 
                 # 1. N "parallel" actors each generate a trajectory
                 #       - runs policy on environment until failure
@@ -129,7 +133,7 @@ class PPORLHFTrainer(BaseTrainer):
                     #TODO: may need to be able to split this up
                     self.config.generation_temperature)
                 
-                # TODO: Whiten rewards and advantages
+                # Whiten rewards and advantages
                 tjs.whiten_rewards()
                 tjs.whiten_advantages()
                 
@@ -173,8 +177,7 @@ class PPORLHFTrainer(BaseTrainer):
                             "global_step": self.global_step,
                             "A": torch.mean(A).item(),
                             "policy_entropy": entropy.item(),
-                            # "total_reward": (1.0 * len(batched_tj) / self.config.N),
-                            # TODO: total reward is different here. Should perhaps take total rewards at eos tokens
+                            "total_reward": torch.sum(rewards).item(),
                             "global_step": self.global_step
                             # "lr": self.lr_scheduler.get_last_lr()[0]
                             },
@@ -190,7 +193,6 @@ class PPORLHFTrainer(BaseTrainer):
     def pre_compute_rewards(self):
         print("Pre-computing rewards...")
 
-        # load model
         reward_model = Llama_3p2_1B_Value(self.config)
 
         for i, data in enumerate(self.data.train_loader):

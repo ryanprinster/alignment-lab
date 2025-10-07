@@ -34,17 +34,11 @@ class Trajectory():
         self.obs_dim = init_state.shape[2]
 
         ### Handle padding
-        # TODO: double cehck this
         if pad_token_id is not None:
             # Detect and create a mask
             if self.obs_dim == 1: 
                 self._mask = ~(init_state.squeeze(-1) == pad_token_id)
                 self._mask_3d = ~(init_state == pad_token_id)
-
-                # is_pad = (init_state.squeeze(-1) == pad_token_id)
-                # first_pad_pos = torch.argmax(is_pad.int(), dim=1)
-                # has_padding = is_pad.any(dim=1)
-                # self._length = torch.where(has_padding, first_pad_pos, init_state.shape[1])
             else:
                 raise ValueError("Padding detection only supported for obs_dim=1")
         else:
@@ -145,7 +139,7 @@ class Trajectory():
         return self._A
 
     # Taken from https://arxiv.org/pdf/2403.17031
-    def _whiten(values, shift_mean=True):
+    def _whiten(self, values, shift_mean=True):
         mean, var = torch.mean(values), torch.var(values, unbiased=False)
         whitened = (values - mean) * torch.rsqrt(var + 1e-8)
         if not shift_mean:

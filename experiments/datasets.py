@@ -20,8 +20,6 @@ class ProfiledDataLoader(DataLoader):
     def __next__(self):
         return next(self._iterator)
 
-#TODO make subclasses?
-
 def collate_with_none(batch):
     d = defaultdict(list)
     for item in batch:
@@ -237,7 +235,6 @@ class OpenAIPreferenceData():
             preferred_text = query_text + " " + preferred_summary + self.tokenizer.eos_token
             rejected_text = query_text + " " + rejected_summary + self.tokenizer.eos_token
 
-            #TODO: Padding and truncation
             # Detail 14 (Minor numerical differences between extracting reward with
             #   left and right padded queries) 
             # Note that tokenizer right pads by default
