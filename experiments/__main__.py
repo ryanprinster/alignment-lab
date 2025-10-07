@@ -44,8 +44,6 @@ def create_config_parser(config_class):
             parser.add_argument(f'--{attr}', type=str, default=value,
                                help=f'{attr} (default: {value})')
 
-        # TODO: Computed values such as accumulation_steps might have weird behavior here?
-
     return parser
 
 def print_config(config):

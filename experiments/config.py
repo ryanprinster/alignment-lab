@@ -168,7 +168,6 @@ class RLFHPPOConfig(PPOConfigBase):
         """
         Computes derived values and re-checks assertions
         """
-        pdb.set_trace()
 
         assert(self.batch_size % self.num_mini_batches == 0)
         self._mini_batch_size = int(self.batch_size / self.num_mini_batches)
