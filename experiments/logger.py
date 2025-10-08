@@ -20,7 +20,7 @@ class Logger():
         self.config = config
         self.writer = SummaryWriter()
         self.best_loss = float('inf')
-        self.init_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.init_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
     ### Cleanup handling
