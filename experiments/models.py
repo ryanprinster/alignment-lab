@@ -140,6 +140,7 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
             input_ids=input_ids,
             attention_mask=attention_mask
         )
+        pdb.set_trace()
         return outputs.logits
 
 

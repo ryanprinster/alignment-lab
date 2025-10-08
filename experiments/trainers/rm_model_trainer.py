@@ -51,7 +51,7 @@ class RMTrainer(BaseTrainer):
                     
                     # Logits are scalar rewards
                     reward_logit = self.model.forward(input_ids=batch['preferred_input_ids'], 
-                                attention_mask=batch['preferred_attention_mask']).logits 
+                                attention_mask=batch['preferred_attention_mask']) 
                     total_reward += reward_logit.mean()
                 
                     running_reward_bias = (total_reward / (_batch_idx + 1)).cpu().item()
