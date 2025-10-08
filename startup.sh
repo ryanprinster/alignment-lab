@@ -21,7 +21,7 @@ python -m experiments PPOTrainer train --config PPOConfig --batch_size 8
 
 
 # SFT Trainer
-python -m experiments SFTTrainer train --config RLFHCaseStudyConfig --batch_size
+python -m experiments SFTTrainer train --config RLFHCaseStudyConfig
 
 # RM Trainer
 python -m experiments RMTrainer compute_model_bias --config RLFHCaseStudyConfig --batch_size 8 --load_checkpoint_path "./checkpoints/final_checkpoint.pt"
