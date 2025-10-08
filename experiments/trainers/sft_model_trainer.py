@@ -131,31 +131,35 @@ class SFTTrainer(BaseTrainer):
 
     @profile
     def evaluate(self):
-        max_summary_length = TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH
+        with torch.no_grad():
+            max_summary_length = TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH
 
-        self.sft = Llama_3p2_1B_SFT(self.config).to(self.device)
-        self.gpt = Llama_3p2_1B_SFT(self.config).to(self.device)
+            self.sft = Llama_3p2_1B_SFT(self.config).to(self.device)
+            self.gpt = Llama_3p2_1B_SFT(self.config).to(self.device)
+
+            self.sft.eval()
+            self.gpt.eval()
+            
+            self.checkpointer.load_model(self.config.load_checkpoint_path, self.sft, self.device)
         
-        self.checkpointer.load_model(self.config.load_checkpoint_path, self.sft, self.device)
-    
-        for _batch_idx, batch in enumerate(self.data.test_loader):
-            for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
+            for _batch_idx, batch in enumerate(self.data.test_loader):
+                for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
 
-                query_text = self.data.get_query_text(subreddit, title, post)
-                inputs = self.data.tokenizer(query_text, return_tensors="pt")
-                inputs = self._to_device(inputs)
+                    query_text = self.data.get_query_text(subreddit, title, post)
+                    inputs = self.data.tokenizer(query_text, return_tensors="pt")
+                    inputs = self._to_device(inputs)
 
-                sft_gen_ids = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
-                gpt_gen_ids = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
+                    sft_gen_ids = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
+                    gpt_gen_ids = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
 
-                gpt_text = self.data.tokenizer.decode(gpt_gen_ids, skip_special_tokens=True)[len(query_text):]
-                sft_text = self.data.tokenizer.decode(sft_gen_ids, skip_special_tokens=True)[len(query_text):]
+                    gpt_text = self.data.tokenizer.decode(gpt_gen_ids, skip_special_tokens=True)[len(query_text):]
+                    sft_text = self.data.tokenizer.decode(sft_gen_ids, skip_special_tokens=True)[len(query_text):]
 
-                print(f"Batch #{_batch_idx}\n")
-                print(f"Prompt: {query_text}\n\n")
-                print(f"Label: {summary}\n")
-                print(f"SFT Response: {sft_text}\n")
-                print(f"GPT Response: {gpt_text}\n")
-                print(f"===================")
+                    print(f"Batch #{_batch_idx}\n")
+                    print(f"Prompt: {query_text}\n\n")
+                    print(f"Label: {summary}\n")
+                    print(f"SFT Response: {sft_text}\n")
+                    print(f"GPT Response: {gpt_text}\n")
+                    print(f"===================")
             
             
