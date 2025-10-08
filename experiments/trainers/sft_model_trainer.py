@@ -37,9 +37,9 @@ class SFTTrainer(BaseTrainer):
 
     @profile
     def _to_device(self, batch):
-        batch['input_ids'] = batch['input_ids'].to(self.device)
-        batch['attention_mask'] = batch['attention_mask'].to(self.device)
-        batch['labels'] = batch['input_ids']  # reference
+        for k in batch.keys():
+            if isinstance(batch[k], torch.Tensor):
+                batch[k] = batch[k].to(self.device)
         return batch
 
     @detect_nans
@@ -142,8 +142,9 @@ class SFTTrainer(BaseTrainer):
             for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
 
                 query_text = self.data.get_query_text(subreddit, title, post)
-                
                 inputs = self.data.tokenizer(query_text, return_tensors="pt")
+                inputs = self._to_device(inputs)
+
                 sft_gen_ids = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
                 gpt_gen_ids = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
 
