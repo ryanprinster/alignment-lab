@@ -127,24 +127,6 @@ class Llama_3p2_1B_SFT(Llama_3p2_1B_Causal):
     def _load_model(self):
         return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
 
-    # @profile
-    # def forward(self, input_ids, attention_mask, labels):
-    #     outputs = self.transformer(
-    #         input_ids=input_ids,
-    #         attention_mask=attention_mask,
-    #         labels=labels
-    #     )
-    #     return outputs.loss
-
-    # @profile
-    # def generate(self, inputs, max_length, temp):
-    #     generated_ids = self.transformer.generate(
-    #         input_ids=inputs['input_ids'],
-    #         attention_mask=inputs['attention_mask'],
-    #         max_length=max_length,
-    #         temperature=temp
-    #     )
-    #     return generated_ids
     
 
 class Llama_3p2_1B_RM(Llama_3p2_1B):
@@ -231,14 +213,14 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
 
 
 class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
-    def __init__(self, config):
+    def __init__(self, config, init_model_path):
         super().__init__(config)
-        # self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+        self.init_model_path = self.config.init_policy_model_path
 
     @profile   
     def _load_model(self):
-        # if not os.path.exists(self.config.sft_model_path):
-        #     raise FileNotFoundError(f"Model not found: {self.config.sft_model_path}")
+        if not os.path.exists(self.config.init_policy_model_path):
+            raise FileNotFoundError(f"Model not found: {self.config.init_policy_model_path}")
 
         # model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
     

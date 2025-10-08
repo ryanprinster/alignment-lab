@@ -59,7 +59,7 @@ class PPORLHFTrainer(BaseTrainer):
     @profile
     def _forward(self, states):
         new_values = self.value_model.forward(states).squeeze(1)
-        new_policy_logits = self.policy_model.forward(states)
+        new_policy_logits, _ = self.policy_model.forward(states)
         new_policies = torch.softmax(new_policy_logits, dim=-1)
 
         return new_values, new_policies
