@@ -157,20 +157,20 @@ class RMTrainer(BaseTrainer):
                 
                 self.global_step += 1
 
-                # self.checkpointer.save_checkpoint(
-                #     self.model,
-                #     self.optimizer,
-                #     self.global_step,
-                #     epoch,
-                #     loss.item()
-                # )
+                self.checkpointer.save_checkpoint(
+                    self.model,
+                    self.optimizer,
+                    self.global_step,
+                    epoch,
+                    loss.item()
+                )
 
                 self.logger.log(
                     scalars={
                         "loss": loss.item(),
-                        "accuracy": self._accuracy(outputs[0].logits, outputs[1].logits),
-                        "r_preferred": torch.mean(outputs[0].logits),
-                        "r_rejected": torch.mean(outputs[1].logits),
+                        "accuracy": self._accuracy(r_preferred, r_rejected),
+                        "r_preferred": torch.mean(r_preferred),
+                        "r_rejected": torch.mean(r_rejected),
                         "epoch": epoch,
                         "global_step": self.global_step,
                         "lr": self.lr_scheduler.get_last_lr()[0]
