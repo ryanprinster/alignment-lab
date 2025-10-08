@@ -227,6 +227,8 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
 
         model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
     
+        # TODO: this dont work
+        pdb.set_trace()
         model.load_state_dict(
             torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
 
