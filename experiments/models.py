@@ -216,22 +216,21 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
 class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
     def __init__(self, config, init_model_path=None):
         super().__init__(config)
-        # self.init_model_path = self.config.init_policy_model_path
+        self.init_model_path = init_model_path
 
     @profile   
     def _load_model(self):
-        # if self.init_policy_model_path is None:
-        #     warnings.warn("Policy model is not being initialized. Do you want to initialize the weights with an SFT model?")
-        # if not os.path.exists(self.init_policy_model_path):
-        #     raise FileNotFoundError(f"Model not found: {self.config.init_policy_model_path}")
+        if self.init_policy_model_path is None:
+            warnings.warn("Policy model is not being initialized. Do you want to initialize the weights with an SFT model?")
+        if not os.path.exists(self.init_policy_model_path):
+            raise FileNotFoundError(f"Model not found: {self.config.init_policy_model_path}")
 
-        # model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+        model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
     
-        # model.load_state_dict(
-        #     torch.load(self.config.sft_model_path, map_location='cpu')['model_state_dict'])
+        model.load_state_dict(
+            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
 
-        # return model
-        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+        return model
   
 
     # def generate(self, inputs, max_length, temp):
