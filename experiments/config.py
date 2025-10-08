@@ -124,9 +124,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.batch_size = 2 # Number of trajectories generated at a time
 
         self.num_mini_batches = 1 # N_mb = Number of mini-batches to process batch_size of trajectories
-        assert(self.batch_size % self.num_mini_batches == 0)
-        self._mini_batch_size = int(self.batch_size / self.num_mini_batches)  # Size of minibatches when processing batch_size of trajectories
-        
+
         self.mini_batch_accumulation_steps = 2
 
         self.beta = 0.05 # KL Penalty Coefficient for RLHF
