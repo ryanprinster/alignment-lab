@@ -225,6 +225,7 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B):
         return generation_obj.sequences, policy_logits
 
     def forward(self, input_ids, attention_mask=None):
+        pdb.set_trace()
 
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
