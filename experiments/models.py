@@ -119,7 +119,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         pass
 
 
-class Llama_3p2_1B_SFT(Llama_3p2_1B):
+class Llama_3p2_1B_SFT(Llama_3p2_1B_Causal):
     def __init__(self, config):
         super().__init__(config)
 
@@ -127,24 +127,24 @@ class Llama_3p2_1B_SFT(Llama_3p2_1B):
     def _load_model(self):
         return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
 
-    @profile
-    def forward(self, input_ids, attention_mask, labels):
-        outputs = self.transformer(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            labels=labels
-        )
-        return outputs.loss
+    # @profile
+    # def forward(self, input_ids, attention_mask, labels):
+    #     outputs = self.transformer(
+    #         input_ids=input_ids,
+    #         attention_mask=attention_mask,
+    #         labels=labels
+    #     )
+    #     return outputs.loss
 
-    @profile
-    def generate(self, inputs, max_length, temp):
-        generated_ids = self.transformer.generate(
-            input_ids=inputs['input_ids'],
-            attention_mask=inputs['attention_mask'],
-            max_length=max_length,
-            temperature=temp
-        )
-        return generated_ids
+    # @profile
+    # def generate(self, inputs, max_length, temp):
+    #     generated_ids = self.transformer.generate(
+    #         input_ids=inputs['input_ids'],
+    #         attention_mask=inputs['attention_mask'],
+    #         max_length=max_length,
+    #         temperature=temp
+    #     )
+    #     return generated_ids
     
 
 class Llama_3p2_1B_RM(Llama_3p2_1B):
