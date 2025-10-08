@@ -216,7 +216,7 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
 class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
     def __init__(self, config, init_model_path=None):
         super().__init__(config)
-        self.init_model_path = self.config.init_policy_model_path
+        # self.init_model_path = self.config.init_policy_model_path
 
     @profile   
     def _load_model(self):
