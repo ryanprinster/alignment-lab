@@ -86,7 +86,7 @@ class SFTTrainer(BaseTrainer):
                 with self.mixed_precision_context: 
                     _, loss = self.model.forward(input_ids=batch['input_ids'], 
                                         attention_mask=batch['attention_mask'], 
-                                        labels=batch['labels']) 
+                                        labels=batch['input_ids']) 
                     
                     loss = self._loss(loss)
 
