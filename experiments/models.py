@@ -232,7 +232,7 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B):
 
         # Forward parallel decode
         outputs = self.transformer(
-            input_ids=input_ids.squeeze(),
-            attention_mask=attention_mask.squeeze()
+            input_ids=input_ids.squeeze(-1),
+            attention_mask=attention_mask.squeeze(-1)
         )
         return outputs.logits 
