@@ -168,9 +168,9 @@ class RMTrainer(BaseTrainer):
                 self.logger.log(
                     scalars={
                         "loss": loss.item(),
-                        "accuracy": self._accuracy(r_preferred, r_rejected),
-                        "r_preferred": torch.mean(r_preferred),
-                        "r_rejected": torch.mean(r_rejected),
+                        "accuracy": self._accuracy(r_preferred, r_rejected).item(),
+                        "r_preferred": torch.mean(r_preferred).item(),
+                        "r_rejected": torch.mean(r_rejected).item(),
                         "epoch": epoch,
                         "global_step": self.global_step,
                         "lr": self.lr_scheduler.get_last_lr()[0]
