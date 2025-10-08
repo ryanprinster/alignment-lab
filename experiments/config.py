@@ -151,7 +151,6 @@ class RLFHPPOConfig(PPOConfigBase):
         self.rm_model_path = "/Users/ryanprinster/Projects/trained_models/sft/checkpoint_step_4800.pt"
         # self.sft_model_path = "/Users/ryanprinster/Projects/trained_models/sft/checkpoint_step_4800.pt"
         self.sft_model_path = "checkpoints/sft_final_checkpoint.pt"
-        # self.init_value_model_path = "checkpoints/sft_final_checkpoint.pt"
 
 
         # Logging

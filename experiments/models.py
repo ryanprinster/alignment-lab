@@ -220,9 +220,9 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
 
     @profile   
     def _load_model(self):
-        if self.init_policy_model_path is None:
+        if self.init_model_path is None:
             warnings.warn("Policy model is not being initialized. Do you want to initialize the weights with an SFT model?")
-        if not os.path.exists(self.init_policy_model_path):
+        if not os.path.exists(self.init_model_path):
             raise FileNotFoundError(f"Model not found: {self.config.init_policy_model_path}")
 
         model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
