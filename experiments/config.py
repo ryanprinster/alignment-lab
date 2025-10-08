@@ -1,13 +1,20 @@
 import pdb
-class SFTConfigBase:
+class ConfigBase:
+    def __init__(self):
+        raise NotImplementedError("Use a concrete config subclass")
+    
+    def compile(self):
+        pass
+
+class SFTConfigBase(ConfigBase):
     def __init__(self):
         raise NotImplementedError("Use a concrete config subclass")
 
-class RMConfigBase:
+class RMConfigBase(ConfigBase):
     def __init__(self):
         raise NotImplementedError("Use a concrete config subclass")
 
-class PPOConfigBase:
+class PPOConfigBase(ConfigBase):
     def __init__(self):
         raise NotImplementedError("Use a concrete config subclass")
 
@@ -56,20 +63,10 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.eps = 1e-5
         self.lr = 3e-6
         self.lr_final_ratio = 0.1
-        # self.batch_size = 32
-        # self.virtual_batch_size = 128
+        
+        self.batch_size = 32
+        self.accumulation_steps = 4
 
-        self.batch_size = 2 # Number of trajectories generated at a time
-        
-        self.num_mini_batches = 1 # N_mb = Number of mini-batches to process batch_size of trajectories
-        assert(self.batch_size % self.num_mini_batches == 0)
-        self._mini_batch_size = int(self.batch_size / self.num_mini_batches)  # Size of minibatches when processing batch_size of trajectories
-        
-        # 
-        self.mini_batch_accumulation_steps = 2
-        assert(self._mini_batch_size / self.mini_batch_accumulation_steps == 0)
-        self._virtual_mini_batch_size = int(self._mini_batch_size / self.mini_batch_accumulation_steps) # Batch size that is actually getting trained, and hence is in memory
-        
         self.generation_temperature = 0.7
 
         # Checkpointing
@@ -100,6 +97,10 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         # --> No ZeRO Stage 2 (yet)
         # --> Initial plan to use 1xH100 with gradient accumulation to trade training time for
         #     Memory and implementation time of ZeRO
+    
+    def compile(self):
+        self._virtual_batch_size = self.batch_size * self.accumulation_steps
+
         
 
 class RLFHPPOConfig(PPOConfigBase):
