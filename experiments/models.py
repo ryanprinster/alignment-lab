@@ -49,6 +49,7 @@ class Llama_3p2_1B(nn.Module, ABC):
     
     def __init__(self, config):
         super().__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.config = config
         self.transformer = self._load_model()
         if config.enable_gradient_checkpointing:
@@ -73,35 +74,77 @@ class Llama_3p2_1B(nn.Module, ABC):
     def clean_logits(self, logits):
         # clean scores, -inf --> 1e-9
         return torch.where(torch.isinf(logits), torch.tensor(-1e9, device=logits.device), logits)
-        
 
-class Llama_3p2_1B_SFT(Llama_3p2_1B):
+class Llama_3p2_1B_Causal(Llama_3p2_1B):
     def __init__(self, config):
         super().__init__(config)
         self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
+
+    @profile
+    def generate(self, inputs, max_length, temp, do_sample=True):
+        # generate autoregressively
+        generation_obj = self.transformer.generate(
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
+            max_length=max_length,
+            temperature=temp,
+            do_sample=True,
+            return_dict_in_generate=True,
+            output_scores=True
+        )
+
+        policy_logits = torch.stack(generation_obj.scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
+        policy_logits = self.clean_logits(policy_logits)
+
+        return generation_obj.sequences, policy_logits
+
+    @profile
+    def forward(self, input_ids, attention_mask=None, labels=None):
+
+        if labels is not None:
+            labels = labels.squeeze(-1)
+        if attention_mask is None:
+            attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
+
+        # Forward parallel decode
+        outputs = self.transformer(
+            input_ids=input_ids.squeeze(-1),
+            attention_mask=attention_mask.squeeze(-1),
+            labels=labels
+        )
+        return outputs.logits, outputs.loss
+
+    @abstractmethod
+    def _load_model(self):
+        pass
+
+
+class Llama_3p2_1B_SFT(Llama_3p2_1B_Causal):
+    def __init__(self, config):
+        super().__init__(config)
 
     @profile   
     def _load_model(self):
         return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
 
-    @profile
-    def forward(self, input_ids, attention_mask, labels):
-        outputs = self.transformer(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            labels=labels
-        )
-        return outputs.loss
+    # @profile
+    # def forward(self, input_ids, attention_mask, labels):
+    #     outputs = self.transformer(
+    #         input_ids=input_ids,
+    #         attention_mask=attention_mask,
+    #         labels=labels
+    #     )
+    #     return outputs.loss
 
-    @profile
-    def generate(self, inputs, max_length, temp):
-        generated_ids = self.transformer.generate(
-            input_ids=inputs['input_ids'],
-            attention_mask=inputs['attention_mask'],
-            max_length=max_length,
-            temperature=temp
-        )
-        return generated_ids
+    # @profile
+    # def generate(self, inputs, max_length, temp):
+    #     generated_ids = self.transformer.generate(
+    #         input_ids=inputs['input_ids'],
+    #         attention_mask=inputs['attention_mask'],
+    #         max_length=max_length,
+    #         temperature=temp
+    #     )
+    #     return generated_ids
     
 
 class Llama_3p2_1B_RM(Llama_3p2_1B):
@@ -187,11 +230,10 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
 
 
-class Llama_3p2_1B_Policy(Llama_3p2_1B):
+class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
     def __init__(self, config):
         super().__init__(config)
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+        # self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
 
     @profile   
     def _load_model(self):
@@ -207,31 +249,31 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B):
         return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
   
 
-    def generate(self, inputs, max_length, temp):
-        # generate autoregressively
-        generation_obj = self.transformer.generate(
-            input_ids=inputs['input_ids'],
-            attention_mask=inputs['attention_mask'],
-            max_length=max_length,
-            temperature=temp,
-            do_sample=True,
-            return_dict_in_generate=True,
-            output_scores=True
-        )
+    # def generate(self, inputs, max_length, temp):
+    #     # generate autoregressively
+    #     generation_obj = self.transformer.generate(
+    #         input_ids=inputs['input_ids'],
+    #         attention_mask=inputs['attention_mask'],
+    #         max_length=max_length,
+    #         temperature=temp,
+    #         do_sample=True,
+    #         return_dict_in_generate=True,
+    #         output_scores=True
+    #     )
 
-        policy_logits = torch.stack(generation_obj.scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
-        policy_logits = self.clean_logits(policy_logits)
+    #     policy_logits = torch.stack(generation_obj.scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
+    #     policy_logits = self.clean_logits(policy_logits)
 
-        return generation_obj.sequences, policy_logits
+    #     return generation_obj.sequences, policy_logits
 
-    def forward(self, input_ids, attention_mask=None):
+    # def forward(self, input_ids, attention_mask=None):
 
-        if attention_mask is None:
-            attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
+    #     if attention_mask is None:
+    #         attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
 
-        # Forward parallel decode
-        outputs = self.transformer(
-            input_ids=input_ids.squeeze(-1),
-            attention_mask=attention_mask.squeeze(-1)
-        )
-        return outputs.logits 
+    #     # Forward parallel decode
+    #     outputs = self.transformer(
+    #         input_ids=input_ids.squeeze(-1),
+    #         attention_mask=attention_mask.squeeze(-1)
+    #     )
+    #     return outputs.logits 

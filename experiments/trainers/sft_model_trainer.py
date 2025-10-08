@@ -84,7 +84,7 @@ class SFTTrainer(BaseTrainer):
                 
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
-                    loss = self.model.forward(input_ids=batch['input_ids'], 
+                    _, loss = self.model.forward(input_ids=batch['input_ids'], 
                                         attention_mask=batch['attention_mask'], 
                                         labels=batch['labels']) 
                     
@@ -149,8 +149,8 @@ class SFTTrainer(BaseTrainer):
                     inputs = self.data.tokenizer(query_text, return_tensors="pt")
                     inputs = self._to_device(inputs)
 
-                    sft_gen_ids = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
-                    gpt_gen_ids = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature)[0]
+                    sft_gen_ids, _ = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)[0]
+                    gpt_gen_ids, _ = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)[0]
 
                     gpt_text = self.data.tokenizer.decode(gpt_gen_ids, skip_special_tokens=True)[len(query_text):]
                     sft_text = self.data.tokenizer.decode(sft_gen_ids, skip_special_tokens=True)[len(query_text):]
