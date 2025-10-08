@@ -138,8 +138,7 @@ class SFTTrainer(BaseTrainer):
         
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.sft, self.device)
     
-        test_loader = DataLoader(self.data.dataset['test'], shuffle=True)
-        for _batch_idx, batch in enumerate(test_loader):
+        for _batch_idx, batch in enumerate(self.data.test_loader):
             for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
 
                 query_text = self.data.get_query_text(subreddit, title, post)
