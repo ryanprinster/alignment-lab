@@ -180,8 +180,8 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
             attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
 
         outputs = self.transformer(
-            input_ids=input_ids.squeeze(),
-            attention_mask=attention_mask.squeeze(),
+            input_ids=input_ids.squeeze(-1),
+            attention_mask=attention_mask.squeeze(-1),
         )
         
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
