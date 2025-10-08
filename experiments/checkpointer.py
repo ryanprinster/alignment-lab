@@ -73,7 +73,7 @@ class Checkpointer:
     def _save_checkpoint(self, path, model, optimizer, global_step, epoch, loss):
         checkpoint = self._build_checkpoint(model, optimizer, global_step, epoch, loss)
         torch.save(checkpoint, path)
-        self._cleanup_old_checkpoints()
+        # self._cleanup_old_checkpoints()
 
     def _build_checkpoint(self, model, optimizer, global_step, epoch, loss):
         return {
