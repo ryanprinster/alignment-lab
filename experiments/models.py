@@ -11,6 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.init as init
 import pdb
+import warnings
 
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForTokenClassification
@@ -213,14 +214,16 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
 
 
 class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
-    def __init__(self, config, init_model_path):
+    def __init__(self, config, init_model_path=None):
         super().__init__(config)
         self.init_model_path = self.config.init_policy_model_path
 
     @profile   
     def _load_model(self):
-        if not os.path.exists(self.config.init_policy_model_path):
-            raise FileNotFoundError(f"Model not found: {self.config.init_policy_model_path}")
+        # if self.init_policy_model_path is None:
+        #     warnings.warn("Policy model is not being initialized. Do you want to initialize the weights with an SFT model?")
+        # if not os.path.exists(self.init_policy_model_path):
+        #     raise FileNotFoundError(f"Model not found: {self.config.init_policy_model_path}")
 
         # model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
     
