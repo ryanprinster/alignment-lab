@@ -151,7 +151,7 @@ class RLHFEnvironment(BaseEnvironment):
         
         # Detail 12 (RM Training -> Extract reward from the EOS token)
         # Detail 23 (PPO Training -> “EOS trick” to ensure scores from the RM is valid)
-        
+        pdb.set_trace()
         states = states[:,-self.max_response_length:]
         states = self.set_pad_after_eos(states, tokenizer)
         policy_logits = policy_logits[:,-self.max_response_length:,:]
