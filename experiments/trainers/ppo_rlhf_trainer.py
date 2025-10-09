@@ -5,6 +5,8 @@ import os
 from functools import reduce
 from datetime import datetime
 import pdb
+from contextlib import nullcontext
+
 
 # Third-party imports
 import gymnasium as gym
@@ -16,6 +18,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from torch.amp import GradScaler, autocast
+
 from experiments.logger import Logger
 from experiments.environment import RLHFEnvironment
 from experiments.profiler import profile
@@ -60,6 +64,12 @@ class PPORLHFTrainer(BaseTrainer):
                                         total_iters=int(self.config.max_episodes / self.config.batch_size) * self.config.K,
                                         start_factor=1.0,
                                         end_factor=self.config.lr_final_ratio * self.config.lr)
+        
+        # Mixed precision training
+        self.mixed_precision_context = autocast("cuda") if self.config.enable_mixed_precision_training else nullcontext()
+        self.scaler_policy = GradScaler("cuda") 
+        self.scaler_value = GradScaler("cuda") 
+
 
     def _zero_grad(self, optimizer_policy, optimizer_value):
         optimizer_policy.zero_grad()
@@ -95,14 +105,25 @@ class PPORLHFTrainer(BaseTrainer):
     
     @profile
     def _backward(self, loss_value, loss_ppo):
+        if self.config.enable_mixed_precision_training:
+            loss_value = self.scaler_value.scale(loss_value)
+            loss_ppo = self.scaler_policy.scale(loss_ppo)
         loss_value.backward()
         loss_ppo.backward()
     
     @profile
     def _step(self, optimizer_policy, optimizer_value):
-        optimizer_policy.step()
-        optimizer_value.step()
 
+        if self.config.enable_mixed_precision_training:
+            # Unscale gradient, take optimizer step, and update scale factor
+            self.scaler_policy.step(self.optimizer_policy)
+            self.scaler_value.step(self.optimizer_value)
+            self.scaler_policy.update()
+            self.scaler_value.update()
+        else:
+            optimizer_policy.step()
+            optimizer_value.step()
+        
         self.lr_scheduler_policy.step()
         self.lr_scheduler_value.step()
 
@@ -119,10 +140,7 @@ class PPORLHFTrainer(BaseTrainer):
         return batch
 
     @profile
-    def train(self):
-        if self.config.pre_compute_rm_scores:
-            self.pre_compute_rewards()
-        
+    def train(self):     
         self.global_step = 0
 
         # Go through the data num_epochs times, or max_episodes steps
@@ -136,13 +154,16 @@ class PPORLHFTrainer(BaseTrainer):
                 # 1. N "parallel" actors each generate a trajectory
                 #       - runs policy on environment until failure
                 #       - computes advantage estimates
-                tjs = self.env.generate_trajectory(
-                    batch, 
-                    self.policy_model,
-                    self.value_model,
-                    self.sft_model,
-                    self.config.generation_temperature,
-                    self.reward_model)
+                
+                # FP32 --> FP16 for mixed precision training
+                with self.mixed_precision_context:
+                    tjs = self.env.generate_trajectory(
+                        batch, 
+                        self.policy_model,
+                        self.value_model,
+                        self.sft_model,
+                        self.config.generation_temperature,
+                        self.reward_model)
                 
                 tj_loader = DataLoader(TrajectorySet(tjs), batch_size=self.config._mini_batch_size, shuffle=True, num_workers=0)
 
@@ -158,13 +179,15 @@ class PPORLHFTrainer(BaseTrainer):
                         if curr_accumulation_steps >= self.config.mini_batch_accumulation_steps:
                             self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
-                        new_values, new_policies = self._forward(states)
+                        # FP32 --> FP16 for mixed precision training
+                        with self.mixed_precision_context:
+                            new_values, new_policies = self._forward(states)
 
-                        # 2.1 Compute mse loss for value model
-                        loss_value = self.compute_value_loss_mse(R, new_values)
-            
-                        # 2.2 Compute ppo loss for policy model
-                        loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies)
+                            # 2.1 Compute mse loss for value model
+                            loss_value = self.compute_value_loss_mse(R, new_values)
+                
+                            # 2.2 Compute ppo loss for policy model
+                            loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies)
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
@@ -206,21 +229,21 @@ class PPORLHFTrainer(BaseTrainer):
 
         return self.policy_model      
 
-    @profile
-    def pre_compute_rewards(self):
-        print("Pre-computing rewards...")
+    # @profile
+    # def pre_compute_rewards(self):
+    #     print("Pre-computing rewards...")
 
-        data = TLDRFilteredDataSFT(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
+    #     data = TLDRFilteredDataSFT(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
 
-        reward_model = Llama_3p2_1B_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device)
-        reward_model_v = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
+    #     reward_model = Llama_3p2_1B_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device)
+    #     reward_model_v = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
 
-        for i, data in enumerate(data.train_loader):
-            print(f"i: {i}")
-            data = self._to_device(data)
-            rewards = reward_model.forward(data['input_ids'], data['attention_mask'])
-            rewards_v = reward_model_v.forward(data['input_ids'], data['attention_mask'])
-            pdb.set_trace()
+    #     for i, data in enumerate(data.train_loader):
+    #         print(f"i: {i}")
+    #         data = self._to_device(data)
+    #         rewards = reward_model.forward(data['input_ids'], data['attention_mask'])
+    #         rewards_v = reward_model_v.forward(data['input_ids'], data['attention_mask'])
+    #         pdb.set_trace()
 
-            for idx, rm_score in zip(data['idx'], rewards):
-                self.data.dataset['train'].set_rm_score(idx, rm_score)
+    #         for idx, rm_score in zip(data['idx'], rewards):
+    #             self.data.dataset['train'].set_rm_score(idx, rm_score)

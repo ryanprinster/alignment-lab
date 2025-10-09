@@ -125,60 +125,61 @@ class RLHFEnvironment(BaseEnvironment):
                             sft_model,
                             temp,
                             reward_model = None):
-        tokenizer = policy_model.tokenizer
+        with torch.no_grad():
+            tokenizer = policy_model.tokenizer
 
-        states, policy_logits = policy_model.generate(
-            batch,
-            self.max_sequence_length,
-            temp,
-            min_length=self.max_sequence_length
-        )
+            states, policy_logits = policy_model.generate(
+                batch,
+                self.max_sequence_length,
+                temp,
+                min_length=self.max_sequence_length
+            )
 
-        _, sft_policy_logits = sft_model.generate(
-            batch,
-            self.max_sequence_length,
-            temp,
-            min_length=self.max_sequence_length
-        )
+            _, sft_policy_logits = sft_model.generate(
+                batch,
+                self.max_sequence_length,
+                temp,
+                min_length=self.max_sequence_length
+            )
 
-        values = value_model.forward(states, batch['attention_mask'])
+            values = value_model.forward(states, batch['attention_mask'])
 
-        rewards = reward_model.forward(states, batch['attention_mask'])
+            rewards = reward_model.forward(states, batch['attention_mask'])
 
-        # if None in batch['rm_score']:
-        #     # TODO: remove this, this is here for quick iteration testing
-        #     rewards = torch.ones_like(values, device=policy_model.device)
-        #     # rewards = reward_model.forward(
-        #     #     {'input_ids': states, 'attention_mask': batch['attention_mask']}
-        #     # )
-        # else:
-        #     rewards = batch['rm_score']
-        
-        states = states[:,-self.max_response_length:]
-        # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
-        states = self.set_pad_after_eos(states, tokenizer)
-        policy_logits = policy_logits[:,-self.max_response_length:,:]
-        policies = torch.softmax(policy_logits, dim=-1)
-        values = values[:,-self.max_response_length:]
-        # Detail 12 (RM Training -> Extract reward from the EOS token)
-        rewards = rewards[:,-self.max_response_length:] * (states == tokenizer.eos_token_id) # create mask to get eos token rewards
-        rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits)
-        # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
-        rewards = self.set_reward_for_no_eos(states, rewards)
+            # if None in batch['rm_score']:
+            #     # TODO: remove this, this is here for quick iteration testing
+            #     rewards = torch.ones_like(values, device=policy_model.device)
+            #     # rewards = reward_model.forward(
+            #     #     {'input_ids': states, 'attention_mask': batch['attention_mask']}
+            #     # )
+            # else:
+            #     rewards = batch['rm_score']
+            
+            states = states[:,-self.max_response_length:]
+            # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
+            states = self.set_pad_after_eos(states, tokenizer)
+            policy_logits = policy_logits[:,-self.max_response_length:,:]
+            policies = torch.softmax(policy_logits, dim=-1)
+            values = values[:,-self.max_response_length:]
+            # Detail 12 (RM Training -> Extract reward from the EOS token)
+            rewards = rewards[:,-self.max_response_length:] * (states == tokenizer.eos_token_id) # create mask to get eos token rewards
+            rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits)
+            # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
+            rewards = self.set_reward_for_no_eos(states, rewards)
 
-        tj = Trajectory(init_state=states.unsqueeze(-1), 
-                action_dim=self.action_dim,
-                max_sequence_length=self.max_response_length,
-                pad_token_id=self.data.tokenizer.pad_token_id,
-                policies=policies, #TODO: should this take logits?
-                values=values,
-                rewards=rewards)
-        
-        tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
-        tj.compute_R(gamma=self.config.gamma)
-        tj.actions = states
-        tj.compute_probs()
-        tj.whiten_rewards()
-        tj.whiten_advantages()
+            tj = Trajectory(init_state=states.unsqueeze(-1), 
+                    action_dim=self.action_dim,
+                    max_sequence_length=self.max_response_length,
+                    pad_token_id=self.data.tokenizer.pad_token_id,
+                    policies=policies, #TODO: should this take logits?
+                    values=values,
+                    rewards=rewards)
+            
+            tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
+            tj.compute_R(gamma=self.config.gamma)
+            tj.actions = states
+            tj.compute_probs()
+            tj.whiten_rewards()
+            tj.whiten_advantages()
 
-        return tj
+            return tj
