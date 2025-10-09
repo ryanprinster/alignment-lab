@@ -15,6 +15,7 @@ from experiments.profiler import profile
 from experiments.monitor import detect_nans
 from experiments.trainers.base_trainer import BaseTrainer
 
+import pdb
 
 class SFTTrainer(BaseTrainer):
     def __init__(self, config: SFTConfigBase):
@@ -81,6 +82,7 @@ class SFTTrainer(BaseTrainer):
             for _batch_idx, batch in enumerate(self.data.train_loader):
 
                 batch = self._to_device(batch)
+                pdb.set_trace()
                 
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
