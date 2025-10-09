@@ -191,7 +191,7 @@ class PPORLHFTrainer(BaseTrainer):
     def pre_compute_rewards(self):
         print("Pre-computing rewards...")
 
-        data = TLDRFilteredDataSFT(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
+        data = TLDRFilteredDataSFT(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
 
         reward_model = Llama_3p2_1B_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device)
         reward_model_v = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
