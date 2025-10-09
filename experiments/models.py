@@ -154,8 +154,14 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
     def __init__(self, config, init_model_path=None):
         self.init_model_path = init_model_path
         super().__init__(config)
+        
+        # score layer doesn't come with a bias
+        if self.transformer.score.bias is None:
+            self.transformer.score.bias = nn.Parameter(torch.zeros(1))
+
         if init_model_path is None:
             self._init_head_weights(config.calculated_sft_bias)
+        
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
 
     def _init_head_weights(self, calculated_sft_bias):
@@ -165,14 +171,9 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         d_model = self.transformer.score.in_features
         std = 1.0 / (d_model + 1) ** 0.5
         
-        # score layer doesn't come with a bias
-        if self.transformer.score.bias is None:
-            self.transformer.score.bias = nn.Parameter(torch.zeros(1))
-
         init.normal_(self.transformer.score.weight, mean=0, std=std)
         self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
         # Calculated from the cu         
-
 
     @profile   
     def _set_model_class(self):
