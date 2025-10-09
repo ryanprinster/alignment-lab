@@ -52,7 +52,7 @@ class Llama_3p2_1B(nn.Module, ABC):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.config = config
-        self.transformer = self._load_model()
+        self.transformer = self._set_model_class()
         if config.enable_gradient_checkpointing:
             self.transformer.gradient_checkpointing_enable()
         self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
@@ -64,7 +64,7 @@ class Llama_3p2_1B(nn.Module, ABC):
         self._init_model_weights()
 
     @abstractmethod
-    def _load_model(self):
+    def _set_model_class(self):
         pass
 
     def _init_model_weights(self):
@@ -82,7 +82,8 @@ class Llama_3p2_1B(nn.Module, ABC):
         return torch.where(torch.isinf(logits), torch.tensor(-1e9, device=logits.device), logits)
 
 class Llama_3p2_1B_Causal(Llama_3p2_1B):
-    def __init__(self, config):
+    def __init__(self, config, init_model_path=None):
+        self.init_model_path = init_model_path
         super().__init__(config)
         self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
 
@@ -121,18 +122,29 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         return outputs.logits, outputs.loss
 
     @abstractmethod
-    def _load_model(self):
+    def _set_model_class(self):
         pass
+
+    @profile   
+    def _set_model_class(self):
+        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+
+    @profile
+    def _init_model_weights(self):
+        if self.init_model_path is None:
+            return 
+        if not os.path.exists(self.init_model_path):
+            raise FileNotFoundError(f"Model not found: {self.init_model_path}")
+
+        self.load_state_dict(
+            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
 
 
 class Llama_3p2_1B_SFT(Llama_3p2_1B_Causal):
-    def __init__(self, config):
-        super().__init__(config)
+    pass
 
-    @profile   
-    def _load_model(self):
-        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
-
+class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
+    pass   
     
 
 class Llama_3p2_1B_RM(Llama_3p2_1B):
@@ -158,7 +170,7 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
 
 
     @profile   
-    def _load_model(self):
+    def _set_model_class(self):
         return AutoModelForSequenceClassification.from_pretrained(
             Llama_3p2_1B.HF_MODEL_NAME, 
             num_labels=1
@@ -181,7 +193,7 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
 
     @profile   
-    def _load_model(self):
+    def _set_model_class(self):
         # if not os.path.exists(self.config.rm_model_path):
         #     raise FileNotFoundError(f"Model not found: {self.config.rm_model_path}")
     
@@ -216,54 +228,3 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
         )
         
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
-
-
-class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
-    def __init__(self, config, init_model_path=None):
-        self.init_model_path = init_model_path
-        super().__init__(config)
-
-    @profile   
-    def _load_model(self):
-        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
-
-    def _init_model_weights(self):
-        if self.init_model_path is None:
-            warnings.warn("Policy model is not being initialized. Do you want to initialize the weights with an SFT model?")
-        if not os.path.exists(self.init_model_path):
-            raise FileNotFoundError(f"Model not found: {self.config.init_policy_model_path}")
-
-        # TODO: need to torch.save(model.transformer) instead of torch.save(model) next time?
-        pdb.set_trace()
-        self.load_state_dict(
-            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
-  
-
-    # def generate(self, inputs, max_length, temp):
-    #     # generate autoregressively
-    #     generation_obj = self.transformer.generate(
-    #         input_ids=inputs['input_ids'],
-    #         attention_mask=inputs['attention_mask'],
-    #         max_length=max_length,
-    #         temperature=temp,
-    #         do_sample=True,
-    #         return_dict_in_generate=True,
-    #         output_scores=True
-    #     )
-
-    #     policy_logits = torch.stack(generation_obj.scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
-    #     policy_logits = self.clean_logits(policy_logits)
-
-    #     return generation_obj.sequences, policy_logits
-
-    # def forward(self, input_ids, attention_mask=None):
-
-    #     if attention_mask is None:
-    #         attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
-
-    #     # Forward parallel decode
-    #     outputs = self.transformer(
-    #         input_ids=input_ids.squeeze(-1),
-    #         attention_mask=attention_mask.squeeze(-1)
-    #     )
-    #     return outputs.logits 

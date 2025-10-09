@@ -22,7 +22,7 @@ from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO
 
 
-from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_RM
+from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
@@ -40,7 +40,7 @@ class PPORLHFTrainer(BaseTrainer):
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
 
-        self.sft_model = Llama_3p2_1B_Policy(self.config).to(self.device) # TODO: This is a placeholder'
+        self.sft_model = Llama_3p2_1B_SFT(self.config).to(self.device) # TODO: This is a placeholder'
 
 
         # Class members
