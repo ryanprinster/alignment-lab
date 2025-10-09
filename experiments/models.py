@@ -201,7 +201,8 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
 
 
 class Llama_3p2_1B_Value(Llama_3p2_1B):
-    def __init__(self, config):
+    def __init__(self, config, init_model_path=None):
+        self.init_model_path = init_model_path
         super().__init__(config)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
@@ -212,6 +213,17 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
             Llama_3p2_1B.HF_MODEL_NAME,
             num_labels=1
         )
+
+    @profile
+    def _init_model_weights(self):
+        if self.init_model_path is None:
+            return 
+        if not os.path.exists(self.init_model_path):
+            raise FileNotFoundError(f"Model not found: {self.init_model_path}")
+
+        self.load_state_dict(
+            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
+
 
     def forward(self, input_ids, attention_mask=None):
         # Forward parallel decode
