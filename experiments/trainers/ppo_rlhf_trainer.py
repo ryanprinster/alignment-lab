@@ -196,8 +196,8 @@ class PPORLHFTrainer(BaseTrainer):
 
         for i, data in enumerate(self.data.train_loader):
             print(f"i: {i}")
+            data = self._to_device(data)
             rewards = reward_model.forward(data['input_ids'], data['attention_mask'])
             rewards_v = reward_model_v.forward(data['input_ids'], data['attention_mask'])
-            pdb.set_trace()
             for idx, rm_score in zip(data['idx'], rewards):
                 self.data.dataset['train'].set_rm_score(idx, rm_score)
