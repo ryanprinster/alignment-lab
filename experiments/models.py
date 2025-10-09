@@ -59,9 +59,8 @@ class Llama_3p2_1B(nn.Module, ABC):
         
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         self.transformer.resize_token_embeddings(len(self.tokenizer))
-
-        self._init_model_weights()
 
     @abstractmethod
     def _set_model_class(self):
@@ -97,6 +96,8 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         self.init_model_path = init_model_path
         super().__init__(config)
         self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
+
+        self._init_model_weights()
 
     @profile
     def generate(self, inputs, max_length, temp, min_length=None, do_sample=True):
@@ -134,10 +135,6 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         )
         return outputs.logits, outputs.loss
 
-    @abstractmethod
-    def _set_model_class(self):
-        pass
-
     @profile   
     def _set_model_class(self):
         return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
@@ -161,8 +158,9 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
 
         if init_model_path is None:
             self._init_head_weights(config.calculated_sft_bias)
+
         
-        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+        self._init_model_weights()
 
     def _init_head_weights(self, calculated_sft_bias):
         # Detail 11 (Reward head initialization)
@@ -197,8 +195,8 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
     def __init__(self, config, init_model_path=None):
         self.init_model_path = init_model_path
         super().__init__(config)
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+        self._init_model_weights()
 
     @profile   
     def _set_model_class(self):
