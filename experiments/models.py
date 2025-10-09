@@ -150,7 +150,8 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
     
 
 class Llama_3p2_1B_RM(Llama_3p2_1B):
-    def __init__(self, config):
+    def __init__(self, config, init_model_path=None):
+        self.init_model_path = init_model_path
         super().__init__(config)
         self._init_head_weights(config.calculated_sft_bias)
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
@@ -180,6 +181,17 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         # Detail 12 (Extract reward from the EOS token) Done by default
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
+    @profile
+    def _init_model_weights(self):
+        if self.init_model_path is None:
+            return 
+        if not os.path.exists(self.init_model_path):
+            raise FileNotFoundError(f"Model not found: {self.init_model_path}")
+
+        self.load_state_dict(
+            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
+
+
     def forward(self, input_ids, attention_mask):
         outputs = self.transformer(
             input_ids=input_ids,
@@ -196,22 +208,6 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
 
     @profile   
     def _set_model_class(self):
-        # if not os.path.exists(self.config.rm_model_path):
-        #     raise FileNotFoundError(f"Model not found: {self.config.rm_model_path}")
-    
-        # # This should share the weights of the RM model head
-        # # between each token prediction head
-        # model = AutoModelForTokenClassification.from_pretrained(
-        #     Llama_3p2_1B.HF_MODEL_NAME,
-        #     num_labels=1
-        # )
-    
-        # model.load_state_dict(
-        #     torch.load(self.config.rm_model_path, map_location='cpu')['model_state_dict'])
-
-        # return model
-    
-         # TODO: Load from SFT
         return AutoModelForTokenClassification.from_pretrained(
             Llama_3p2_1B.HF_MODEL_NAME,
             num_labels=1

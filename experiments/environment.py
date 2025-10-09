@@ -112,6 +112,7 @@ class RLHFEnvironment(BaseEnvironment):
     
     def set_reward_for_no_eos(self, states, rewards):
         """ Assumes rewards as been set to all zeros for a given trajectory if no eos token"""
+        # TODO: remove above assumption
         all_zero_no_eos = (rewards == 0).all(dim=1)
         rewards[all_zero_no_eos, -1] = -1
         return rewards

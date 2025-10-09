@@ -148,9 +148,8 @@ class RLFHPPOConfig(PPOConfigBase):
         self.save_freq_steps = 100 * self.mini_batch_accumulation_steps
         self.save_interval_min = 60
         # self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
-        self.rm_model_path = "/Users/ryanprinster/Projects/trained_models/sft/checkpoint_step_4800.pt"
-        # self.sft_model_path = "/Users/ryanprinster/Projects/trained_models/sft/checkpoint_step_4800.pt"
         self.sft_model_path = "checkpoints/sft_final_checkpoint.pt"
+        self.rm_model_path = "checkpoints/rm_final_checkpoint.pt"
 
 
         # Logging
