@@ -121,6 +121,7 @@ class RLFHPPOConfig(PPOConfigBase):
         # Adam W Optimizer
         self.eps = 1e-5
         self.lr = self.alpha = 3e-6
+        self.lr_final_ratio = 0 # Paper does not state for PPO
 
         self.batch_size = 2 # Number of trajectories generated at a time
 

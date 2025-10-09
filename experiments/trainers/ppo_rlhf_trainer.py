@@ -26,13 +26,14 @@ from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
+from torch.optim.lr_scheduler import LinearLR
+
 
 class PPORLHFTrainer(BaseTrainer):
     def __init__(self, config: PPOConfigBase):
         self.config = config
         self.logger = Logger(self.config)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 
         # Models
         self.policy_model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.sft_model_path).to(self.device)
@@ -41,8 +42,6 @@ class PPORLHFTrainer(BaseTrainer):
         self.old_value_state_dict = self.value_model.state_dict()
         self.sft_model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
         self.reward_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
-        # self.reward_model_v = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
-
 
         # Class members
         self.data = TLDRFilteredDataPPO(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
@@ -52,6 +51,13 @@ class PPORLHFTrainer(BaseTrainer):
         # Optimizers
         self.optimizer_policy = optim.Adam(self.policy_model.parameters(), lr = self.config.alpha)
         self.optimizer_value = optim.Adam(self.value_model.parameters(), lr = self.config.alpha)
+
+        self.lr_scheduler_policy = LinearLR(self.optimizer_policy, 
+                                        T_max=int(self.config.max_episodes / self.config._virtual_batch_size),
+                                        eta_min=self.config.lr_final_ratio * self.config.lr)
+        self.lr_scheduler_value = LinearLR(self.optimizer_value, 
+                                T_max=int(self.config.max_episodes / self.config._virtual_batch_size),
+                                eta_min=self.config.lr_final_ratio * self.config.lr)
 
     def _zero_grad(self, optimizer_policy, optimizer_value):
         optimizer_policy.zero_grad()
@@ -95,11 +101,13 @@ class PPORLHFTrainer(BaseTrainer):
         optimizer_policy.step()
         optimizer_value.step()
 
+        self.lr_scheduler_policy.step()
+        self.lr_scheduler_value.step()
+
     @profile
     def _update_old_models(self):
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
-
 
     @profile
     def _to_device(self, batch):
@@ -116,7 +124,7 @@ class PPORLHFTrainer(BaseTrainer):
         self.global_step = 0
 
         # Go through the data num_epochs times, or max_episodes steps
-        for i in range(self.config.num_epochs):
+        for epoch in range(self.config.num_epochs):
             for _, batch in enumerate(self.data.train_loader):
                 if self.global_step * self.data.train_loader.batch_size > self.config.max_episodes: 
                     break 
@@ -161,24 +169,22 @@ class PPORLHFTrainer(BaseTrainer):
 
                         if curr_accumulation_steps >= self.config.mini_batch_accumulation_steps:
                             self._step(self.optimizer_policy, self.optimizer_value)
-                            self.global_step += len(rewards) # could alternatively just increment by 1
                             curr_accumulation_steps = 0
                     
-                    # Logging
-                    self.logger.log(
-                        scalars={
-                            "loss_value": loss_value.item(),
-                            "loss_ppo": loss_ppo.item(),
-                            "train_iter": i,
-                            "epoch": k,
-                            "global_step": self.global_step,
-                            "A": torch.mean(A).item(),
-                            "policy_entropy": entropy.item(),
-                            "total_reward": torch.sum(rewards).item(),
-                            "global_step": self.global_step
-                            # "lr": self.lr_scheduler.get_last_lr()[0]
-                            },
-                        models=[self.policy_model, self.value_model]
+                # Logging
+                self.logger.log(
+                    scalars={
+                        "loss_value": loss_value.item(),
+                        "loss_ppo": loss_ppo.item(),
+                        "train_iter": epoch,
+                        "global_step": self.global_step,
+                        "A": torch.mean(A).item(),
+                        "policy_entropy": entropy.item(),
+                        "total_reward": torch.sum(rewards).item(),
+                        "global_step": self.global_step
+                        # "lr": self.lr_scheduler.get_last_lr()[0]
+                        },
+                    models=[self.policy_model, self.value_model]
                     )
                     
                 # 3. Theta old <-- theta new
@@ -187,6 +193,14 @@ class PPORLHFTrainer(BaseTrainer):
                 self.global_step += 1
 
 
+            self.checkpointer.save_checkpoint(
+                    self.model,
+                    self.optimizer,
+                    self.global_step,
+                    epoch,
+                    loss=0, # placeholder
+                    final_checkpoint=True
+                )
 
         return self.policy_model      
 
