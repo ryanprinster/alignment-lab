@@ -80,6 +80,17 @@ class Llama_3p2_1B(nn.Module, ABC):
     def clean_logits(self, logits):
         # clean scores, -inf --> 1e-9
         return torch.where(torch.isinf(logits), torch.tensor(-1e9, device=logits.device), logits)
+    
+    @profile
+    def _init_model_weights(self):
+        if self.init_model_path is None:
+            return 
+        if not os.path.exists(self.init_model_path):
+            raise FileNotFoundError(f"Model not found: {self.init_model_path}")
+
+        self.load_state_dict(
+            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
+
 
 class Llama_3p2_1B_Causal(Llama_3p2_1B):
     def __init__(self, config, init_model_path=None):
@@ -131,16 +142,6 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
     def _set_model_class(self):
         return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
 
-    @profile
-    def _init_model_weights(self):
-        if self.init_model_path is None:
-            return 
-        if not os.path.exists(self.init_model_path):
-            raise FileNotFoundError(f"Model not found: {self.init_model_path}")
-
-        self.load_state_dict(
-            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
-
 
 class Llama_3p2_1B_SFT(Llama_3p2_1B_Causal):
     pass
@@ -153,7 +154,8 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
     def __init__(self, config, init_model_path=None):
         self.init_model_path = init_model_path
         super().__init__(config)
-        self._init_head_weights(config.calculated_sft_bias)
+        if init_model_path is None:
+            self._init_head_weights(config.calculated_sft_bias)
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
 
     def _init_head_weights(self, calculated_sft_bias):
@@ -181,16 +183,6 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         # Detail 12 (Extract reward from the EOS token) Done by default
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
-    @profile
-    def _init_model_weights(self):
-        if self.init_model_path is None:
-            return 
-        if not os.path.exists(self.init_model_path):
-            raise FileNotFoundError(f"Model not found: {self.init_model_path}")
-
-        self.load_state_dict(
-            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
-
 
     def forward(self, input_ids, attention_mask):
         outputs = self.transformer(
@@ -213,17 +205,6 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
             Llama_3p2_1B.HF_MODEL_NAME,
             num_labels=1
         )
-
-    @profile
-    def _init_model_weights(self):
-        if self.init_model_path is None:
-            return 
-        if not os.path.exists(self.init_model_path):
-            raise FileNotFoundError(f"Model not found: {self.init_model_path}")
-
-        self.load_state_dict(
-            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
-
 
     def forward(self, input_ids, attention_mask=None):
         # Forward parallel decode

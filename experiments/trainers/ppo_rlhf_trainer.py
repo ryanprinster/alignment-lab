@@ -22,7 +22,7 @@ from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO
 
 
-from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT
+from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
@@ -191,10 +191,13 @@ class PPORLHFTrainer(BaseTrainer):
     def pre_compute_rewards(self):
         print("Pre-computing rewards...")
 
-        reward_model = Llama_3p2_1B_Value(self.config)
+        reward_model = Llama_3p2_1B_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device)
+        reward_model_v = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
 
         for i, data in enumerate(self.data.train_loader):
             print(f"i: {i}")
-            rewards = reward_model.forward(data)
+            rewards = reward_model.forward(data['input_ids'], data['attention_mask'])
+            rewards_v = reward_model_v.forward(data['input_ids'], data['attention_mask'])
+            pdb.set_trace()
             for idx, rm_score in zip(data['idx'], rewards):
                 self.data.dataset['train'].set_rm_score(idx, rm_score)
