@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 from experiments.logger import Logger
 from experiments.environment import RLHFEnvironment
 from experiments.profiler import profile
-from experiments.datasets import TLDRFilteredDataPPO
+from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
 
 
 from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
@@ -191,10 +191,12 @@ class PPORLHFTrainer(BaseTrainer):
     def pre_compute_rewards(self):
         print("Pre-computing rewards...")
 
+        data = TLDRFilteredDataSFT(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
+
         reward_model = Llama_3p2_1B_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device)
         reward_model_v = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
 
-        for i, data in enumerate(self.data.train_loader):
+        for i, data in enumerate(data.train_loader):
             print(f"i: {i}")
             data = self._to_device(data)
             rewards = reward_model.forward(data['input_ids'], data['attention_mask'])
