@@ -143,14 +143,16 @@ class RLHFEnvironment(BaseEnvironment):
 
         values = value_model.forward(states, batch['attention_mask'])
 
-        if None in batch['rm_score']:
-            # TODO: remove this, this is here for quick iteration testing
-            rewards = torch.ones_like(values, device=policy_model.device)
-            # rewards = reward_model.forward(
-            #     {'input_ids': states, 'attention_mask': batch['attention_mask']}
-            # )
-        else:
-            rewards = batch['rm_score']
+        rewards = reward_model.forward(states, batch['attention_mask'])
+
+        # if None in batch['rm_score']:
+        #     # TODO: remove this, this is here for quick iteration testing
+        #     rewards = torch.ones_like(values, device=policy_model.device)
+        #     # rewards = reward_model.forward(
+        #     #     {'input_ids': states, 'attention_mask': batch['attention_mask']}
+        #     # )
+        # else:
+        #     rewards = batch['rm_score']
         
         states = states[:,-self.max_response_length:]
         # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)

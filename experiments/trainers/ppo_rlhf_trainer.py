@@ -40,6 +40,9 @@ class PPORLHFTrainer(BaseTrainer):
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
         self.sft_model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
+        self.reward_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
+        # self.reward_model_v = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
+
 
         # Class members
         self.data = TLDRFilteredDataPPO(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
@@ -128,8 +131,8 @@ class PPORLHFTrainer(BaseTrainer):
                     self.policy_model,
                     self.value_model,
                     self.sft_model,
-                    #TODO: may need to be able to split this up
-                    self.config.generation_temperature)
+                    self.config.generation_temperature,
+                    self.reward_model)
                 
                 # Whiten rewards and advantages
                 tjs.whiten_rewards()
