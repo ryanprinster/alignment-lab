@@ -53,10 +53,10 @@ class PPORLHFTrainer(BaseTrainer):
         self.optimizer_value = optim.Adam(self.value_model.parameters(), lr = self.config.alpha)
 
         self.lr_scheduler_policy = LinearLR(self.optimizer_policy, 
-                                        T_max=int(self.config.max_episodes / self.config.batch_size) * self.K,
+                                        T_max=int(self.config.max_episodes / self.config.batch_size) * self.config.K,
                                         eta_min=self.config.lr_final_ratio * self.config.lr)
         self.lr_scheduler_value = LinearLR(self.optimizer_value, 
-                                T_max=int(self.config.max_episodes / self.config.batch_size) * self.K,
+                                T_max=int(self.config.max_episodes / self.config.batch_size) * self.config.K,
                                 eta_min=self.config.lr_final_ratio * self.config.lr)
 
     def _zero_grad(self, optimizer_policy, optimizer_value):
