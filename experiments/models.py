@@ -61,8 +61,13 @@ class Llama_3p2_1B(nn.Module, ABC):
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         self.transformer.resize_token_embeddings(len(self.tokenizer))
 
+        self._init_model_weights()
+
     @abstractmethod
     def _load_model(self):
+        pass
+
+    def _init_model_weights(self):
         pass
 
     @abstractmethod
@@ -220,20 +225,18 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
 
     @profile   
     def _load_model(self):
+        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+
+    def _init_model_weights(self):
         if self.init_model_path is None:
             warnings.warn("Policy model is not being initialized. Do you want to initialize the weights with an SFT model?")
         if not os.path.exists(self.init_model_path):
             raise FileNotFoundError(f"Model not found: {self.config.init_policy_model_path}")
 
-        self.transformer = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
-
-
-        # TODO: need to save as the transformer next time.
+        # TODO: need to torch.save(model.transformer) instead of torch.save(model) next time?
         pdb.set_trace()
         self.load_state_dict(
             torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
-
-        return self.transformer
   
 
     # def generate(self, inputs, max_length, temp):
