@@ -134,10 +134,6 @@ class PPORLHFTrainer(BaseTrainer):
                     self.config.generation_temperature,
                     self.reward_model)
                 
-                # Whiten rewards and advantages
-                tjs.whiten_rewards()
-                tjs.whiten_advantages()
-                
                 tj_loader = DataLoader(TrajectorySet(tjs), batch_size=self.config._mini_batch_size, shuffle=True, num_workers=0)
 
                 # 2. Optimize loss, for K epochs
@@ -187,6 +183,10 @@ class PPORLHFTrainer(BaseTrainer):
                     
                 # 3. Theta old <-- theta new
                 self._update_old_models()
+
+                self.global_step += 1
+
+
 
         return self.policy_model      
 

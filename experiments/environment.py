@@ -177,7 +177,8 @@ class RLHFEnvironment(BaseEnvironment):
         tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
         tj.compute_R(gamma=self.config.gamma)
         tj.actions = states
-        
         tj.compute_probs()
+        tj.whiten_rewards()
+        tj.whiten_advantages()
 
         return tj
