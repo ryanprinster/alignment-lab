@@ -151,10 +151,8 @@ class RLHFEnvironment(BaseEnvironment):
         else:
             rewards = batch['rm_score']
         
-        # Detail 12 (RM Training -> Extract reward from the EOS token)
-        # Detail 23 (PPO Training -> “EOS trick” to ensure scores from the RM is valid)
-        pdb.set_trace()
         states = states[:,-self.max_response_length:]
+        # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
         states = self.set_pad_after_eos(states, tokenizer)
         policy_logits = policy_logits[:,-self.max_response_length:,:]
         policies = torch.softmax(policy_logits, dim=-1)
@@ -162,6 +160,7 @@ class RLHFEnvironment(BaseEnvironment):
         # Detail 12 (RM Training -> Extract reward from the EOS token)
         rewards = rewards[:,-self.max_response_length:] * (states == tokenizer.eos_token_id) # create mask to get eos token rewards
         rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits)
+        # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
         rewards = self.set_reward_for_no_eos(states, rewards)
 
         tj = Trajectory(init_state=states.unsqueeze(-1), 
