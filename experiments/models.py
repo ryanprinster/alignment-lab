@@ -225,14 +225,15 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
         if not os.path.exists(self.init_model_path):
             raise FileNotFoundError(f"Model not found: {self.config.init_policy_model_path}")
 
-        model = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
-    
-        # TODO: this dont work
+        self.transformer = AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+
+
+        # TODO: need to save as the transformer next time.
         pdb.set_trace()
-        model.load_state_dict(
+        self.load_state_dict(
             torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
 
-        return model
+        return self.transformer
   
 
     # def generate(self, inputs, max_length, temp):
