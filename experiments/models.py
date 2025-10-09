@@ -88,12 +88,14 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
 
     @profile
-    def generate(self, inputs, max_length, temp, do_sample=True):
+    def generate(self, inputs, max_length, temp, min_length=None, do_sample=True):
         # generate autoregressively
         generation_obj = self.transformer.generate(
             input_ids=inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
+            # Detail 23.1 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> Always sample a fixed amount of tokens) 
             max_length=max_length,
+            min_length=min_length,
             temperature=temp,
             do_sample=True,
             return_dict_in_generate=True,

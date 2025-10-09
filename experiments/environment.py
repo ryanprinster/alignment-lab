@@ -130,12 +130,14 @@ class RLHFEnvironment(BaseEnvironment):
             batch,
             self.max_sequence_length,
             temp,
+            min_length=self.max_sequence_length
         )
 
         _, sft_policy_logits = sft_model.generate(
             batch,
             self.max_sequence_length,
             temp,
+            min_length=self.max_sequence_length
         )
 
         values = value_model.forward(states, batch['attention_mask'])
