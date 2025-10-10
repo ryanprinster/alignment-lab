@@ -171,14 +171,12 @@ class PPORLHFTrainer(BaseTrainer):
                 for k in range(self.config.K):
                     # Update new policy for each minibatch
 
-                    curr_accumulation_steps = 0
                     self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                     for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
                         pdb.set_trace()
 
-                        if curr_accumulation_steps >= self.config.mini_batch_accumulation_steps:
-                            self._zero_grad(self.optimizer_policy, self.optimizer_value)
+                        self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
@@ -192,10 +190,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
-
-                        if curr_accumulation_steps >= self.config.mini_batch_accumulation_steps:
-                            self._step(self.optimizer_policy, self.optimizer_value)
-                            curr_accumulation_steps = 0
+                        self._step(self.optimizer_policy, self.optimizer_value)
                     
                         # TODO: Figure out why not loggin right
                         # Logging
