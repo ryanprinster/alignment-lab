@@ -145,7 +145,7 @@ class PPORLHFTrainer(BaseTrainer):
 
         # Go through the data num_epochs times, or max_episodes steps
         for epoch in range(self.config.num_epochs):
-            for _, batch in enumerate(self.data.train_loader):
+            for batch_idx, batch in enumerate(self.data.train_loader):
                 if self.global_step * self.data.train_loader.batch_size > self.config.max_episodes: 
                     break 
                 
@@ -175,7 +175,8 @@ class PPORLHFTrainer(BaseTrainer):
                     self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                     for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
-                        
+                        pdb.set_trace()
+
                         if curr_accumulation_steps >= self.config.mini_batch_accumulation_steps:
                             self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
@@ -207,6 +208,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 "A": torch.mean(A).item(),
                                 "policy_entropy": entropy.item(),
                                 "total_reward": torch.sum(rewards).item(),
+                                "batch_idx": batch_idx,
+                                "k": k,
                                 "global_step": self.global_step
                                 # "lr": self.lr_scheduler.get_last_lr()[0]
                                 },
@@ -218,7 +221,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                 self.global_step += 1
 
-
+            
             self.checkpointer.save_checkpoint(
                     self.model,
                     self.optimizer,

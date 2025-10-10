@@ -28,4 +28,4 @@ python -m experiments RMTrainer compute_model_bias --config RLFHCaseStudyConfig 
 python -m experiments RMTrainer train --config RLFHCaseStudyConfig --load_checkpoint_path checkpoints/sft_final_checkpoint.pt --calculated_sft_bias -8.703847885131836 --save_freq_steps 9999999 --batch_size 32 --accumulation_steps 2
 
 # PPORLHFTrainer
-python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 2 --accumulation_steps 1 --no_pre_compute_rm_scores
+python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 256 --mini_batch_accumulation_steps 1
