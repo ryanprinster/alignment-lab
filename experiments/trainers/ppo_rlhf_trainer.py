@@ -196,21 +196,21 @@ class PPORLHFTrainer(BaseTrainer):
                             self._step(self.optimizer_policy, self.optimizer_value)
                             curr_accumulation_steps = 0
                     
-                    # Logging
-                    self.logger.log(
-                        scalars={
-                            "loss_value": loss_value.item(),
-                            "loss_ppo": loss_ppo.item(),
-                            "train_iter": epoch,
-                            "global_step": self.global_step,
-                            "A": torch.mean(A).item(),
-                            "policy_entropy": entropy.item(),
-                            "total_reward": torch.sum(rewards).item(),
-                            "global_step": self.global_step
-                            # "lr": self.lr_scheduler.get_last_lr()[0]
-                            },
-                        models=[self.policy_model, self.value_model]
-                        )
+                        # Logging
+                        self.logger.log(
+                            scalars={
+                                "loss_value": loss_value.item(),
+                                "loss_ppo": loss_ppo.item(),
+                                "train_iter": epoch,
+                                "global_step": self.global_step,
+                                "A": torch.mean(A).item(),
+                                "policy_entropy": entropy.item(),
+                                "total_reward": torch.sum(rewards).item(),
+                                "global_step": self.global_step
+                                # "lr": self.lr_scheduler.get_last_lr()[0]
+                                },
+                            models=[self.policy_model, self.value_model]
+                            )
                         
                 # 3. Theta old <-- theta new
                 self._update_old_models()
