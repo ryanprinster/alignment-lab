@@ -196,6 +196,7 @@ class PPORLHFTrainer(BaseTrainer):
                             self._step(self.optimizer_policy, self.optimizer_value)
                             curr_accumulation_steps = 0
                     
+                        # TODO: Figure out why not loggin right
                         # Logging
                         self.logger.log(
                             scalars={
