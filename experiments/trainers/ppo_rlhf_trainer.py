@@ -31,6 +31,7 @@ from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
 from torch.optim.lr_scheduler import LinearLR
+from experiments.monitor import detect_nans
 
 
 class PPORLHFTrainer(BaseTrainer):
@@ -83,11 +84,14 @@ class PPORLHFTrainer(BaseTrainer):
 
         return new_values, new_policies
 
+    @detect_nans
     def compute_value_loss_mse(self, R, new_values):
         loss_value = torch.mean(F.mse_loss(new_values, R))
         return loss_value
 
+    @detect_nans
     def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies):
+        pdb.set_trace()
         
         new_probs = torch.gather(new_policies, 2, old_actions.long().unsqueeze(1))
         r = new_probs / old_probs.detach()
@@ -222,6 +226,8 @@ class PPORLHFTrainer(BaseTrainer):
                             - is likely predicting autoregressively
                         [x] Verified that the trained sft model IS outputing EOS tokens
 
+                        Verified
+                        [x] Needed to manually enforce 
                         """
 
 

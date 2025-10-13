@@ -100,20 +100,22 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         self._init_model_weights()
 
     @profile
-    def generate(self, inputs, max_length, temp, min_length=None, do_sample=True):
+    def generate(self, inputs, max_length, temp, do_sample=True):
         # generate autoregressively
         generation_obj = self.transformer.generate(
             input_ids=inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
-            # Detail 23.1 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> Always sample a fixed amount of tokens) 
             max_length=max_length,
-            min_length=min_length,
             temperature=temp,
             do_sample=do_sample,
             return_dict_in_generate=True,
             output_scores=True
         )
 
+        # NOTE on Detail 23.1 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> Always sample a fixed amount of tokens) 
+        # It is observed that forcing the model to continue to produce more after EOS token via min_length parameter
+        # results in the model never producing EOS tokens. This might be changed if during SFT model training this behavior was trained in.
+        # instead, we use the max length of a sequence in the batch, which is functionally very similar.  
         padded_tokens = torch.nn.functional.pad(
             generation_obj.sequences,
             (0, max_length - generation_obj.sequences.size(1)),

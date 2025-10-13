@@ -150,28 +150,18 @@ class RLHFEnvironment(BaseEnvironment):
             values = value_model.forward(states, batch['attention_mask'])
 
             rewards = reward_model.forward(states, batch['attention_mask'])
-
-            # pdb.set_trace()
-            # tokens = []
-            # for i in range(len(states[0])):
-            #     token = policy_model.tokenizer.decode(states[0][i])
-            #     tokens.append(token)
             
-            # token_ids = states[0].tolist()
-            # x = zip(token_ids, tokens, rewards[0].tolist())
-            # pdb.set_trace()
-            print(f"states shape: {states.shape}")
-            
-            # TODO: states[:,-self.max_response_length:] is not right, need to get the response itself or remove the prompt I guess
             states = states[:,-policy_response_length:]
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
             states = self.set_pad_after_eos(states, tokenizer)
+
             values = values[:,-policy_response_length:]
 
             policy_logits = policy_logits[:,-policy_response_length:,:]
             policies = torch.softmax(policy_logits, dim=-1)
+
             # Detail 12 (RM Training -> Extract reward from the EOS token)
-            rewards = rewards[:,-policy_response_length:] * (states == tokenizer.eos_token_id) # create mask to get eos token rewards
+            rewards = rewards[:,-policy_response_length:] * (states == tokenizer.eos_token_id)
             rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits)
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
@@ -180,7 +170,7 @@ class RLHFEnvironment(BaseEnvironment):
                     action_dim=self.action_dim,
                     max_sequence_length=policy_response_length,
                     pad_token_id=self.data.tokenizer.pad_token_id,
-                    policies=policies, #TODO: should this take logits?
+                    policies=policies,
                     values=values,
                     rewards=rewards)
 
