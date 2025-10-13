@@ -8,6 +8,7 @@ import pdb
 from experiments.profiler import profile
 from experiments.trajectory import Trajectory
 from experiments.monitor import detect_nans
+from experiments.util import masked_mean, masked_var
 
 import gymnasium as gym
 
@@ -116,6 +117,23 @@ class RLHFEnvironment(BaseEnvironment):
         all_zero_no_eos = (rewards == 0).all(dim=1)
         rewards[all_zero_no_eos, -1] = -1
         return rewards
+
+    def whiten_rewards(self):
+        self._rewards = self._whiten(self._rewards)
+        return self._rewards
+
+    def whiten_advantages(self):
+        self._A = self._whiten(self._A)
+        return self._A
+
+    # Taken from https://arxiv.org/pdf/2403.17031
+    def _whiten(self, values, mask, shift_mean=True):
+        mean, var = masked_mean(values, mask), masked_var(values, mask, unbiased=False)
+        pdb.set_trace()
+        whitened = (values - mean) * torch.rsqrt(var + 1e-8)
+        if not shift_mean:
+            whitened += mean
+        return whitened
 
     @profile
     def generate_trajectory(self, 
