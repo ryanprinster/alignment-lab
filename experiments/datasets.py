@@ -61,7 +61,6 @@ class TLDRFilteredDataBase(ABC):
     SFT_MAX_INPUT_LENGTH = 562
     SFT_MAX_REPONSE_LENGTH = SFT_MAX_INPUT_LENGTH - SFT_MAX_QUERY_LENGTH
     
-    @profile
     def __init__(self, tokenizer, batch_size):
         self.dataset = load_dataset("vwxyzjn/summarize_from_feedback_tldr_3_filtered")
 

@@ -35,6 +35,7 @@ from experiments.monitor import detect_nans
 
 
 class PPORLHFTrainer(BaseTrainer):
+    @profile
     def __init__(self, config: PPOConfigBase):
         self.config = config
         self.logger = Logger(self.config)
