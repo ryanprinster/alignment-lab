@@ -154,15 +154,6 @@ class RLHFEnvironment(BaseEnvironment):
             token_ids = states[0].tolist()
             x = zip(token_ids, tokens, rewards[0].tolist())
             pdb.set_trace()
-
-            # if None in batch['rm_score']:
-            #     # TODO: remove this, this is here for quick iteration testing
-            #     rewards = torch.ones_like(values, device=policy_model.device)
-            #     # rewards = reward_model.forward(
-            #     #     {'input_ids': states, 'attention_mask': batch['attention_mask']}
-            #     # )
-            # else:
-            #     rewards = batch['rm_score']
             
             states = states[:,-self.max_response_length:]
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
@@ -183,12 +174,13 @@ class RLHFEnvironment(BaseEnvironment):
                     policies=policies, #TODO: should this take logits?
                     values=values,
                     rewards=rewards)
-            
+
+            tj.whiten_rewards()
+            tj.whiten_advantages()
+
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
             tj.compute_R(gamma=self.config.gamma)
             tj.actions = states
             tj.compute_probs()
-            tj.whiten_rewards()
-            tj.whiten_advantages()
 
             return tj

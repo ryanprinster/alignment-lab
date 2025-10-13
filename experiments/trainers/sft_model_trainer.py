@@ -150,8 +150,8 @@ class SFTTrainer(BaseTrainer):
                     inputs = self.data.tokenizer(query_text, return_tensors="pt")
                     inputs = self._to_device(inputs)
 
-                    sft_gen_ids, _ = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)[0]
-                    gpt_gen_ids, _ = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)[0]
+                    sft_gen_ids, _ = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)
+                    gpt_gen_ids, _ = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)
 
                     gpt_text = self.data.tokenizer.decode(gpt_gen_ids, skip_special_tokens=True)[len(query_text):]
                     sft_text = self.data.tokenizer.decode(sft_gen_ids, skip_special_tokens=True)[len(query_text):]
