@@ -207,6 +207,7 @@ class PPORLHFTrainer(BaseTrainer):
                         1. Something is wrong in generation of trajectory formatting rewards
                             - rewards values looks sketchy
                         1.1 Policy model is never generating EOS tokens, when it should be 
+                            - Loaded model has unset weights that F things up
                         1.2 Operations on rewards not happening in correct order
                             - Whitening of rewards should happen before computation of R, whitening of advantages should happen before GAE
 
@@ -220,6 +221,7 @@ class PPORLHFTrainer(BaseTrainer):
                         Rejected
                         [x] The rewards model is not outputing the same reward for the same token 
                             - is likely predicting autoregressively
+                        [x] Verified that the trained sft model IS outputing EOS tokens
 
                         """
 

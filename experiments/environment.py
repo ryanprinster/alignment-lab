@@ -127,6 +127,7 @@ class RLHFEnvironment(BaseEnvironment):
                             reward_model = None):
         with torch.no_grad():
             tokenizer = policy_model.tokenizer
+            pdb.set_trace()
 
             states, policy_logits = policy_model.generate(
                 batch,
@@ -145,15 +146,16 @@ class RLHFEnvironment(BaseEnvironment):
             values = value_model.forward(states, batch['attention_mask'])
 
             rewards = reward_model.forward(states, batch['attention_mask'])
-            pdb.set_trace()
-            tokens = []
-            for i in range(len(states[0])):
-                token = policy_model.tokenizer.decode(states[0][i])
-                tokens.append(token)
+
+            # pdb.set_trace()
+            # tokens = []
+            # for i in range(len(states[0])):
+            #     token = policy_model.tokenizer.decode(states[0][i])
+            #     tokens.append(token)
             
-            token_ids = states[0].tolist()
-            x = zip(token_ids, tokens, rewards[0].tolist())
-            pdb.set_trace()
+            # token_ids = states[0].tolist()
+            # x = zip(token_ids, tokens, rewards[0].tolist())
+            # pdb.set_trace()
             
             states = states[:,-self.max_response_length:]
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
