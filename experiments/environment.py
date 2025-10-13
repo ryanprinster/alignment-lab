@@ -140,6 +140,9 @@ class RLHFEnvironment(BaseEnvironment):
                 temp,
             )
 
+            if states.shape[1] != self.max_sequence_length:
+                raise ValueError(f"generated sequence len {states.shape[1]} does not match expected shape {self.max_sequence_length}")
+
             values = value_model.forward(states, batch['attention_mask'])
 
             rewards = reward_model.forward(states, batch['attention_mask'])
