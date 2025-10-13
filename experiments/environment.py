@@ -86,7 +86,8 @@ def masked_softmax(tensor, mask, dim=-1):
     """
     # Set masked positions to negative infinity
     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
-    
+    pdb.set_trace()
+
     # Apply softmax
     return F.softmax(masked_tensor, dim=dim)
 
@@ -187,9 +188,8 @@ class RLHFEnvironment(BaseEnvironment):
         )
 
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
-        after_pad_mask = (pos >= first_pad_pos.unsqueeze(1))
+        after_pad_mask = ~(pos >= first_pad_pos.unsqueeze(1))
 
-        pdb.set_trace()
         return after_pad_mask
 
     @detect_nans
@@ -229,7 +229,6 @@ class RLHFEnvironment(BaseEnvironment):
         all_zero_no_eos = (rewards == 0).all(dim=1)
         rewards[all_zero_no_eos, -1] = -1
         return rewards
-
 
     # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
     def whiten(self, values, mask, shift_mean=True):
@@ -280,11 +279,10 @@ class RLHFEnvironment(BaseEnvironment):
     
             mask = self.construct_mask(states, tokenizer)
 
-            pdb.set_trace()
             values = values[:,-policy_response_length:] * mask
 
-            policy_logits = policy_logits[:,-policy_response_length:,:] * mask
-            policies = masked_softmax(policy_logits, mask, dim=-1)
+            policy_logits = policy_logits[:,-policy_response_length:,:] # don't mask yet
+            policies = masked_softmax(policy_logits, mask.unsqueeze(2), dim=-1)
 
             rewards = rewards[:,-policy_response_length:]
             reward_mask = (states == tokenizer.eos_token_id)
