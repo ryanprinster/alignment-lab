@@ -14,6 +14,7 @@ import gymnasium as gym
 from abc import ABC, abstractmethod
 from typing import Any, Tuple
 import warnings
+import torch.nn.functional as F
 
 
 def masked_mean(tensor, mask, dim=None, keepdim=False):
@@ -71,8 +72,41 @@ def masked_var(tensor, mask, dim=None, keepdim=False, unbiased=True):
     
     return sum_squared_diff / count_valid
 
+def masked_softmax(tensor, mask, dim=-1):
+    """
+    Compute softmax with a boolean mask.
+    
+    Args:
+        tensor: Input tensor (logits)
+        mask: Boolean mask (True for valid elements, False for masked out)
+        dim: Dimension along which to apply softmax
+    
+    Returns:
+        Masked softmax probabilities (masked positions will be near-zero)
+    """
+    # Set masked positions to negative infinity
+    masked_tensor = tensor.masked_fill(~mask, float('-inf'))
+    
+    # Apply softmax
+    return F.softmax(masked_tensor, dim=dim)
 
-
+def masked_log_softmax(tensor, mask, dim=-1):
+    """
+    Compute log_softmax with a boolean mask.
+    
+    Args:
+        tensor: Input tensor (logits)
+        mask: Boolean mask (True for valid elements, False for masked out)
+        dim: Dimension along which to apply log_softmax
+    
+    Returns:
+        Masked log_softmax (masked positions will be -inf)
+    """
+    # Set masked positions to negative infinity
+    masked_tensor = tensor.masked_fill(~mask, float('-inf'))
+    
+    # Apply log_softmax
+    return F.log_softmax(masked_tensor, dim=dim)
 
 class BaseEnvironment(ABC):
     def __init__(self):
@@ -139,15 +173,36 @@ class RLHFEnvironment(BaseEnvironment):
     def _close(self):
         self._closed = True
 
+    def construct_mask(self, states, tokenizer):
+        
+        pad_mask = (states != tokenizer.pad_token_id)
+
+        # In the unlikely case there are random pad tokens with other tokens proceeding it,
+        # set all following tokens to pad token. This will effectively end the sequence and
+        # penalize the model.
+        first_pad_pos = torch.where(
+            pad_mask.any(dim=1),
+            pad_mask.int().argmax(dim=1),
+            torch.full((states.size(0),), states.size(1), device=states.device)
+        )
+
+        pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
+        after_pad_mask = (pos >= first_pad_pos.unsqueeze(1))
+
+        pdb.set_trace()
+        return after_pad_mask
+
     @detect_nans
-    def rewards_with_kl_penalty(self, rewards, policy_logits, policies, sft_policy_logits):
+    def rewards_with_kl_penalty(self, rewards, policy_logits, policies, sft_policy_logits, pad_mask, reward_mask):
         """
         Averages kl over action_space = vocab_size space, and over sequence space.
         """
-        log_P= torch.nn.functional.log_softmax(policy_logits, dim=-1)
+        log_P= masked_log_softmax(policy_logits, pad_mask, dim=-1)
         P = policies
-        log_Q = sft = torch.nn.functional.log_softmax(sft_policy_logits, dim=-1)
-        kl_div = (P * (log_P - log_Q)).mean(dim=(1,2))
+        log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask, dim=-1)
+        kl_div = masked_mean((P * (log_P - log_Q)), pad_mask, dim=(1,2))
+
+        assert(False) # Need to think this through
 
         has_reward_mask = (rewards != 0)
         kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
@@ -166,7 +221,7 @@ class RLHFEnvironment(BaseEnvironment):
         after_eos_mask = pos > first_eos_pos.unsqueeze(1)
 
         states[after_eos_mask] = tokenizer.pad_token_id
-        return states, after_eos_mask
+        return states
     
     def set_reward_for_no_eos(self, states, rewards):
         """ Assumes rewards as been set to all zeros for a given trajectory if no eos token"""
@@ -175,16 +230,9 @@ class RLHFEnvironment(BaseEnvironment):
         rewards[all_zero_no_eos, -1] = -1
         return rewards
 
-    def whiten_rewards(self):
-        self._rewards = self._whiten(self._rewards)
-        return self._rewards
 
-    def whiten_advantages(self):
-        self._A = self._whiten(self._A)
-        return self._A
-
-    # Taken from https://arxiv.org/pdf/2403.17031
-    def _whiten(self, values, mask, shift_mean=True):
+    # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
+    def whiten(self, values, mask, shift_mean=True):
         mean, var = masked_mean(values, mask), masked_var(values, mask, unbiased=False)
         pdb.set_trace()
         whitened = (values - mean) * torch.rsqrt(var + 1e-8)
@@ -218,7 +266,6 @@ class RLHFEnvironment(BaseEnvironment):
             policy_response_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
             _sft_reponse_length = _sft_tokens.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
-
             if policy_response_length != _sft_reponse_length:
                 raise ValueError(f"policy response length {policy_response_length} does not sft response length {_sft_reponse_length}")
 
@@ -226,18 +273,38 @@ class RLHFEnvironment(BaseEnvironment):
 
             rewards = reward_model.forward(states, batch['attention_mask'])
             
+
             states = states[:,-policy_response_length:]
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
-            states, mask = self.set_pad_after_eos(states, tokenizer)
+            states = self.set_pad_after_eos(states, tokenizer)
+    
+            mask = self.construct_mask(states, tokenizer)
 
             pdb.set_trace()
-            values = values[:,-policy_response_length:]
+            values = values[:,-policy_response_length:] * mask
 
-            policy_logits = policy_logits[:,-policy_response_length:,:]
-            policies = torch.softmax(policy_logits, dim=-1)
+            policy_logits = policy_logits[:,-policy_response_length:,:] * mask
+            policies = masked_softmax(policy_logits, mask, dim=-1)
 
+            rewards = rewards[:,-policy_response_length:]
+            reward_mask = (states == tokenizer.eos_token_id)
+            
+            rewards = rewards * reward_mask
+            rewards = self.whiten(rewards, reward_mask, shift_mean=False)
+
+            """
+            reward operations:
+                0. modify length of reward vector
+                1. get reward mask 
+                2. use reward mask to get reward @ eos tokens
+            reward @ eos tokens
+            whiten over batch <- note that this could come after KL penalty too, following implementation tho
+
+            
+
+            """
+            
             # Detail 12 (RM Training -> Extract reward from the EOS token)
-            rewards = rewards[:,-policy_response_length:] * (states == tokenizer.eos_token_id)
             rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits)
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
