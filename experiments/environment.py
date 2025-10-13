@@ -86,7 +86,6 @@ def masked_softmax(tensor, mask, dim=-1):
     """
     # Set masked positions to negative infinity
     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
-    pdb.set_trace()
 
     # Apply softmax
     return F.softmax(masked_tensor, dim=dim)
@@ -176,7 +175,6 @@ class RLHFEnvironment(BaseEnvironment):
 
     def construct_mask(self, states, tokenizer):
         
-        pdb.set_trace()
         pad_mask = (states == tokenizer.pad_token_id)
 
         # In the unlikely case there are random pad tokens with other tokens proceeding it,
@@ -198,12 +196,12 @@ class RLHFEnvironment(BaseEnvironment):
         """
         Averages kl over action_space = vocab_size space, and over sequence space.
         """
-        log_P= masked_log_softmax(policy_logits, pad_mask, dim=-1)
+        pdb.set_trace() 
+        # TODO: verify masked_log_softmax works as intendend
+        log_P= masked_log_softmax(policy_logits, pad_mask.unsqueeze(2), dim=-1)
         P = policies
         log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask, dim=-1)
         kl_div = masked_mean((P * (log_P - log_Q)), pad_mask, dim=(1,2))
-
-        assert(False) # Need to think this through
 
         has_reward_mask = (rewards != 0)
         kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
@@ -234,7 +232,6 @@ class RLHFEnvironment(BaseEnvironment):
     # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
     def whiten(self, values, mask, shift_mean=True):
         mean, var = masked_mean(values, mask), masked_var(values, mask, unbiased=False)
-        pdb.set_trace()
         whitened = (values - mean) * torch.rsqrt(var + 1e-8)
         if not shift_mean:
             whitened += mean
