@@ -176,6 +176,7 @@ class RLHFEnvironment(BaseEnvironment):
 
     def construct_mask(self, states, tokenizer):
         
+        pdb.set_trace()
         pad_mask = (states != tokenizer.pad_token_id)
 
         # In the unlikely case there are random pad tokens with other tokens proceeding it,
