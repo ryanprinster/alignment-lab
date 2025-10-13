@@ -133,14 +133,12 @@ class RLHFEnvironment(BaseEnvironment):
                 batch,
                 self.max_sequence_length,
                 temp,
-                min_length=self.max_sequence_length
             )
 
             _, sft_policy_logits = sft_model.generate(
                 batch,
                 self.max_sequence_length,
                 temp,
-                min_length=self.max_sequence_length
             )
 
             values = value_model.forward(states, batch['attention_mask'])
@@ -156,7 +154,9 @@ class RLHFEnvironment(BaseEnvironment):
             # token_ids = states[0].tolist()
             # x = zip(token_ids, tokens, rewards[0].tolist())
             # pdb.set_trace()
+            print(f"states shape: {states.shape}")
             
+            # TODO: states[:,-self.max_response_length:] is not right, need to get the response itself or remove the prompt I guess
             states = states[:,-self.max_response_length:]
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
             states = self.set_pad_after_eos(states, tokenizer)
