@@ -146,6 +146,14 @@ class RLHFEnvironment(BaseEnvironment):
 
             rewards = reward_model.forward(states, batch['attention_mask'])
             pdb.set_trace()
+            tokens = []
+            for i in range(len(states[0])):
+                token = policy_model.tokenizer.decode(states[0][i])
+                tokens.append(token)
+            
+            token_ids = states[0].tolist()
+            x = zip(token_ids, tokens, rewards.tolist())
+            pdb.set_trace()
 
             # if None in batch['rm_score']:
             #     # TODO: remove this, this is here for quick iteration testing
