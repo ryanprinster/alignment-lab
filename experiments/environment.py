@@ -8,7 +8,6 @@ import pdb
 from experiments.profiler import profile
 from experiments.trajectory import Trajectory
 from experiments.monitor import detect_nans
-import experiments.util as util # masked_mean, masked_var
 
 import gymnasium as gym
 
