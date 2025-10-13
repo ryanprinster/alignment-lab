@@ -134,14 +134,18 @@ class RLHFEnvironment(BaseEnvironment):
                 temp,
             )
 
-            _, sft_policy_logits = sft_model.generate(
+            _sft_tokens, sft_policy_logits = sft_model.generate(
                 batch,
                 self.max_sequence_length,
                 temp,
             )
 
-            if states.shape[1] != self.max_sequence_length:
-                raise ValueError(f"generated sequence len {states.shape[1]} does not match expected shape {self.max_sequence_length}")
+            policy_response_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
+            _sft_reponse_length = _sft_tokens.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
+
+
+            if policy_response_length != _sft_reponse_length:
+                raise ValueError(f"policy response length {policy_response_length} does not sft response length {_sft_reponse_length}")
 
             values = value_model.forward(states, batch['attention_mask'])
 
@@ -159,21 +163,22 @@ class RLHFEnvironment(BaseEnvironment):
             print(f"states shape: {states.shape}")
             
             # TODO: states[:,-self.max_response_length:] is not right, need to get the response itself or remove the prompt I guess
-            states = states[:,-self.max_response_length:]
+            states = states[:,-policy_response_length:]
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
             states = self.set_pad_after_eos(states, tokenizer)
-            policy_logits = policy_logits[:,-self.max_response_length:,:]
+            values = values[:,-policy_response_length:]
+
+            policy_logits = policy_logits[:,-policy_response_length:,:]
             policies = torch.softmax(policy_logits, dim=-1)
-            values = values[:,-self.max_response_length:]
             # Detail 12 (RM Training -> Extract reward from the EOS token)
-            rewards = rewards[:,-self.max_response_length:] * (states == tokenizer.eos_token_id) # create mask to get eos token rewards
+            rewards = rewards[:,-policy_response_length:] * (states == tokenizer.eos_token_id) # create mask to get eos token rewards
             rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits)
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
 
             tj = Trajectory(init_state=states.unsqueeze(-1), 
                     action_dim=self.action_dim,
-                    max_sequence_length=self.max_response_length,
+                    max_sequence_length=policy_response_length,
                     pad_token_id=self.data.tokenizer.pad_token_id,
                     policies=policies, #TODO: should this take logits?
                     values=values,

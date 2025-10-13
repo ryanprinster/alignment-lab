@@ -114,10 +114,16 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             output_scores=True
         )
 
+        padded_tokens = torch.nn.functional.pad(
+            generation_obj.sequences,
+            (0, max_length - generation_obj.sequences.size(1)),
+            value=self.tokenizer.pad_token_id
+        )
+
         policy_logits = torch.stack(generation_obj.scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
         policy_logits = self.clean_logits(policy_logits)
 
-        return generation_obj.sequences, policy_logits
+        return padded_tokens, policy_logits
 
     @profile
     def forward(self, input_ids, attention_mask=None, labels=None):
