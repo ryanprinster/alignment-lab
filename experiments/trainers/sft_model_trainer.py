@@ -154,8 +154,8 @@ class SFTTrainer(BaseTrainer):
                     gpt_gen_ids, _ = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)
 
                     pdb.set_trace()
-                    gpt_text = self.data.tokenizer.decode(gpt_gen_ids, skip_special_tokens=True)[len(query_text):]
-                    sft_text = self.data.tokenizer.decode(sft_gen_ids, skip_special_tokens=True)[len(query_text):]
+                    gpt_text = self.data.tokenizer.decode(gpt_gen_ids[0])[len(query_text):]
+                    sft_text = self.data.tokenizer.decode(sft_gen_ids[0])[len(query_text):]
 
                     print(f"Batch #{_batch_idx}\n")
                     print(f"Prompt: {query_text}\n\n")
