@@ -107,6 +107,7 @@ class RLHFEnvironment(BaseEnvironment):
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         after_eos_mask = pos > first_eos_pos.unsqueeze(1)
 
+        pdb.set_trace()
         states[after_eos_mask] = tokenizer.pad_token_id
         return states
     

@@ -158,6 +158,10 @@ class Trajectory():
 
     # TODO: Review how returning whole tensor will interact with everything else
     @property
+    def mask(self):
+        return self._mask
+
+    @property
     def states(self):
         return self._states
     
