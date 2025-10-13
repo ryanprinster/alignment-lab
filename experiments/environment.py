@@ -127,7 +127,6 @@ class RLHFEnvironment(BaseEnvironment):
                             reward_model = None):
         with torch.no_grad():
             tokenizer = policy_model.tokenizer
-            pdb.set_trace()
 
             states, policy_logits = policy_model.generate(
                 batch,
