@@ -192,7 +192,29 @@ class PPORLHFTrainer(BaseTrainer):
                         self._backward(loss_value, loss_ppo)
                         self._step(self.optimizer_policy, self.optimizer_value)
                     
-                        # TODO: Figure out why not loggin right
+                        # TODO: 
+                        # 0. MSE Value does not change
+                        # 1. new_values probably only changes every batch of N trajectories, should it change? 
+                        #   No, since Nmb=1
+                        #   Actually yes, slightly, since foward pass should change
+                        #   Okay it does change a bit
+                        # 2. R should not change
+                        #   BUT R should probably not be all -1?
+                        #   --> rewards seems to be pretty constant, and reversed... 
+
+                        # Hypotheses
+                        """
+                        1. Something is wrong in generation of trajectory formatting rewards
+                            - rewards values looks sketchy
+                        2. MSE + PPO loss not computed correctly
+                            - MSE value is always the same. If values is different, it shouldnt 
+                        3. Mixed precision issues
+                        4. Model not updating correctly
+                        """
+
+
+
+
                         # Logging
                         self.logger.log(
                             scalars={

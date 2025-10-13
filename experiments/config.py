@@ -125,7 +125,6 @@ class RLFHPPOConfig(PPOConfigBase):
 
         self.batch_size = 2 # Number of trajectories generated at a time
 
-        self.num_mini_batches = 1 # N_mb = Number of mini-batches to process batch_size of trajectories
 
         self.mini_batch_accumulation_steps = 2
 
@@ -133,7 +132,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.gamma = 1.0 # Discount factor
         self.lam = 0.95 # GAE
         
-        self.N = 1 # Number of mini batches
+        self.N = self.num_mini_batches= 1 # N_mb = Number of mini-batches to process batch_size of trajectories
         self.K = 4 # PPO update per epoch
         self.M = 64 # minibatch
 

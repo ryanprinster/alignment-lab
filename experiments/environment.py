@@ -145,6 +145,7 @@ class RLHFEnvironment(BaseEnvironment):
             values = value_model.forward(states, batch['attention_mask'])
 
             rewards = reward_model.forward(states, batch['attention_mask'])
+            pdb.set_trace()
 
             # if None in batch['rm_score']:
             #     # TODO: remove this, this is here for quick iteration testing
