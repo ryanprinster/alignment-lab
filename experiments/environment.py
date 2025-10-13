@@ -177,7 +177,7 @@ class RLHFEnvironment(BaseEnvironment):
     def construct_mask(self, states, tokenizer):
         
         pdb.set_trace()
-        pad_mask = (states != tokenizer.pad_token_id)
+        pad_mask = (states == tokenizer.pad_token_id)
 
         # In the unlikely case there are random pad tokens with other tokens proceeding it,
         # set all following tokens to pad token. This will effectively end the sequence and
@@ -238,7 +238,7 @@ class RLHFEnvironment(BaseEnvironment):
         whitened = (values - mean) * torch.rsqrt(var + 1e-8)
         if not shift_mean:
             whitened += mean
-        return whitened
+        return whitened * mask
 
     @profile
     def generate_trajectory(self, 
@@ -304,7 +304,7 @@ class RLHFEnvironment(BaseEnvironment):
             """
             
             # Detail 12 (RM Training -> Extract reward from the EOS token)
-            rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits)
+            rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits, mask, reward_mask)
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
 
