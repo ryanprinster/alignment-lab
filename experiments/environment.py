@@ -166,7 +166,7 @@ class RLHFEnvironment(BaseEnvironment):
         after_eos_mask = pos > first_eos_pos.unsqueeze(1)
 
         states[after_eos_mask] = tokenizer.pad_token_id
-        return states
+        return states, after_eos_mask
     
     def set_reward_for_no_eos(self, states, rewards):
         """ Assumes rewards as been set to all zeros for a given trajectory if no eos token"""
@@ -228,8 +228,9 @@ class RLHFEnvironment(BaseEnvironment):
             
             states = states[:,-policy_response_length:]
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
-            states = self.set_pad_after_eos(states, tokenizer)
+            states, mask = self.set_pad_after_eos(states, tokenizer)
 
+            pdb.set_trace()
             values = values[:,-policy_response_length:]
 
             policy_logits = policy_logits[:,-policy_response_length:,:]
@@ -249,7 +250,6 @@ class RLHFEnvironment(BaseEnvironment):
                     values=values,
                     rewards=rewards)
 
-            pdb.set_trace()
             tj.whiten_rewards()
             tj.whiten_advantages()
 

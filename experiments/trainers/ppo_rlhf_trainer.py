@@ -92,7 +92,6 @@ class PPORLHFTrainer(BaseTrainer):
 
     @detect_nans
     def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies):
-        pdb.set_trace()
         old_probs = old_probs.detach()
         A = A.detach()
         
@@ -108,8 +107,6 @@ class PPORLHFTrainer(BaseTrainer):
         entropy = -torch.mean(new_policies * torch.log2(new_policies))
         loss_ppo -= self.config.beta * entropy
         
-        pdb.set_trace()
-
         # Problem 1: we need a mask
         # Problem 2: Advantages are all zero
 
