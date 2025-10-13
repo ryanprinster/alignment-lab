@@ -152,7 +152,7 @@ class RLHFEnvironment(BaseEnvironment):
                 tokens.append(token)
             
             token_ids = states[0].tolist()
-            x = zip(token_ids, tokens, rewards.tolist())
+            x = zip(token_ids, tokens, rewards[0].tolist())
             pdb.set_trace()
 
             # if None in batch['rm_score']:
