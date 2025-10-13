@@ -104,6 +104,8 @@ class PPORLHFTrainer(BaseTrainer):
         # Entropy regularization
         entropy = -torch.mean(new_policies * torch.log2(new_policies))
         loss_ppo -= self.config.beta * entropy
+        
+        pdb.set_trace()
 
         return loss_ppo, entropy
     
