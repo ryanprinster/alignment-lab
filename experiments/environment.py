@@ -241,6 +241,8 @@ class RLHFEnvironment(BaseEnvironment):
         if not shift_mean:
             whitened += mean
         return whitened * mask
+    
+
 
     @profile
     def generate_trajectory(self, 
@@ -251,6 +253,11 @@ class RLHFEnvironment(BaseEnvironment):
                             temp,
                             reward_model = None):
         with torch.no_grad():
+            
+            policy_model.eval()
+            value_model.eval()
+            sft_model.eval()
+
             tokenizer = policy_model.tokenizer
 
             states, policy_logits = policy_model.generate(
@@ -327,12 +334,15 @@ class RLHFEnvironment(BaseEnvironment):
                     values=values,
                     rewards=rewards)
 
-            tj.whiten_rewards()
-            tj.whiten_advantages()
 
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
             tj.compute_R(gamma=self.config.gamma)
             tj.actions = states
             tj.compute_probs()
+
+
+            policy_model.train()
+            value_model.train()
+            sft_model.train()
 
             return tj
