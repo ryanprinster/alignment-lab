@@ -202,8 +202,8 @@ class RLHFEnvironment(BaseEnvironment):
         """
         pad_mask_3d = pad_mask.unsqueeze(2)
 
-        log_P= masked_log_softmax(policy_logits, pad_mask_3d, dim=-1)
-        P = policies
+        log_P= masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1)
+        P = policies.masked_fill(~pad_mask_3d, 0)
         log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, dim=-1)
         kl_div = masked_mean((P * (log_P - log_Q)), pad_mask_3d, dim=(1,2))
 
