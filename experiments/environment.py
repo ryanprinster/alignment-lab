@@ -90,7 +90,7 @@ def masked_softmax(tensor, mask, dim=-1):
     # Apply softmax
     return F.softmax(masked_tensor, dim=dim) * mask
 
-def masked_log_softmax(tensor, mask, dim=-1):
+def masked_log_softmax(tensor, mask, dim=-1, mask_value=-1e9):
     """
     Compute log_softmax with a boolean mask.
     
@@ -105,10 +105,12 @@ def masked_log_softmax(tensor, mask, dim=-1):
     # Set masked positions to negative infinity
     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
 
-    log_probs = log_probs.masked_fill(~mask, masked_tensor)
+    log_probs = F.log_softmax(masked_tensor, dim=dim)
+
+    log_probs = log_probs.masked_fill(~mask, mask_value)
     
     # Apply log_softmax
-    return F.log_softmax(log_probs, dim=dim)
+    return log_probs
 
 class BaseEnvironment(ABC):
     def __init__(self):
