@@ -237,7 +237,6 @@ class PPORLHFTrainer(BaseTrainer):
 
 
 
-
                         # Logging
                         self.logger.log(
                             scalars={
@@ -272,22 +271,3 @@ class PPORLHFTrainer(BaseTrainer):
                 )
 
         return self.policy_model      
-
-    # @profile
-    # def pre_compute_rewards(self):
-    #     print("Pre-computing rewards...")
-
-    #     data = TLDRFilteredDataSFT(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
-
-    #     reward_model = Llama_3p2_1B_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device)
-    #     reward_model_v = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
-
-    #     for i, data in enumerate(data.train_loader):
-    #         print(f"i: {i}")
-    #         data = self._to_device(data)
-    #         rewards = reward_model.forward(data['input_ids'], data['attention_mask'])
-    #         rewards_v = reward_model_v.forward(data['input_ids'], data['attention_mask'])
-    #         pdb.set_trace()
-
-    #         for idx, rm_score in zip(data['idx'], rewards):
-    #             self.data.dataset['train'].set_rm_score(idx, rm_score)

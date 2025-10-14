@@ -102,6 +102,8 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
     @profile
     def generate(self, inputs, max_length, temp, do_sample=True):
         # generate autoregressively
+        pdb.set_trace()
+
         generation_obj = self.transformer.generate(
             input_ids=inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
@@ -111,7 +113,6 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             return_dict_in_generate=True,
             output_scores=True
         )
-        pdb.set_trace()
 
         # NOTE on Detail 23.1 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> Always sample a fixed amount of tokens) 
         # It is observed that forcing the model to continue to produce more after EOS token via min_length parameter
