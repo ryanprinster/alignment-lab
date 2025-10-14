@@ -78,7 +78,7 @@ class Llama_3p2_1B(nn.Module, ABC):
 
     def clean_logits(self, logits):
         # clean scores, -inf --> 1e-9
-        return torch.where(torch.isinf(logits), torch.tensor(-1e9, device=logits.device), logits)
+        return torch.where(torch.isinf(logits), torch.tensor(1e-9, device=logits.device), logits)
     
     @profile
     def _init_model_weights(self):
