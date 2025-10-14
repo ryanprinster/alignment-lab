@@ -88,7 +88,7 @@ def masked_softmax(tensor, mask, dim=-1):
     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
 
     # Apply softmax
-    return F.softmax(masked_tensor, dim=dim)
+    return F.softmax(masked_tensor, dim=dim) * mask
 
 def masked_log_softmax(tensor, mask, dim=-1):
     """
@@ -104,9 +104,11 @@ def masked_log_softmax(tensor, mask, dim=-1):
     """
     # Set masked positions to negative infinity
     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
+
+    log_probs = log_probs.masked_fill(~mask, masked_tensor)
     
     # Apply log_softmax
-    return F.log_softmax(masked_tensor, dim=dim)
+    return F.log_softmax(log_probs, dim=dim)
 
 class BaseEnvironment(ABC):
     def __init__(self):
@@ -196,13 +198,15 @@ class RLHFEnvironment(BaseEnvironment):
         """
         Averages kl over action_space = vocab_size space, and over sequence space.
         """
+        pad_mask_3d = pad_mask.unsqueeze(2)
+
+        log_P= masked_log_softmax(policy_logits, pad_mask_3d, dim=-1)
+        P = policies
+        log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, dim=-1)
+        kl_div = masked_mean((P * (log_P - log_Q)), pad_mask_3d, dim=(1,2))
+
         pdb.set_trace() 
         # TODO: verify masked_log_softmax works as intendend
-        log_P= masked_log_softmax(policy_logits, pad_mask.unsqueeze(2), dim=-1)
-        P = policies
-        log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask, dim=-1)
-        kl_div = masked_mean((P * (log_P - log_Q)), pad_mask, dim=(1,2))
-
         has_reward_mask = (rewards != 0)
         kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
 
