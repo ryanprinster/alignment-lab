@@ -151,6 +151,8 @@ class PPORLHFTrainer(BaseTrainer):
     @profile
     def train(self):     
         self.global_step = 0
+        self.policy_model.train()
+        self.value_model.train()
 
         # Go through the data num_epochs times, or max_episodes steps
         for epoch in range(self.config.num_epochs):
