@@ -102,14 +102,12 @@ def masked_log_softmax(tensor, mask, dim=-1, mask_value=-1e9):
     Returns:
         Masked log_softmax (masked positions will be -inf)
     """
-    # Set masked positions to negative infinity
     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
 
     log_probs = F.log_softmax(masked_tensor, dim=dim)
 
     log_probs = log_probs.masked_fill(~mask, mask_value)
     
-    # Apply log_softmax
     return log_probs
 
 class BaseEnvironment(ABC):
@@ -202,10 +200,11 @@ class RLHFEnvironment(BaseEnvironment):
         """
         pad_mask_3d = pad_mask.unsqueeze(2)
 
-        log_P= masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1)
-        P = policies.masked_fill(~pad_mask_3d, 0)
-        log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, dim=-1)
-        kl_div = masked_mean((P * (log_P - log_Q)), pad_mask_3d, dim=(1,2))
+        log_P = masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
+        # P = policies.masked_fill(~pad_mask_3d, 0)
+        P = torch.exp(log_P).masked_fill(~pad_mask_3d, 0)
+        log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
+        kl_div = torch.sum((P * (log_P - log_Q)), pad_mask_3d, dim=(1,2))
 
         pdb.set_trace() 
         # TODO: verify masked_log_softmax works as intendend
@@ -266,6 +265,8 @@ class RLHFEnvironment(BaseEnvironment):
                 temp,
             )
 
+            pdb.set_trace()
+
             policy_response_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
             _sft_reponse_length = _sft_tokens.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
@@ -286,6 +287,7 @@ class RLHFEnvironment(BaseEnvironment):
             values = values[:,-policy_response_length:] * mask
 
             policy_logits = policy_logits[:,-policy_response_length:,:] # don't mask yet
+            sft_policy_logits = sft_policy_logits[:,-_sft_reponse_length:,:] # don't mask yet
             policies = masked_softmax(policy_logits, mask.unsqueeze(2), dim=-1)
 
             rewards = rewards[:,-policy_response_length:]
@@ -307,7 +309,13 @@ class RLHFEnvironment(BaseEnvironment):
             """
             
             # Detail 12 (RM Training -> Extract reward from the EOS token)
-            rewards = self.rewards_with_kl_penalty(rewards, policy_logits, policies, sft_policy_logits, mask, reward_mask)
+        
+            rewards = self.rewards_with_kl_penalty(rewards=rewards, 
+                                                   policy_logits=policy_logits, 
+                                                   policies=policies, 
+                                                   sft_policy_logits=sft_policy_logits, 
+                                                   mask=mask, 
+                                                   reward_mask=reward_mask)
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
 
