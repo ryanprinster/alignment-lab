@@ -32,7 +32,7 @@ from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
 from torch.optim.lr_scheduler import LinearLR
 from experiments.monitor import detect_nans
-
+import copy
 
 class PPORLHFTrainer(BaseTrainer):
     @profile
@@ -46,7 +46,8 @@ class PPORLHFTrainer(BaseTrainer):
         self.value_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
-        self.sft_model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
+        # self.sft_model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
+        self.sft_model = copy.deepcopy(self.policy_model).to(self.device).requires_grad_(False)
         self.reward_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
 
         # Class members
