@@ -346,6 +346,5 @@ class RLHFEnvironment(BaseEnvironment):
 
             policy_model.train()
             value_model.train()
-            sft_model.train()
 
             return tj

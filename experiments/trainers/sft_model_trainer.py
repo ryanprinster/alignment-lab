@@ -153,6 +153,8 @@ class SFTTrainer(BaseTrainer):
                     sft_gen_ids, _ = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)
                     gpt_gen_ids, _ = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)
 
+                    pdb.set_trace()
+
                     gpt_text = self.data.tokenizer.decode(gpt_gen_ids[0]).split('TL;DR:')[-1]
                     sft_text = self.data.tokenizer.decode(sft_gen_ids[0]).split('TL;DR:')[-1]
 
