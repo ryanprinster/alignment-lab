@@ -19,6 +19,9 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torch.amp import GradScaler, autocast
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.deterministic = True
+torch.manual_seed(42) 
 
 from experiments.logger import Logger
 from experiments.environment import RLHFEnvironment
@@ -33,6 +36,7 @@ from experiments.trainers.base_trainer import BaseTrainer
 from torch.optim.lr_scheduler import LinearLR
 from experiments.monitor import detect_nans
 import copy
+
 
 class PPORLHFTrainer(BaseTrainer):
     @profile
