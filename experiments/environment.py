@@ -253,7 +253,10 @@ class RLHFEnvironment(BaseEnvironment):
                             temp,
                             reward_model = None):
         with torch.no_grad():
-            
+
+            torch.backends.cudnn.deterministic = True
+            torch.manual_seed(42)
+
             policy_model.eval()
             value_model.eval()
             sft_model.eval()
