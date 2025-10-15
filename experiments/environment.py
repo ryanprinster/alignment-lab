@@ -267,40 +267,36 @@ class RLHFEnvironment(BaseEnvironment):
                 batch,
                 self.max_sequence_length,
                 temp,
+                do_sample=False
             )
 
-            _sft_tokens, sft_policy_logits = sft_model.generate(
-                batch,
-                self.max_sequence_length,
-                temp,
+            sft_policy_logits, _ = sft_model.forward(
+                states
             )
+
 
             pdb.set_trace()
 
-            policy_response_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
-            _sft_reponse_length = _sft_tokens.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
-
-            if policy_response_length != _sft_reponse_length:
-                raise ValueError(f"policy response length {policy_response_length} does not sft response length {_sft_reponse_length}")
+            respose_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
             values = value_model.forward(states, batch['attention_mask'])
 
             rewards = reward_model.forward(states, batch['attention_mask'])
             
 
-            states = states[:,-policy_response_length:]
+            states = states[:,-respose_length:]
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
             states = self.set_pad_after_eos(states, tokenizer)
     
             mask = self.construct_mask(states, tokenizer)
 
-            values = values[:,-policy_response_length:] * mask
+            values = values[:,-respose_length:] * mask
 
-            policy_logits = policy_logits[:,-policy_response_length:,:] # don't mask yet
-            sft_policy_logits = sft_policy_logits[:,-_sft_reponse_length:,:] # don't mask yet
+            policy_logits = policy_logits[:,-respose_length:,:] # don't mask yet
+            sft_policy_logits = sft_policy_logits[:,-respose_length:,:] # don't mask yet
             policies = masked_softmax(policy_logits, mask.unsqueeze(2), dim=-1)
 
-            rewards = rewards[:,-policy_response_length:]
+            rewards = rewards[:,-respose_length:]
             reward_mask = (states == tokenizer.eos_token_id)
             
             rewards = rewards * reward_mask
@@ -331,7 +327,7 @@ class RLHFEnvironment(BaseEnvironment):
 
             tj = Trajectory(init_state=states.unsqueeze(-1), 
                     action_dim=self.action_dim,
-                    max_sequence_length=policy_response_length,
+                    max_sequence_length=respose_length,
                     pad_token_id=self.data.tokenizer.pad_token_id,
                     policies=policies,
                     values=values,
