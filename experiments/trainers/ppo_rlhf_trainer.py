@@ -89,13 +89,17 @@ class PPORLHFTrainer(BaseTrainer):
 
     @detect_nans
     def compute_value_loss_mse(self, R, new_values):
+        # TODO: Masking
+
         loss_value = torch.mean(F.mse_loss(new_values, R))
         return loss_value
 
     @detect_nans
-    def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies):
+    def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies, mask):
         old_probs = old_probs.detach()
         A = A.detach()
+
+        # TODO: Masking
 
         pdb.set_trace()
         
@@ -195,6 +199,7 @@ class PPORLHFTrainer(BaseTrainer):
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
                             new_values, new_policies = self._forward(states)
+                            # TODO: Reconcile full policy here vs top_p in generation
 
                             # 2.1 Compute mse loss for value model
                             loss_value = self.compute_value_loss_mse(R, new_values)
