@@ -278,9 +278,6 @@ class RLHFEnvironment(BaseEnvironment):
             )
 
 
-            # TODO: check KL div
-            # TODO: investigate why model has mostly -inf outputs
-
             respose_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
             values = value_model.forward(states, batch['attention_mask'])
@@ -327,6 +324,9 @@ class RLHFEnvironment(BaseEnvironment):
                                                    pad_mask=mask,
                                                    reward_mask=reward_mask)
             pdb.set_trace()
+            # TODO: investigate why model has mostly -inf outputs
+
+            
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
 
