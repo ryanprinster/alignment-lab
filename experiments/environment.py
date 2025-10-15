@@ -199,14 +199,15 @@ class RLHFEnvironment(BaseEnvironment):
         Averages kl over action_space = vocab_size space, and over sequence space.
         """
         pad_mask_3d = pad_mask.unsqueeze(2)
+        pdb.set_trace() 
+
 
         log_P = masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
         # P = policies.masked_fill(~pad_mask_3d, 0)
         P = torch.exp(log_P).masked_fill(~pad_mask_3d, 0)
         log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
-        kl_div = torch.sum((P * (log_P - log_Q)), pad_mask_3d, dim=(1,2))
+        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=(1,2))
 
-        pdb.set_trace() 
         # TODO: verify masked_log_softmax works as intendend
         has_reward_mask = (rewards != 0)
         kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
