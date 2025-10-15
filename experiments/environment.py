@@ -321,7 +321,7 @@ class RLHFEnvironment(BaseEnvironment):
                                                    policy_logits=policy_logits, 
                                                    policies=policies, 
                                                    sft_policy_logits=sft_policy_logits, 
-                                                   mask=mask, 
+                                                   pad_mask=mask, 
                                                    reward_mask=reward_mask)
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
