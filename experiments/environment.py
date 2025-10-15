@@ -199,8 +199,6 @@ class RLHFEnvironment(BaseEnvironment):
         Averages kl over action_space = vocab_size space, and over sequence space.
         """
         pad_mask_3d = pad_mask.unsqueeze(2)
-        pdb.set_trace() 
-
 
         log_P = masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
         # P = policies.masked_fill(~pad_mask_3d, 0)
@@ -328,6 +326,7 @@ class RLHFEnvironment(BaseEnvironment):
                                                    sft_policy_logits=sft_policy_logits, 
                                                    pad_mask=mask,
                                                    reward_mask=reward_mask)
+            pdb.set_trace()
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
 
