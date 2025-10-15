@@ -101,6 +101,8 @@ class Trajectory():
         V = self.values.detach()
         r = self.rewards
 
+        pdb.set_trace()
+
         # 1. Compute delta_t (TD Error)
         V_next = torch.cat([V[:,1:], torch.zeros(self.batch_size, 1, device=self.device)], dim=time_dim) # Assumes V(s_{T+1}) = 0 TODO: is this a good assumption for LLMs
         TD_error = r + gamma * V_next - V

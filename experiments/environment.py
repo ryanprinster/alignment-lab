@@ -198,6 +198,12 @@ class RLHFEnvironment(BaseEnvironment):
         """
         Averages kl over action_space = vocab_size space, and over sequence space.
         """
+        # NOTE: KL could be computed in different ways. 
+        # - KL of the full distribution, on the top_p or top_k, or just actions taken.
+        # - KL could be averaged or summed across the sequence dimension. 
+        # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
+
+
         pad_mask_3d = pad_mask.unsqueeze(2)
 
         log_P = masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
@@ -214,7 +220,7 @@ class RLHFEnvironment(BaseEnvironment):
         # TODO: verify masked_log_softmax works as intendend
         kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
 
-        return rewards - self.config.beta * (kl_div * reward_mask)
+        return rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
 
     def set_pad_after_eos(self, states, tokenizer):
         eos_mask = (states == tokenizer.eos_token_id)
@@ -325,8 +331,9 @@ class RLHFEnvironment(BaseEnvironment):
                                                    reward_mask=reward_mask)
             pdb.set_trace()
             # TODO: investigate why model has mostly -inf outputs
+            # top_p or top_k?
 
-            
+
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
 

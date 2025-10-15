@@ -101,7 +101,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
 
     @profile
     def generate(self, inputs, max_length, temp, do_sample=True):
-        # generate autoregressively
+        # NOTE: generation currently does top_p = 0.9 by default. Pros and cons to this as a design choice.
 
         generation_obj = self.transformer.generate(
             input_ids=inputs['input_ids'],
