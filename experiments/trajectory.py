@@ -77,8 +77,10 @@ class Trajectory():
             raise ValueError("rewards is not set, set non-zero rewards attribute first")
 
         time_dim = Trajectory.TIME_DIM
-
         r = self.rewards
+
+        pdb.set_trace()
+
         r_rev = torch.flip(r, dims=[time_dim])
         discounts_rev = torch.ones_like(self.rewards, device=self.device) * gamma * self._mask.flip(dims=[time_dim])
         discounts_rev = torch.cumprod(discounts_rev,dim=time_dim) / gamma
@@ -101,18 +103,18 @@ class Trajectory():
         V = self.values.detach()
         r = self.rewards
 
-        pdb.set_trace()
-
         # 1. Compute delta_t (TD Error)
         V_next = torch.cat([V[:,1:], torch.zeros(self.batch_size, 1, device=self.device)], dim=time_dim) # Assumes V(s_{T+1}) = 0 TODO: is this a good assumption for LLMs
         TD_error = r + gamma * V_next - V
 
         # 2. Get discounts 
-        TD_rev = TD_error.flip(dims=[time_dim]) 
-        discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma * self._mask.flip(dims=[time_dim])
+        discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
+        discounts_rev = discounts_rev.masked_fill(~self._mask.flip(dims=[time_dim]), 1)        
         discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
+        discounts_rev = discounts_rev.masked_fill(~self._mask.flip(dims=[time_dim]), 0)
         
         # 3. Calculate GAE via cumulative sum in reverse
+        TD_rev = TD_error.flip(dims=[time_dim]) 
         A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
         self._A = torch.flip(A_rev, dims=[time_dim])
 
