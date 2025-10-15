@@ -206,13 +206,17 @@ class RLHFEnvironment(BaseEnvironment):
         # P = policies.masked_fill(~pad_mask_3d, 0)
         P = torch.exp(log_P).masked_fill(~pad_mask_3d, 0)
         log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
-        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=(1,2))
+
+        kl_div_totals = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=-1)
+        kl_div = masked_mean(kl_div_totals, pad_mask, dim=-1)
+        # The math technically says to sum over both dims, but averaging over time makes sense for initial stability
+        # and is also tunable by beta.
+
 
         # TODO: verify masked_log_softmax works as intendend
-        has_reward_mask = (rewards != 0)
         kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
 
-        return rewards - self.config.beta * (kl_div * has_reward_mask)
+        return rewards - self.config.beta * (kl_div * reward_mask)
 
     def set_pad_after_eos(self, states, tokenizer):
         eos_mask = (states == tokenizer.eos_token_id)
@@ -322,7 +326,7 @@ class RLHFEnvironment(BaseEnvironment):
                                                    policy_logits=policy_logits, 
                                                    policies=policies, 
                                                    sft_policy_logits=sft_policy_logits, 
-                                                   pad_mask=mask, 
+                                                   pad_mask=mask,
                                                    reward_mask=reward_mask)
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
