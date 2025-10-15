@@ -345,7 +345,7 @@ class RLHFEnvironment(BaseEnvironment):
                     values=values,
                     rewards=rewards)
 
-
+            # TODO: Triple check that rewards should be zero at all (before and after) non-eos tokens
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
             tj.compute_R(gamma=self.config.gamma)
             tj.actions = states

@@ -81,9 +81,13 @@ class Trajectory():
 
         pdb.set_trace()
 
-        r_rev = torch.flip(r, dims=[time_dim])
-        discounts_rev = torch.ones_like(self.rewards, device=self.device) * gamma * self._mask.flip(dims=[time_dim])
+        # Get discounts
+        discounts_rev = torch.ones_like(self.rewards, device=self.device) * gamma 
+        discounts_rev = discounts_rev.masked_fill(~self._mask.flip(dims=[time_dim]), 1)
         discounts_rev = torch.cumprod(discounts_rev,dim=time_dim) / gamma
+        discounts_rev = discounts_rev.masked_fill(~self._mask.flip(dims=[time_dim]), 0)
+
+        r_rev = torch.flip(r, dims=[time_dim])
         R_rev = torch.cumsum(discounts_rev * r_rev, dim=time_dim)
         self._R = torch.flip(R_rev, dims=[time_dim])
         return self.R
