@@ -96,6 +96,8 @@ class PPORLHFTrainer(BaseTrainer):
     def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies):
         old_probs = old_probs.detach()
         A = A.detach()
+
+        pdb.set_trace()
         
         new_probs = torch.gather(new_policies, 2, old_actions.long().unsqueeze(1)).squeeze(1)
         r = new_probs / old_probs
