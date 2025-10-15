@@ -316,9 +316,6 @@ class RLHFEnvironment(BaseEnvironment):
                 2. use reward mask to get reward @ eos tokens
             reward @ eos tokens
             whiten over batch <- note that this could come after KL penalty too, following implementation tho
-
-            
-
             """
             
             # Detail 12 (RM Training -> Extract reward from the EOS token)
@@ -329,7 +326,6 @@ class RLHFEnvironment(BaseEnvironment):
                                                    sft_policy_logits=sft_policy_logits, 
                                                    pad_mask=mask,
                                                    reward_mask=reward_mask)
-            pdb.set_trace()
             # TODO: investigate why model has mostly -inf outputs
             # top_p or top_k?
 

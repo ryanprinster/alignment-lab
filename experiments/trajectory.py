@@ -71,15 +71,17 @@ class Trajectory():
             self.A
         )
 
-    # Calculate discounted rewards, aka rewards to go
+   
     def compute_R(self, gamma):
+        """ 
+        Calculates discounted rewards, aka rewards to go
+        """
+
         if torch.all(self.rewards == 0).item():
             raise ValueError("rewards is not set, set non-zero rewards attribute first")
 
         time_dim = Trajectory.TIME_DIM
         r = self.rewards
-
-        pdb.set_trace()
 
         # Get discounts
         discounts_rev = torch.ones_like(self.rewards, device=self.device) * gamma 
@@ -87,6 +89,7 @@ class Trajectory():
         discounts_rev = torch.cumprod(discounts_rev,dim=time_dim) / gamma
         discounts_rev = discounts_rev.masked_fill(~self._mask.flip(dims=[time_dim]), 0)
 
+        # Calculate
         r_rev = torch.flip(r, dims=[time_dim])
         R_rev = torch.cumsum(discounts_rev * r_rev, dim=time_dim)
         self._R = torch.flip(R_rev, dims=[time_dim])
