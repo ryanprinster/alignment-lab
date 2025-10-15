@@ -275,8 +275,6 @@ class RLHFEnvironment(BaseEnvironment):
             )
 
 
-            pdb.set_trace()
-            # TODO: set sft_policy_logits to be same lengh
             # TODO: check KL div
             # TODO: investigate why model has mostly -inf outputs
 
