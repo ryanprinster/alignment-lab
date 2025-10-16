@@ -89,9 +89,7 @@ class PPORLHFTrainer(BaseTrainer):
 
     @detect_nans
     def compute_value_loss_mse(self, R, new_values, mask):
-        # TODO: Masking
-        pdb.set_trace()
-
+        
         loss_value = masked_mean((new_values - R) ** 2, mask)
         return loss_value
 
@@ -99,26 +97,18 @@ class PPORLHFTrainer(BaseTrainer):
     def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies, mask):
         old_probs = old_probs.detach()
         A = A.detach()
-
-        # TODO: Double check math
-
-        pdb.set_trace()
         
         new_probs = torch.gather(new_policies, 2, old_actions.long().unsqueeze(1)).squeeze(1)
         r = new_probs / old_probs
         r = r.masked_fill(~mask, 0)
 
         # Compute ppo loss
-        loss_ppo = torch.min(r * A, \
-                            torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
+        loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
         loss_ppo = -masked_mean(loss_ppo, mask)
 
         # Entropy regularization
-        entropy = -masked_mean(new_policies * torch.log2(new_policies), mask)
+        entropy = -masked_mean(new_policies * torch.log(new_policies), mask.unsqueeze(2))
         loss_ppo -= self.config.beta * entropy
-        
-        # Problem 1: we need a mask
-        # Problem 2: Advantages are all zero
 
         return loss_ppo, entropy
     
