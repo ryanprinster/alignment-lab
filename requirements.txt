@@ -4,3 +4,4 @@ datasets>=2.12.0
 tensorboard>=2.12.0
 psutil>=5.9.0
 gymnasium>=0.29.0
+hf-transfer>=0.1.0

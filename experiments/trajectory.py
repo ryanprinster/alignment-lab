@@ -172,6 +172,13 @@ class Trajectory():
     @property
     def mask(self):
         return self._mask
+    
+    @mask.setter
+    def mask(self, new_mask):
+        new_mask = torch.as_tensor(new_mask, device=self._actions.device, dtype=self._actions.dtype)
+        if new_mask.shape != self._mask.shape:
+            raise ValueError(f"Mask shape {new_mask.shape} doesn't match expected {self._mask.shape}")
+        self._mask = new_mask
 
     @property
     def states(self):
@@ -303,7 +310,8 @@ class TrajectorySet(Dataset):
             self._tjs.values[idx,:], \
             self._tjs.probs[idx,:], \
             self._tjs.R[idx,:], \
-            self._tjs.A[idx,:]
+            self._tjs.A[idx,:], \
+            self._tjs.mask[idx,:]
 
 # TODO: Make another TrajectorySet which shuffles the time dimension 
 # into the batch dimension for cartpole or non-sequence environments

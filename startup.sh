@@ -1,4 +1,7 @@
-cd /workspace/alignment-lab && git pull && python -m pip install -r requirements.txt && huggingface-cli login
+# cd /workspace/alignment-lab && git pull && python -m pip install -r requirements.txt && huggingface-cli login
+cd /workspace/alignment-lab && git pull && python -m pip install -r requirements.txt && hf auth login
+
+
 
 
 
