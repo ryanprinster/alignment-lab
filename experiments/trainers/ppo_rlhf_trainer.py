@@ -24,7 +24,7 @@ from experiments.logger import Logger
 from experiments.environment import RLHFEnvironment
 from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
-
+from experiments.environment import masked_mean
 
 from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
 from experiments.trajectory import Trajectory, TrajectorySet
@@ -92,7 +92,7 @@ class PPORLHFTrainer(BaseTrainer):
         # TODO: Masking
         pdb.set_trace()
 
-        loss_value = torch.mean(F.mse_loss(new_values, R))
+        loss_value = masked_mean((new_values - R) ** 2, mask)
         return loss_value
 
     @detect_nans
@@ -100,20 +100,21 @@ class PPORLHFTrainer(BaseTrainer):
         old_probs = old_probs.detach()
         A = A.detach()
 
-        # TODO: Masking
+        # TODO: Double check math
 
         pdb.set_trace()
         
         new_probs = torch.gather(new_policies, 2, old_actions.long().unsqueeze(1)).squeeze(1)
         r = new_probs / old_probs
+        r = r.masked_fill(~mask, 0)
 
         # Compute ppo loss
         loss_ppo = torch.min(r * A, \
                             torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
-        loss_ppo = -torch.mean(loss_ppo)
+        loss_ppo = -masked_mean(loss_ppo, mask)
 
         # Entropy regularization
-        entropy = -torch.mean(new_policies * torch.log2(new_policies))
+        entropy = -masked_mean(new_policies * torch.log2(new_policies), mask)
         loss_ppo -= self.config.beta * entropy
         
         # Problem 1: we need a mask
