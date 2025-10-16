@@ -68,7 +68,8 @@ class Trajectory():
             self.values,
             self.probs,
             self.R,
-            self.A
+            self.A,
+            self.mask
         )
 
    
@@ -136,21 +137,21 @@ class Trajectory():
         self._probs = torch.gather(self.policies, dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
         return self.probs
     
-    def whiten_rewards(self):
-        self._rewards = self._whiten(self._rewards)
-        return self._rewards
+    # def whiten_rewards(self):
+    #     self._rewards = self._whiten(self._rewards)
+    #     return self._rewards
 
-    def whiten_advantages(self):
-        self._A = self._whiten(self._A)
-        return self._A
+    # def whiten_advantages(self):
+    #     self._A = self._whiten(self._A)
+    #     return self._A
 
-    # Taken from https://arxiv.org/pdf/2403.17031
-    def _whiten(self, values, shift_mean=True):
-        mean, var = torch.mean(values), torch.var(values, unbiased=False)
-        whitened = (values - mean) * torch.rsqrt(var + 1e-8)
-        if not shift_mean:
-            whitened += mean
-        return whitened
+    # # Taken from https://arxiv.org/pdf/2403.17031
+    # def _whiten(self, values, shift_mean=True):
+    #     mean, var = torch.mean(values), torch.var(values, unbiased=False)
+    #     whitened = (values - mean) * torch.rsqrt(var + 1e-8)
+    #     if not shift_mean:
+    #         whitened += mean
+    #     return whitened
     
     # def __len__(self):
     #     # TODO: Decide what exactly length should return here

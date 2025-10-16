@@ -88,8 +88,9 @@ class PPORLHFTrainer(BaseTrainer):
         return new_values, new_policies
 
     @detect_nans
-    def compute_value_loss_mse(self, R, new_values):
+    def compute_value_loss_mse(self, R, new_values, mask):
         # TODO: Masking
+        pdb.set_trace()
 
         loss_value = torch.mean(F.mse_loss(new_values, R))
         return loss_value
@@ -190,9 +191,7 @@ class PPORLHFTrainer(BaseTrainer):
                 for k in range(self.config.K):
                     # Update new policy for each minibatch
 
-                    self._zero_grad(self.optimizer_policy, self.optimizer_value)
-
-                    for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A) in enumerate(tj_loader):
+                    for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A, mask) in enumerate(tj_loader):
 
                         self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
@@ -202,10 +201,10 @@ class PPORLHFTrainer(BaseTrainer):
                             # TODO: Reconcile full policy here vs top_p in generation
 
                             # 2.1 Compute mse loss for value model
-                            loss_value = self.compute_value_loss_mse(R, new_values)
+                            loss_value = self.compute_value_loss_mse(R, new_values, mask)
                 
                             # 2.2 Compute ppo loss for policy model
-                            loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies)
+                            loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies, mask)
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)

@@ -326,8 +326,6 @@ class RLHFEnvironment(BaseEnvironment):
                                                    sft_policy_logits=sft_policy_logits, 
                                                    pad_mask=mask,
                                                    reward_mask=reward_mask)
-            # TODO: investigate why model has mostly -inf outputs
-            # top_p or top_k?
 
 
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
@@ -341,7 +339,6 @@ class RLHFEnvironment(BaseEnvironment):
                     values=values,
                     rewards=rewards)
 
-            # TODO: Triple check that rewards should be zero at all (before and after) non-eos tokens
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
             tj.compute_R(gamma=self.config.gamma)
             tj.actions = states
