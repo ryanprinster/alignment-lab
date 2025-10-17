@@ -130,9 +130,9 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         )
         del sequences
 
-        policy_logits = torch.stack(scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
-        policy_logits = policy_logits.half() # float32 -> float16
+        policy_logits = torch.stack(scores, dim=1)
         del scores
+        policy_logits = policy_logits.half() # float32 -> float16
         policy_logits = torch.nn.functional.pad(
             policy_logits,
             (0, 0, 0, max_length - policy_logits.size(1)),
@@ -140,7 +140,8 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         )
         policy_logits = self.clean_logits(policy_logits)
 
-        pdb.set_trace()
+        # Can we only generate the last 50?
+
         return padded_tokens, policy_logits
 
     @profile
