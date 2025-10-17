@@ -9,7 +9,9 @@ class Profiler():
     stats = defaultdict(lambda: 
                         {"calls": 0, 
                          "time": 0.0, 
-                         "gpu_mem": 0.0,
+                         "gpu_mem_res": 0.0,
+                         "gpu_mem_peak_delta": 0.0,
+                         "gpu_mem_final_delta": 0.0,
                          "cpu_mem": 0.0,
                          })
 
@@ -40,7 +42,9 @@ class Profiler():
 
                 cls.stats[func.__name__]["calls"] += 1
                 cls.stats[func.__name__]["time"] += elapsed_time
-                cls.stats[func.__name__]["gpu_mem"] += reserved_mem_added   
+                cls.stats[func.__name__]["gpu_mem_res"] += reserved_mem_added   
+                cls.stats[func.__name__]["gpu_mem_peak_delta"] += peak_allocated_gpu_mem_delta
+                cls.stats[func.__name__]["gpu_mem_final_delta"] += final_allocated_gpu_mem_delta
                 cls.stats[func.__name__]["cpu_mem"] += cpu_mem_added
 
                 print(f"[PROFILE] func {func.__name__}(...)"
@@ -60,13 +64,17 @@ class Profiler():
 
         for func, stats in self.stats.items():
             avg_time = stats["time"] / stats["calls"] if stats["calls"] else 0.0
-            avg_gpu_mem = stats["gpu_mem"] / stats["calls"] if stats["calls"] else 0.0
+            avg_gpu_mem = stats["gpu_mem_res"] / stats["calls"] if stats["calls"] else 0.0
+            avg_gpu_mem_peak = stats["gpu_mem_peak_delta"] / stats["calls"] if stats["calls"] else 0.0
+            avg_gpu_mem_final = stats["gpu_mem_final_delta"] / stats["calls"] if stats["calls"] else 0.0
             avg_cpu_mem = stats["cpu_mem"] / stats["calls"] if stats["calls"] else 0.0
             
             print(
                 f"{func}: calls={stats['calls']}    "
                 f"total_time={stats['time']:.4f}s avg_time={avg_time:.4f}s    "
-                f"avg_gpu_mem={avg_gpu_mem:.3f}GB    "
+                f"avg_gpu_mem={avg_gpu_mem:.3f}GiB    "
+                f"avg_gpu_mem_peak_delta={avg_gpu_mem_peak:.3f}GiB    "
+                f"avg_gpu_mem_final_delta={avg_gpu_mem_final:.3f}GiB    "
                 f"avg_cpu_mem={avg_cpu_mem:.3f}%    "
             )
         print(f"===============================\n\n")
