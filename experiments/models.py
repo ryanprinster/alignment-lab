@@ -139,6 +139,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         )
         policy_logits = self.clean_logits(policy_logits)
 
+        pdb.set_trace()
         return padded_tokens, policy_logits
 
     @profile
