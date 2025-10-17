@@ -10,6 +10,7 @@ class Profiler():
                         {"calls": 0, 
                          "time": 0.0, 
                          "gpu_mem_res": 0.0,
+                         "gpu_mem_peak": 0.0,
                          "gpu_mem_peak_delta": 0.0,
                          "gpu_mem_final_delta": 0.0,
                          "cpu_mem": 0.0,
@@ -50,18 +51,21 @@ class Profiler():
                 cls.stats[func_name]["calls"] += 1
                 cls.stats[func_name]["time"] += elapsed_time
                 cls.stats[func_name]["gpu_mem_res"] += reserved_mem_added   
+                cls.stats[func_name]["gpu_mem_peak"] += peak_allocated_gpu_mem
                 cls.stats[func_name]["gpu_mem_peak_delta"] += peak_allocated_gpu_mem_delta
                 cls.stats[func_name]["gpu_mem_final_delta"] += final_allocated_gpu_mem_delta
                 cls.stats[func_name]["cpu_mem"] += cpu_mem_added
 
                 print(f"[PROFILE] func {func_name}(...)"
-                      f"    execution time: {elapsed_time:.4f}s "
-                      f"    peak gpu mem increase: {peak_allocated_gpu_mem_delta:.2f}GiB"
-                      f"    persistent gpu mem increase: {final_allocated_gpu_mem_delta:.2f}GiB"
-                      f"    gpu mem reserved: {reserved_mem_added:.2f}GiB")
+                      f"    execution time: {elapsed_time:.4f}s\n"
+                      f"    abs peak gpu mem: {peak_allocated_gpu_mem:.2f}GiB\n"
+                      f"    peak gpu mem increase: {peak_allocated_gpu_mem_delta:.2f}GiB\n"
+                      f"    persistent gpu mem increase: {final_allocated_gpu_mem_delta:.2f}GiB\n"
+                    #   f"    gpu mem reserved: {reserved_mem_added:.2f}GiB"
+                      )
 
                 if final_allocated_gpu_mem_delta > 0.01: # ~10 MB
-                    print(f"        ⚠️ Possible Leak!")
+                    print(f"        ⚠️ Possible Leak!\n")
                 
         return wrapper
     
@@ -72,7 +76,8 @@ class Profiler():
         for func, stats in self.stats.items():
             avg_time = stats["time"] / stats["calls"] if stats["calls"] else 0.0
             avg_gpu_mem = stats["gpu_mem_res"] / stats["calls"] if stats["calls"] else 0.0
-            avg_gpu_mem_peak = stats["gpu_mem_peak_delta"] / stats["calls"] if stats["calls"] else 0.0
+            avg_gpu_mem_peak = stats["gpu_mem_peak"] / stats["calls"] if stats["calls"] else 0.0
+            avg_gpu_mem_peak_delta = stats["gpu_mem_peak_delta"] / stats["calls"] if stats["calls"] else 0.0
             avg_gpu_mem_final = stats["gpu_mem_final_delta"] / stats["calls"] if stats["calls"] else 0.0
             avg_cpu_mem = stats["cpu_mem"] / stats["calls"] if stats["calls"] else 0.0
             
@@ -80,7 +85,8 @@ class Profiler():
                 f"{func}: calls={stats['calls']}    "
                 f"total_time={stats['time']:.4f}s avg_time={avg_time:.4f}s    "
                 f"avg_gpu_mem={avg_gpu_mem:.3f}GiB    "
-                f"avg_gpu_mem_peak_delta={avg_gpu_mem_peak:.3f}GiB    "
+                f"avg_gpu_mem_peak={avg_gpu_mem_peak:.3f}GiB    "
+                f"avg_gpu_mem_peak_delta={avg_gpu_mem_peak_delta:.3f}GiB    "
                 f"avg_gpu_mem_final_delta={avg_gpu_mem_final:.3f}GiB    "
                 f"avg_cpu_mem={avg_cpu_mem:.3f}%    "
             )
