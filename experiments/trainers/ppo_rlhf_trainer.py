@@ -236,7 +236,7 @@ class PPORLHFTrainer(BaseTrainer):
                         [x] Needed to manually enforce 
                         """
 
-
+                        pdb.set_trace() # get rewards shape? Do I need to mask?
 
                         # Logging
                         self.logger.log(
@@ -247,7 +247,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 "global_step": self.global_step,
                                 "A": torch.mean(A).item(),
                                 "policy_entropy": entropy.item(),
-                                "total_reward": torch.sum(rewards).item(),
+                                "total_reward": torch.mean(rewards).item(),
                                 "batch_idx": batch_idx,
                                 "k": k,
                                 "global_step": self.global_step
