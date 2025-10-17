@@ -19,6 +19,13 @@ class Profiler():
     def profile(cls, func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            # Get class name
+            if args and hasattr(args[0], '__class__'):
+                class_name = args[0].__class__.__name__
+                func_name = f"{class_name}.{func.__name__}"
+            else:
+                func_name = func.__name__
+            
             start_time = time.time()
             start_reserved_gpu_mem = torch.cuda.memory_reserved() / 1024**3
             start_unavailable_cpu_mem_pct = psutil.virtual_memory().percent
@@ -40,14 +47,14 @@ class Profiler():
                 peak_allocated_gpu_mem_delta = peak_allocated_gpu_mem - start_allocated_gpu_mem
                 final_allocated_gpu_mem_delta = end_allocated_gpu_mem - start_allocated_gpu_mem
 
-                cls.stats[func.__name__]["calls"] += 1
-                cls.stats[func.__name__]["time"] += elapsed_time
-                cls.stats[func.__name__]["gpu_mem_res"] += reserved_mem_added   
-                cls.stats[func.__name__]["gpu_mem_peak_delta"] += peak_allocated_gpu_mem_delta
-                cls.stats[func.__name__]["gpu_mem_final_delta"] += final_allocated_gpu_mem_delta
-                cls.stats[func.__name__]["cpu_mem"] += cpu_mem_added
+                cls.stats[func_name]["calls"] += 1
+                cls.stats[func_name]["time"] += elapsed_time
+                cls.stats[func_name]["gpu_mem_res"] += reserved_mem_added   
+                cls.stats[func_name]["gpu_mem_peak_delta"] += peak_allocated_gpu_mem_delta
+                cls.stats[func_name]["gpu_mem_final_delta"] += final_allocated_gpu_mem_delta
+                cls.stats[func_name]["cpu_mem"] += cpu_mem_added
 
-                print(f"[PROFILE] func {func.__name__}(...)"
+                print(f"[PROFILE] func {func_name}(...)"
                       f"    execution time: {elapsed_time:.4f}s "
                       f"    peak gpu mem increase: {peak_allocated_gpu_mem_delta:.2f}GiB"
                       f"    persistent gpu mem increase: {final_allocated_gpu_mem_delta:.2f}GiB"
