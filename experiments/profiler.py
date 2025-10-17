@@ -20,6 +20,8 @@ class Profiler():
             start_time = time.time()
             start_reserved_gpu_mem = torch.cuda.memory_reserved() / 1024**3
             start_unavailable_cpu_mem_pct = psutil.virtual_memory().percent
+            torch.cuda.reset_peak_memory_stats()
+            start_allocated_gpu_mem = torch.cuda.memory_allocated() / 1024**3
 
             try:
                 return func(*args, **kwargs)
@@ -27,19 +29,28 @@ class Profiler():
                 end_time = time.time()
                 end_reserved_gpu_mem = torch.cuda.memory_reserved() / 1024**3
                 end_unavailable_cpu_mem_pct = psutil.virtual_memory().percent
+                peak_allocated_gpu_mem = torch.cuda.max_memory_allocated() / (1024**3)
+                end_allocated_gpu_mem = torch.cuda.memory_allocated() / (1024**3)
 
                 elapsed_time = end_time - start_time
                 reserved_mem_added = end_reserved_gpu_mem - start_reserved_gpu_mem
                 cpu_mem_added = end_unavailable_cpu_mem_pct - start_unavailable_cpu_mem_pct
+                peak_allocated_gpu_mem_delta = peak_allocated_gpu_mem - start_allocated_gpu_mem
+                final_allocated_gpu_mem_delta = end_allocated_gpu_mem - start_allocated_gpu_mem
 
                 cls.stats[func.__name__]["calls"] += 1
                 cls.stats[func.__name__]["time"] += elapsed_time
                 cls.stats[func.__name__]["gpu_mem"] += reserved_mem_added   
-                cls.stats[func.__name__]["cpu_mem"] += cpu_mem_added   
+                cls.stats[func.__name__]["cpu_mem"] += cpu_mem_added
 
                 print(f"[PROFILE] func {func.__name__}(...)"
                       f"    execution time: {elapsed_time:.4f}s "
-                      f"    gpu mem reserved: {reserved_mem_added:.1f}GB")
+                      f"    peak gpu mem increase: {peak_allocated_gpu_mem_delta:.2f}GiB"
+                      f"    persistent gpu mem increase: {final_allocated_gpu_mem_delta:.2f}GiB"
+                      f"    gpu mem reserved: {reserved_mem_added:.2f}GiB")
+
+                if final_allocated_gpu_mem_delta > 0.01: # ~10 MB
+                    print(f"        ⚠️ Possible Leak!")
                 
         return wrapper
     
