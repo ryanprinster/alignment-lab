@@ -124,6 +124,11 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         )
 
         policy_logits = torch.stack(generation_obj.scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
+        policy_logits = torch.nn.functional.pad(
+            policy_logits,
+            (0, 0, 0, max_length - policy_logits.size(1)),
+            value= -float('inf')
+        )
         policy_logits = self.clean_logits(policy_logits)
 
         return padded_tokens, policy_logits
