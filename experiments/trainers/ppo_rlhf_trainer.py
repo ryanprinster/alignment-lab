@@ -200,43 +200,7 @@ class PPORLHFTrainer(BaseTrainer):
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
                         self._step(self.optimizer_policy, self.optimizer_value)
-                    
-                        # TODO: 
-                        # 0. MSE Value does not change
-                        # 1. new_values probably only changes every batch of N trajectories, should it change? 
-                        #   No, since Nmb=1
-                        #   Actually yes, slightly, since foward pass should change
-                        #   Okay it does change a bit
-                        # 2. R should not change
-                        #   BUT R should probably not be all -1?
-                        #   --> rewards seems to be pretty constant, and reversed... 
-
-                        # Hypotheses
-                        """
-                        1. Something is wrong in generation of trajectory formatting rewards
-                            - rewards values looks sketchy
-                        1.1 Policy model is never generating EOS tokens, when it should be 
-                            - Loaded model has unset weights that F things up
-                        1.2 Operations on rewards not happening in correct order
-                            - Whitening of rewards should happen before computation of R, whitening of advantages should happen before GAE
-
-                        2. MSE + PPO loss not computed correctly
-                            - MSE value is always the same. If values is different, it shouldnt 
-                        3. Mixed precision issues
-                        4. Model not updating correctly
-
-                        --
-
-                        Rejected
-                        [x] The rewards model is not outputing the same reward for the same token 
-                            - is likely predicting autoregressively
-                        [x] Verified that the trained sft model IS outputing EOS tokens
-
-                        Verified
-                        [x] Needed to manually enforce 
-                        """
-
-                        pdb.set_trace() # get rewards shape? Do I need to mask?
+                
 
                         # Logging
                         self.logger.log(
@@ -245,9 +209,9 @@ class PPORLHFTrainer(BaseTrainer):
                                 "loss_ppo": loss_ppo.item(),
                                 "train_iter": epoch,
                                 "global_step": self.global_step,
-                                "A": torch.mean(A).item(),
+                                "A": masked_mean(A).item(),
                                 "policy_entropy": entropy.item(),
-                                "total_reward": torch.mean(rewards).item(),
+                                "total_reward": masked_mean(rewards).item(),
                                 "batch_idx": batch_idx,
                                 "k": k,
                                 "global_step": self.global_step
