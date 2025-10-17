@@ -89,6 +89,7 @@ class Profiler():
                 f"avg_gpu_mem_peak_delta={avg_gpu_mem_peak_delta:.3f}GiB    "
                 f"avg_gpu_mem_final_delta={avg_gpu_mem_final:.3f}GiB    "
                 f"avg_cpu_mem={avg_cpu_mem:.3f}%    "
+                f"\n"
             )
         print(f"===============================\n\n")
 
