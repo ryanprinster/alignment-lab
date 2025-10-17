@@ -219,6 +219,7 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
             num_labels=1
         )
 
+    @profile
     def forward(self, input_ids, attention_mask=None):
         # Forward parallel decode
 
