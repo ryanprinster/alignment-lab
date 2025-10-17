@@ -138,6 +138,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             value= -float('inf')
         )
         policy_logits = self.clean_logits(policy_logits)
+        policy_logits = policy_logits.half() # float32 -> float16
 
         pdb.set_trace()
         return padded_tokens, policy_logits
