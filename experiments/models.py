@@ -113,17 +113,23 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             output_scores=True
         )
 
+        sequences = generation_obj.sequences
+        scores = generation_obj.scores
+        del generation_obj
+
         # NOTE on Detail 23.1 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> Always sample a fixed amount of tokens) 
         # It is observed that forcing the model to continue to produce more after EOS token via min_length parameter
         # results in the model never producing EOS tokens. This might be changed if during SFT model training this behavior was trained in.
         # instead, we use the max length of a sequence in the batch, which is functionally very similar.  
         padded_tokens = torch.nn.functional.pad(
-            generation_obj.sequences,
-            (0, max_length - generation_obj.sequences.size(1)),
+            sequences,
+            (0, max_length - sequences.size(1)),
             value=self.tokenizer.pad_token_id
         )
+        del sequences
 
-        policy_logits = torch.stack(generation_obj.scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
+        policy_logits = torch.stack(scores, dim=1) #torch.softmax(torch_tensor, dim=-1)
+        del scores
         policy_logits = torch.nn.functional.pad(
             policy_logits,
             (0, 0, 0, max_length - policy_logits.size(1)),
