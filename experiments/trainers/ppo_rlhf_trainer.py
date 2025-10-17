@@ -85,8 +85,6 @@ class PPORLHFTrainer(BaseTrainer):
         new_policy_logits, _ = self.policy_model.forward(states)
         new_policies = torch.softmax(new_policy_logits, dim=-1)
 
-        pdb.set_trace()
-
         return new_values, new_policies
 
     @detect_nans

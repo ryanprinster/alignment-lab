@@ -145,7 +145,10 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         outputs = self.transformer(
             input_ids=input_ids.squeeze(-1),
             attention_mask=attention_mask.squeeze(-1),
-            labels=labels
+            labels=labels,
+            output_hidden_states=False,
+            output_attentions=False,
+            use_cache=False 
         )
         return outputs.logits, outputs.loss
 
