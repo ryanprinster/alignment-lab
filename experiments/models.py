@@ -110,7 +110,9 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             temperature=temp,
             do_sample=do_sample,
             return_dict_in_generate=True,
-            output_scores=True
+            output_scores=True,
+            output_attentions=False,
+            output_hidden_states=False,
         )
 
         sequences = generation_obj.sequences
