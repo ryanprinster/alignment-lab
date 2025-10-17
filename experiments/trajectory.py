@@ -4,6 +4,8 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import pdb
 import warnings
+from experiments.profiler import profile
+
 
 
 @dataclass
@@ -11,6 +13,7 @@ class Trajectory():
     BATCH_DIM, TIME_DIM = 0, 1
     TORCH_FIELDS = ['states', 'actions', 'rewards', 'policies', 'values', 'probs', 'R', 'A'] 
 
+    @profile
     def __init__(self, init_state, action_dim, max_sequence_length, values, policies, rewards, pad_token_id=None):
         """
         init_state - tensor of shape (batch_size, max_sequence_length, obs_dim)
@@ -72,7 +75,7 @@ class Trajectory():
             self.mask
         )
 
-   
+    @profile
     def compute_R(self, gamma):
         """ 
         Calculates discounted rewards, aka rewards to go
@@ -96,6 +99,7 @@ class Trajectory():
         self._R = torch.flip(R_rev, dims=[time_dim])
         return self.R
     
+    @profile
     def compute_gae(self, gamma, lam):
         
         if torch.all(self.rewards == 0).item():

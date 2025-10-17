@@ -194,6 +194,7 @@ class RLHFEnvironment(BaseEnvironment):
         return after_pad_mask
 
     @detect_nans
+    @profile
     def rewards_with_kl_penalty(self, rewards, policy_logits, policies, sft_policy_logits, pad_mask, reward_mask):
         """
         Averages kl over action_space = vocab_size space, and over sequence space.
@@ -222,6 +223,7 @@ class RLHFEnvironment(BaseEnvironment):
 
         return rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
 
+    @profile
     def set_pad_after_eos(self, states, tokenizer):
         eos_mask = (states == tokenizer.eos_token_id)
         first_eos_pos = torch.where(
@@ -236,6 +238,7 @@ class RLHFEnvironment(BaseEnvironment):
         states[after_eos_mask] = tokenizer.pad_token_id
         return states
     
+    @profile
     def set_reward_for_no_eos(self, states, rewards):
         """ Assumes rewards as been set to all zeros for a given trajectory if no eos token"""
         # TODO: remove above assumption
@@ -244,6 +247,7 @@ class RLHFEnvironment(BaseEnvironment):
         return rewards
 
     # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
+    @profile
     def whiten(self, values, mask, shift_mean=True):
         mean, var = masked_mean(values, mask), masked_var(values, mask, unbiased=False)
         whitened = (values - mean) * torch.rsqrt(var + 1e-8)
@@ -263,9 +267,6 @@ class RLHFEnvironment(BaseEnvironment):
                             reward_model = None):
         with torch.no_grad():
 
-            torch.backends.cudnn.deterministic = True
-            torch.manual_seed(42)
-
             policy_model.eval()
             value_model.eval()
             sft_model.eval()
@@ -276,13 +277,11 @@ class RLHFEnvironment(BaseEnvironment):
                 batch,
                 self.max_sequence_length,
                 temp,
-                do_sample=False
             )
 
             sft_policy_logits, _ = sft_model.forward(
                 states
             )
-
 
             respose_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
@@ -343,7 +342,6 @@ class RLHFEnvironment(BaseEnvironment):
             tj.compute_R(gamma=self.config.gamma)
             tj.actions = states
             tj.compute_probs()
-
 
             policy_model.train()
             value_model.train()

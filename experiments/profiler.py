@@ -63,9 +63,6 @@ class Profiler():
                       f"    persistent gpu mem increase: {final_allocated_gpu_mem_delta:.2f}GiB\n"
                     #   f"    gpu mem reserved: {reserved_mem_added:.2f}GiB"
                       )
-
-                if final_allocated_gpu_mem_delta > 0.01: # ~10 MB
-                    print(f"        ⚠️ Possible Leak!\n")
                 
         return wrapper
     
