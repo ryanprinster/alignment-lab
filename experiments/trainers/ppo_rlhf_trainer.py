@@ -209,9 +209,9 @@ class PPORLHFTrainer(BaseTrainer):
                                 "loss_ppo": loss_ppo.item(),
                                 "train_iter": epoch,
                                 "global_step": self.global_step,
-                                "A": masked_mean(A).item(),
+                                "A": masked_mean(A, mask).item(),
                                 "policy_entropy": entropy.item(),
-                                "total_reward": masked_mean(rewards).item(),
+                                "total_reward": masked_mean(rewards, mask).item(),
                                 "batch_idx": batch_idx,
                                 "k": k,
                                 "global_step": self.global_step
