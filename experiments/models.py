@@ -76,9 +76,10 @@ class Llama_3p2_1B(nn.Module, ABC):
     def generate(self, inputs, max_length, temp):
         pass
 
+    @profile
     def clean_logits(self, logits):
         # clean scores, -inf --> 1e-9
-        return torch.where(torch.isinf(logits), torch.tensor(1e-9, device=logits.device), logits)
+        return logits.masked_fill_(torch.isinf(logits), 1e-9)
     
     @profile
     def _init_model_weights(self):
