@@ -274,6 +274,7 @@ class RLHFEnvironment(BaseEnvironment):
                 batch,
                 self.max_sequence_length,
                 temp,
+                max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
             )
 
             sft_policy_logits, _ = sft_model.forward(

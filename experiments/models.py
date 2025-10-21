@@ -103,7 +103,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         self._init_model_weights()
 
     @profile
-    def generate(self, inputs, max_length, temp, do_sample=True):
+    def generate(self, inputs, max_length, temp, do_sample=True, max_query_length=None):
         # NOTE: generation currently does top_p = 0.9 by default. Pros and cons to this as a design choice.
 
         generation_obj = self.transformer.generate(
@@ -134,8 +134,16 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         del sequences
 
         policy_logits = torch.stack(scores, dim=1)
+        
+        # Truncate policy logits early to save memory
+        if max_query_length is not None:
+            respose_length = padded_tokens.shape[1] - max_query_length
+            policy_logits = policy_logits[:,-respose_length:,:]
+
         del scores
         policy_logits = policy_logits.half() # float32 -> float16
+
+        pdb.set_trace()
         policy_logits = torch.nn.functional.pad(
             policy_logits,
             (0, 0, 0, max_length - policy_logits.size(1)),
