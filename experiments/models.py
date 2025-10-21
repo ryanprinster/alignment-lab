@@ -143,7 +143,6 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         del scores
         policy_logits = policy_logits.half() # float32 -> float16
 
-        pdb.set_trace()
         policy_logits = torch.nn.functional.pad(
             policy_logits,
             (0, 0, 0, max_length - policy_logits.size(1)),
