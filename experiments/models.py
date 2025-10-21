@@ -79,6 +79,7 @@ class Llama_3p2_1B(nn.Module, ABC):
     @profile
     def clean_logits(self, logits):
         # clean scores, -inf --> 1e-9
+        pdb.set_trace()
         x = torch.isinf(logits)
         return logits.masked_fill_(x, 1e-9)
     
