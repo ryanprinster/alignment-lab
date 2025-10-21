@@ -119,7 +119,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         sequences = generation_obj.sequences
         scores = generation_obj.scores
         del generation_obj
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
 
         # NOTE on Detail 23.1 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> Always sample a fixed amount of tokens) 
         # It is observed that forcing the model to continue to produce more after EOS token via min_length parameter
@@ -131,7 +131,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             value=self.tokenizer.pad_token_id
         )
         del sequences
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
 
         policy_logits = torch.stack(scores, dim=1)
         
@@ -141,7 +141,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             policy_logits = policy_logits[:,-respose_length:,:]
 
         del scores
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
         policy_logits = policy_logits.half() # float32 -> float16
 
         policy_logits = torch.nn.functional.pad(

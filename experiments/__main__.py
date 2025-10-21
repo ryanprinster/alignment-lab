@@ -1,3 +1,6 @@
+import os # NOTE: make sure this is imported before torch
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
 from experiments.trainers.sft_model_trainer import SFTTrainer
 from experiments.trainers.rm_model_trainer import RMTrainer
 from experiments.runpod_utils import stop_runpod
@@ -7,10 +10,8 @@ import subprocess
 import sys
 import traceback
 from datetime import datetime
-import torch
 import typing
 
-import os
 import importlib
 import inspect
 from pathlib import Path
