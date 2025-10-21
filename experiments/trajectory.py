@@ -132,7 +132,7 @@ class Trajectory():
 
         return self.A
     
-    def compute_probs(self):
+    def compute_probs(self, policy_logits):
         if torch.all(self.actions == 0).item():
             raise ValueError("actions is not set, set non-zero actions attribute first")
         if torch.all(self.policies == 0).item():

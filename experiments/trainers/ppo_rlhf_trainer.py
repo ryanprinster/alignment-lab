@@ -89,7 +89,6 @@ class PPORLHFTrainer(BaseTrainer):
 
     @detect_nans
     def compute_value_loss_mse(self, R, new_values, mask):
-        
         loss_value = masked_mean((new_values - R) ** 2, mask)
         return loss_value
 
@@ -196,6 +195,9 @@ class PPORLHFTrainer(BaseTrainer):
                 
                             # 2.2 Compute ppo loss for policy model
                             loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies, mask)
+
+                            del new_policies
+                            torch.cuda.empty_cache()
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)

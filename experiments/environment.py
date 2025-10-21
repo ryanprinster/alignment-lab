@@ -195,7 +195,7 @@ class RLHFEnvironment(BaseEnvironment):
 
     @detect_nans
     @profile
-    def rewards_with_kl_penalty(self, rewards, policy_logits, policies, sft_policy_logits, pad_mask, reward_mask):
+    def rewards_with_kl_penalty(self, rewards, policy_logits, sft_policy_logits, pad_mask, reward_mask):
         """
         Averages kl over action_space = vocab_size space, and over sequence space.
         """
@@ -207,7 +207,6 @@ class RLHFEnvironment(BaseEnvironment):
 
 
         log_P = masked_log_softmax(policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).masked_fill(~pad_mask.unsqueeze(2), 0)
-        # P = policies.masked_fill(~pad_mask_3d, 0)
         P = torch.exp(log_P).masked_fill(~pad_mask.unsqueeze(2), 0)
         log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).masked_fill(~pad_mask.unsqueeze(2), 0)
 
@@ -298,7 +297,6 @@ class RLHFEnvironment(BaseEnvironment):
 
             policy_logits = policy_logits[:,-respose_length:,:] # don't mask yet
             sft_policy_logits = sft_policy_logits[:,-respose_length:,:] # don't mask yet
-            policies = masked_softmax(policy_logits, mask.unsqueeze(2), dim=-1)
 
             rewards = rewards[:,-respose_length:]
             reward_mask = (states == tokenizer.eos_token_id)
@@ -319,11 +317,10 @@ class RLHFEnvironment(BaseEnvironment):
         
             rewards = self.rewards_with_kl_penalty(rewards=rewards, 
                                                    policy_logits=policy_logits, 
-                                                   policies=policies, 
                                                    sft_policy_logits=sft_policy_logits, 
                                                    pad_mask=mask,
                                                    reward_mask=reward_mask)
-
+            del sft_policy_logits
 
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
@@ -332,9 +329,11 @@ class RLHFEnvironment(BaseEnvironment):
                     action_dim=self.action_dim,
                     max_sequence_length=respose_length,
                     pad_token_id=self.data.tokenizer.pad_token_id,
-                    policies=policies,
+                    policies=masked_softmax(policy_logits, mask.unsqueeze(2), dim=-1),
                     values=values,
                     rewards=rewards)
+        
+            del policy_logits
 
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
             tj.compute_R(gamma=self.config.gamma)
