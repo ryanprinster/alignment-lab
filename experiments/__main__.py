@@ -1,5 +1,7 @@
-import os # NOTE: make sure this is imported before torch
-os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+import os 
+# Helps manage reserved memory fragments
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True' # NOTE: make sure this is imported before torch
+
 
 from experiments.trainers.sft_model_trainer import SFTTrainer
 from experiments.trainers.rm_model_trainer import RMTrainer

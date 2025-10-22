@@ -5,7 +5,7 @@ import numpy as np
 import pdb
 import warnings
 from experiments.profiler import profile
-
+from experiments.util import masked_mean, masked_var, masked_softmax, masked_log_softmax
 
 
 @dataclass
@@ -60,7 +60,7 @@ class Trajectory():
         self._probs = torch.zeros((batch_size, max_sequence_length), device=device)
         self._R = torch.zeros((batch_size, max_sequence_length), device=device)
         self._A = torch.zeros((batch_size, max_sequence_length), device=device)
-    
+        self._kl = torch.zeros((batch_size, max_sequence_length), device=device)
 
     def get_trajectory(self):
         return (
@@ -140,6 +140,30 @@ class Trajectory():
         
         self._probs = torch.gather(self.policies, dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
         return self.probs
+    
+    def compute_kl(self, policy_logits, sft_policy_logits):
+        """
+        Averages kl over action_space = vocab_size space, and over sequence space.
+        """
+        # NOTE: KL could be computed in different ways. 
+        # - KL of the full distribution, on the top_p or top_k, or just actions taken.
+        # - KL could be averaged or summed across the sequence dimension. 
+        # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
+        
+
+        log_P = masked_log_softmax(policy_logits, self._mask_3d, mask_value=0, dim=-1).masked_fill(~self._mask_3d, 0)
+        P = torch.exp(log_P).masked_fill(~self._mask_3d, 0)
+        log_Q = sft = masked_log_softmax(sft_policy_logits, self._mask_3d, mask_value=0, dim=-1).masked_fill(~self._mask_3d, 0)
+
+        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~self._mask_3d, 0), dim=-1)
+        kl_div = masked_mean(kl_div, self._mask, dim=-1)
+        # The math technically says to sum over both dims, but averaging over time makes sense for initial stability
+        # and is also tunable by beta.
+
+        # TODO: verify masked_log_softmax works as intendend
+        kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
+
+        return rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
     
     # def whiten_rewards(self):
     #     self._rewards = self._whiten(self._rewards)

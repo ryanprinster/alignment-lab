@@ -131,7 +131,6 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             value=self.tokenizer.pad_token_id
         )
         del sequences
-        # torch.cuda.empty_cache()
 
         policy_logits = torch.stack(scores, dim=1)
         
@@ -141,7 +140,6 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             policy_logits = policy_logits[:,-respose_length:,:]
 
         del scores
-        # torch.cuda.empty_cache()
         policy_logits = policy_logits.half() # float32 -> float16
 
         policy_logits = torch.nn.functional.pad(
@@ -150,8 +148,6 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             value= -float('inf')
         )
         policy_logits = self.clean_logits(policy_logits)
-
-        # Can we only generate the last 50?
 
         return padded_tokens, policy_logits
 
