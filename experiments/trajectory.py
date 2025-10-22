@@ -58,8 +58,7 @@ class Trajectory():
         self._actions = torch.zeros((batch_size, max_sequence_length), device=device) 
         self._rewards = rewards * self._mask if rewards is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
-        if policies is not None:
-            self._policies = policies * self._mask.unsqueeze(2) 
+        self._policies = policies * self._mask.unsqueeze(2) if policies is not None else None
         self._values = values * self._mask if values is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
         self._probs = torch.zeros((batch_size, max_sequence_length), device=device)
