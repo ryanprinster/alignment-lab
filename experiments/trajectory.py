@@ -339,7 +339,6 @@ class TrajectorySet(Dataset):
         return self._tjs.states[idx,:,:], \
             self._tjs.actions[idx,:], \
             self._tjs.rewards[idx,:], \
-            self._tjs.policies[idx,:,:], \
             self._tjs.values[idx,:], \
             self._tjs.probs[idx,:], \
             self._tjs.R[idx,:], \
