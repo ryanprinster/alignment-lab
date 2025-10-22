@@ -343,6 +343,7 @@ class TrajectorySet(Dataset):
             self._tjs.probs[idx,:], \
             self._tjs.R[idx,:], \
             self._tjs.A[idx,:], \
+            self._tjs.kl[idx,:], \
             self._tjs.mask[idx,:]
 
 # TODO: Make another TrajectorySet which shuffles the time dimension 
