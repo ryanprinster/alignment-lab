@@ -168,8 +168,8 @@ class Trajectory():
         # TODO: Document why we are using the reward_mask here
         kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
         
-        reward_mask = (self.states == self.eos_token_id)
-        self._kl = kl_div.masked_fill(~reward_mask.squeeze(-1), 0)
+        reward_mask = (self.states == self.eos_token_id).squeeze(-1)
+        self._kl = kl_div.masked_fill(~reward_mask, 0)
         return self.kl
 
         # return self.rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
@@ -222,6 +222,13 @@ class Trajectory():
     def rewards(self):
         return self._rewards
     
+    @rewards.setter
+    def rewards(self, new_rewards):
+        new_rewards = torch.as_tensor(new_rewards, device=self._rewards.device, dtype=self._rewards.dtype)
+        if new_rewards.shape != self._rewards.shape:
+            raise ValueError(f"Rewards shape {new_rewards.shape} doesn't match expected {self._rewards.shape}")
+        self._rewards = new_rewards * self._mask
+
     @property
     def policies(self):
         return self._policies
