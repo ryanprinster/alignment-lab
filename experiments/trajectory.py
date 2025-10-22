@@ -14,13 +14,18 @@ class Trajectory():
     TORCH_FIELDS = ['states', 'actions', 'rewards', 'policies', 'values', 'probs', 'R', 'A'] 
 
     @profile
-    def __init__(self, init_state, action_dim, max_sequence_length, values, policies, rewards, pad_token_id=None):
+    def __init__(self, init_state, action_dim, max_sequence_length, values, rewards, policies = None, tokenizer=None):
         """
         init_state - tensor of shape (batch_size, max_sequence_length, obs_dim)
             --> Assume for now that tensors are padded to be of max_sequence_length
             --> Assume for now that we will not be adding to the trajectories after creation, 
                 hence values, policies, rewards are required on init
         """
+        if tokenizer is not None:
+            pad_token_id = tokenizer.pad_token_id
+            self.eos_token_id = tokenizer.eos_token_id
+        else:
+            pad_token_id, self.eos_token_id = None, None
         
         ### Verify base input
         init_state = torch.from_numpy(init_state) if isinstance(init_state, np.ndarray) else init_state
@@ -41,7 +46,7 @@ class Trajectory():
             # Detect and create a mask
             if self.obs_dim == 1: 
                 self._mask = ~(init_state.squeeze(-1) == pad_token_id)
-                self._mask_3d = ~(init_state == pad_token_id)
+                # self._mask_3d = ~(init_state == pad_token_id)
             else:
                 raise ValueError("Padding detection only supported for obs_dim=1")
         else:
@@ -49,12 +54,12 @@ class Trajectory():
             warnings.warn(f"No pad_token_id provided. Assuming all sequences are valid")
             self._mask = torch.ones((batch_size, max_sequence_length), dtype=torch.bool)
 
-        self._states = init_state * self._mask_3d
+        self._states = init_state * self._mask.unsqueeze(2)
         self._actions = torch.zeros((batch_size, max_sequence_length), device=device) 
         self._rewards = rewards * self._mask if rewards is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
-        self._policies = policies * self._mask_3d if policies is not None else \
-            torch.zeros((batch_size, max_sequence_length, action_dim), device=device)
+        if policies is not None:
+            self._policies = policies * self._mask.unsqueeze(2) 
         self._values = values * self._mask if values is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
         self._probs = torch.zeros((batch_size, max_sequence_length), device=device)
@@ -67,11 +72,11 @@ class Trajectory():
             self.states,
             self.actions,
             self.rewards,
-            self.policies,
             self.values,
             self.probs,
             self.R,
             self.A,
+            self.kl,
             self.mask
         )
 
@@ -132,13 +137,12 @@ class Trajectory():
 
         return self.A
     
-    def compute_probs(self):
+    def compute_probs(self, policy_logits):
+
         if torch.all(self.actions == 0).item():
             raise ValueError("actions is not set, set non-zero actions attribute first")
-        if torch.all(self.policies == 0).item():
-            raise ValueError("policies is not set, set non-zero policies attribute first")
-        
-        self._probs = torch.gather(self.policies, dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
+
+        self._probs = torch.gather(masked_softmax(policy_logits, self._mask.unsqueeze(2), dim=-1), dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
         return self.probs
     
     def compute_kl(self, policy_logits, sft_policy_logits):
@@ -150,36 +154,27 @@ class Trajectory():
         # - KL could be averaged or summed across the sequence dimension. 
         # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
         
+        mask_3d = self._mask.unsqueeze(2)
+        log_P = masked_log_softmax(policy_logits, mask_3d, mask_value=0, dim=-1).masked_fill(~mask_3d, 0)
+        P = torch.exp(log_P).masked_fill(~mask_3d, 0)
+        log_Q = sft = masked_log_softmax(sft_policy_logits, mask_3d, mask_value=0, dim=-1).masked_fill(~mask_3d, 0)
 
-        log_P = masked_log_softmax(policy_logits, self._mask_3d, mask_value=0, dim=-1).masked_fill(~self._mask_3d, 0)
-        P = torch.exp(log_P).masked_fill(~self._mask_3d, 0)
-        log_Q = sft = masked_log_softmax(sft_policy_logits, self._mask_3d, mask_value=0, dim=-1).masked_fill(~self._mask_3d, 0)
-
-        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~self._mask_3d, 0), dim=-1)
+        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~mask_3d, 0), dim=-1)
+        del mask_3d
         kl_div = masked_mean(kl_div, self._mask, dim=-1)
         # The math technically says to sum over both dims, but averaging over time makes sense for initial stability
         # and is also tunable by beta.
 
         # TODO: verify masked_log_softmax works as intendend
         kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
+        
+        reward_mask = (self.states == self.eos_token_id)
+        self._kl = kl_div.masked_fill(~reward_mask, 0)
+        return self.kl
 
-        return rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
+        # return self.rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
     
-    # def whiten_rewards(self):
-    #     self._rewards = self._whiten(self._rewards)
-    #     return self._rewards
-
-    # def whiten_advantages(self):
-    #     self._A = self._whiten(self._A)
-    #     return self._A
-
     # # Taken from https://arxiv.org/pdf/2403.17031
-    # def _whiten(self, values, shift_mean=True):
-    #     mean, var = torch.mean(values), torch.var(values, unbiased=False)
-    #     whitened = (values - mean) * torch.rsqrt(var + 1e-8)
-    #     if not shift_mean:
-    #         whitened += mean
-    #     return whitened
     
     # def __len__(self):
     #     # TODO: Decide what exactly length should return here
@@ -247,6 +242,10 @@ class Trajectory():
     @property
     def A(self):
         return self._A
+    
+    @property
+    def kl(self):
+        return self._kl
     
 
     # def add_step(self, state, action, reward, policy, value, prob):

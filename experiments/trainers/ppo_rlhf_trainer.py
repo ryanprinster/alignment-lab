@@ -181,7 +181,7 @@ class PPORLHFTrainer(BaseTrainer):
                 for k in range(self.config.K):
                     # Update new policy for each minibatch
 
-                    for _, (states, old_actions, rewards, old_policies, old_values, old_probs, R, A, mask) in enumerate(tj_loader):
+                    for _, (states, old_actions, rewards, old_values, old_probs, R, A, kl, mask) in enumerate(tj_loader):
 
                         self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
@@ -213,7 +213,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 "global_step": self.global_step,
                                 "A": masked_mean(A, mask).item(),
                                 "policy_entropy": entropy.item(),
-                                "total_reward": masked_mean(rewards, mask).item(),
+                                "total_reward": masked_mean(rewards, mask).item(), # this might be a different mask??
+                                "kl": masked_mean(kl, mask).item(),
                                 "batch_idx": batch_idx,
                                 "k": k,
                                 "global_step": self.global_step

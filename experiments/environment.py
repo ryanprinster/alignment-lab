@@ -17,100 +17,6 @@ from typing import Any, Tuple
 import warnings
 import torch.nn.functional as F
 
-
-# def masked_mean(tensor, mask, dim=None, keepdim=False):
-#     """
-#     Compute mean of tensor with a boolean mask.
-    
-#     Args:
-#         tensor: Input tensor
-#         mask: Boolean mask (True for valid elements, False for masked out)
-#         dim: Dimension(s) to reduce. If None, reduces all dimensions.
-#         keepdim: Whether to keep the reduced dimensions
-    
-#     Returns:
-#         Masked mean
-#     """
-#     masked_tensor = torch.where(mask, tensor, torch.tensor(0.0, device=tensor.device, dtype=tensor.dtype))
-#     sum_valid = masked_tensor.sum(dim=dim, keepdim=keepdim)
-#     count_valid = mask.sum(dim=dim, keepdim=keepdim)
-    
-#     # Avoid division by zero
-#     count_valid = count_valid.clamp(min=1)
-    
-#     return sum_valid / count_valid
-
-
-# def masked_var(tensor, mask, dim=None, keepdim=False, unbiased=True):
-#     """
-#     Compute variance of tensor with a boolean mask.
-    
-#     Args:
-#         tensor: Input tensor
-#         mask: Boolean mask (True for valid elements, False for masked out)
-#         dim: Dimension(s) to reduce. If None, reduces all dimensions.
-#         keepdim: Whether to keep the reduced dimensions
-#         unbiased: If True, use Bessel's correction (divide by N-1 instead of N)
-    
-#     Returns:
-#         Masked variance
-#     """
-#     # Compute masked mean
-#     mean = masked_mean(tensor, mask, dim=dim, keepdim=True)
-    
-#     # Compute squared deviations
-#     squared_diff = (tensor - mean) ** 2
-#     masked_squared_diff = torch.where(mask, squared_diff, torch.tensor(0.0, device=tensor.device, dtype=tensor.dtype))
-    
-#     sum_squared_diff = masked_squared_diff.sum(dim=dim, keepdim=keepdim)
-#     count_valid = mask.sum(dim=dim, keepdim=keepdim)
-    
-#     # Avoid division by zero
-#     if unbiased:
-#         count_valid = (count_valid - 1).clamp(min=1)
-#     else:
-#         count_valid = count_valid.clamp(min=1)
-    
-#     return sum_squared_diff / count_valid
-
-# def masked_softmax(tensor, mask, dim=-1):
-#     """
-#     Compute softmax with a boolean mask.
-    
-#     Args:
-#         tensor: Input tensor (logits)
-#         mask: Boolean mask (True for valid elements, False for masked out)
-#         dim: Dimension along which to apply softmax
-    
-#     Returns:
-#         Masked softmax probabilities (masked positions will be near-zero)
-#     """
-#     # Set masked positions to negative infinity
-#     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
-
-#     # Apply softmax
-#     return F.softmax(masked_tensor, dim=dim) * mask
-
-# def masked_log_softmax(tensor, mask, dim=-1, mask_value=-1e9):
-#     """
-#     Compute log_softmax with a boolean mask.
-    
-#     Args:
-#         tensor: Input tensor (logits)
-#         mask: Boolean mask (True for valid elements, False for masked out)
-#         dim: Dimension along which to apply log_softmax
-    
-#     Returns:
-#         Masked log_softmax (masked positions will be -inf)
-#     """
-#     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
-
-#     log_probs = F.log_softmax(masked_tensor, dim=dim)
-
-#     log_probs = log_probs.masked_fill(~mask, mask_value)
-    
-#     return log_probs
-
 class BaseEnvironment(ABC):
     def __init__(self):
         ### Cleanup 
@@ -317,12 +223,12 @@ class RLHFEnvironment(BaseEnvironment):
             
             # Detail 12 (RM Training -> Extract reward from the EOS token)
         
-            rewards = self.rewards_with_kl_penalty(rewards=rewards, 
-                                                   policy_logits=policy_logits, 
-                                                   sft_policy_logits=sft_policy_logits, 
-                                                   pad_mask=mask,
-                                                   reward_mask=reward_mask)
-            del sft_policy_logits
+            # rewards = self.rewards_with_kl_penalty(rewards=rewards, 
+            #                                        policy_logits=policy_logits, 
+            #                                        sft_policy_logits=sft_policy_logits, 
+            #                                        pad_mask=mask,
+            #                                        reward_mask=reward_mask)
+            # del sft_policy_logits
 
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(states, rewards)
@@ -330,17 +236,21 @@ class RLHFEnvironment(BaseEnvironment):
             tj = Trajectory(init_state=states.unsqueeze(-1), 
                     action_dim=self.action_dim,
                     max_sequence_length=respose_length,
-                    pad_token_id=self.data.tokenizer.pad_token_id,
-                    policies=masked_softmax(policy_logits, mask.unsqueeze(2), dim=-1),
+                    tokenizer=self.data.tokenizer,
                     values=values,
                     rewards=rewards)
         
+            tj.compute_kl(policy_logits, sft_policy_logits)
+            del sft_policy_logits
+
+            tj.rewards = tj.rewards - self.config.beta * tj.kl
+
+            tj.actions = states
+            tj.compute_probs(policy_logits)
             del policy_logits
 
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
             tj.compute_R(gamma=self.config.gamma)
-            tj.actions = states
-            tj.compute_probs()
 
             policy_model.train()
             value_model.train()
