@@ -169,6 +169,7 @@ class Trajectory():
         kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
         
         reward_mask = (self.states == self.eos_token_id)
+        pdb.set_trace()
         self._kl = kl_div.masked_fill(~reward_mask, 0)
         return self.kl
 
