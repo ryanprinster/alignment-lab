@@ -150,7 +150,7 @@ class Trajectory():
         Averages kl over action_space = vocab_size space, and over sequence space.
         """
         # NOTE: KL could be computed in different ways. 
-        # - KL of the full distribution, on the top_p or top_k, or just actions taken.
+        # - KL of the full distribution, KL of the top_p or top_k, or KL on just the actions taken.
         # - KL could be averaged or summed across the sequence dimension. 
         # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
         
@@ -165,12 +165,11 @@ class Trajectory():
         # The math technically says to sum over both dims, but averaging over time makes sense for initial stability
         # and is also tunable by beta.
 
-        # TODO: verify masked_log_softmax works as intendend
+        # TODO: Document why we are using the reward_mask here
         kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
         
         reward_mask = (self.states == self.eos_token_id)
-        pdb.set_trace()
-        self._kl = kl_div.masked_fill(~reward_mask, 0)
+        self._kl = kl_div.masked_fill(~reward_mask.squeeze(-1), 0)
         return self.kl
 
         # return self.rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
