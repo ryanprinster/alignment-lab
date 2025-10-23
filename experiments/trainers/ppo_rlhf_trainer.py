@@ -203,6 +203,7 @@ class PPORLHFTrainer(BaseTrainer):
                         self._backward(loss_value, loss_ppo)
                         self._step(self.optimizer_policy, self.optimizer_value)
 
+                        pdb.set_trace()
                         # Logging
                         self.logger.log(
                             scalars={
