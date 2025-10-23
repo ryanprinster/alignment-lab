@@ -24,7 +24,7 @@ from experiments.logger import Logger
 from experiments.environment import RLHFEnvironment
 from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
-from experiments.environment import masked_mean, masked_whiten
+from experiments.environment import masked_mean, masked_var, masked_whiten
 
 from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
 from experiments.trajectory import Trajectory, TrajectorySet
@@ -94,6 +94,8 @@ class PPORLHFTrainer(BaseTrainer):
 
     @detect_nans
     def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies, mask):
+        # Assumption that A is calculated with the old, static values
+
         old_probs = old_probs.detach()
         A = A.detach()
         
@@ -197,7 +199,6 @@ class PPORLHFTrainer(BaseTrainer):
                             loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies, pad_mask)
 
                             del new_policies
-                            torch.cuda.empty_cache()
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
@@ -211,6 +212,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 "train_iter": epoch,
                                 "global_step": self.global_step,
                                 "A": masked_mean(A, pad_mask).item(),
+                                # 1 - var(A) / var(A + V)
+                                "explained_var": 1 - masked_var(A, pad_mask).item() / masked_var(A + old_values, pad_mask).item(),
                                 "policy_entropy": entropy.item(),
                                 "total_raw_reward": masked_mean(rewards, reward_mask).item(),
                                 "total_whitened_reward": masked_mean(
