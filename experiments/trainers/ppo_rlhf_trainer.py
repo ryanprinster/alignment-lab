@@ -203,7 +203,6 @@ class PPORLHFTrainer(BaseTrainer):
                         self._backward(loss_value, loss_ppo)
                         self._step(self.optimizer_policy, self.optimizer_value)
 
-                        pdb.set_trace()
                         # Logging
                         self.logger.log(
                             scalars={
@@ -218,7 +217,7 @@ class PPORLHFTrainer(BaseTrainer):
                                     masked_whiten(rewards, reward_mask, shift_mean=False),
                                     reward_mask).item(),
                                 "total_maximized_reward": masked_mean(
-                                    masked_whiten(rewards, reward_mask) - self.config.beta * kl,
+                                    masked_whiten(rewards, reward_mask, shift_mean=False) - self.config.beta * kl,
                                     reward_mask).item(),
                                 "kl": masked_mean(kl, reward_mask).item(),
                                 "R": masked_mean(R, pad_mask).item(),
