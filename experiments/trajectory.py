@@ -252,6 +252,14 @@ class Trajectory():
     def A(self):
         return self._A
     
+    @A.setter
+    def A(self, new_A):
+        new_A = torch.as_tensor(new_A, device=self._A.device, dtype=self._A.dtype)
+        if new_A.shape != self._A.shape:
+            raise ValueError(f"A shape {new_A.shape} doesn't match expected {self._A.shape}")
+        self._A = new_A * self._pad_mask
+
+    
     @property
     def kl(self):
         return self._kl

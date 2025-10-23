@@ -243,11 +243,20 @@ class RLHFEnvironment(BaseEnvironment):
             del policy_logits
 
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
+            if self.config.whiten_A:
+                # NOTE: shift mean here to keep 
+                # A > 0 to be "action better than expected", 
+                # A < 0 to be "action worse than expected"
+                tj.A = masked_whiten(tj.A, pad_mask) 
+            
+            if self.config.whiten_rewards:
+                # NOTE: we choose to whiten rewards with a reward_mask because only this 
+                # represents the only valid reward for the generated trajectory
+                rewards = masked_whiten(rewards, reward_mask, shift_mean=False)
             
             # rewards = whiten(r) - beta * kl
-            transformed_rewards = masked_whiten(rewards, reward_mask, shift_mean=False)
-            transformed_rewards -= self.config.beta * tj.kl
-            tj.compute_R(gamma=self.config.gamma, r=transformed_rewards)
+            rewards -= self.config.beta * tj.kl
+            tj.compute_R(gamma=self.config.gamma, r=rewards)
                          
         policy_model.train()
         value_model.train()

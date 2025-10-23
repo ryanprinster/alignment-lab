@@ -215,7 +215,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 "policy_entropy": entropy.item(),
                                 "total_raw_reward": masked_mean(rewards, reward_mask).item(),
                                 "total_whitened_reward": masked_mean(
-                                    masked_whiten(rewards, reward_mask),
+                                    masked_whiten(rewards, reward_mask, shift_mean=False),
                                     reward_mask).item(),
                                 "total_maximized_reward": masked_mean(
                                     masked_whiten(rewards, reward_mask) - self.config.beta * kl,
