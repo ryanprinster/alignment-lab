@@ -24,7 +24,7 @@ from experiments.logger import Logger
 from experiments.environment import RLHFEnvironment
 from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
-from experiments.environment import masked_mean
+from experiments.environment import masked_mean, masked_whiten
 
 from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
 from experiments.trajectory import Trajectory, TrajectorySet
@@ -203,7 +203,6 @@ class PPORLHFTrainer(BaseTrainer):
                         self._backward(loss_value, loss_ppo)
                         self._step(self.optimizer_policy, self.optimizer_value)
 
-
                         # Logging
                         self.logger.log(
                             scalars={
@@ -211,10 +210,17 @@ class PPORLHFTrainer(BaseTrainer):
                                 "loss_ppo": loss_ppo.item(),
                                 "train_iter": epoch,
                                 "global_step": self.global_step,
-                                "A": masked_mean(A, mask).item(),
+                                "A": masked_mean(A, pad_mask).item(),
                                 "policy_entropy": entropy.item(),
-                                "total_reward": masked_mean(rewards, mask).item(), # this might be a different mask??
-                                "kl": masked_mean(kl, mask).item(),
+                                "total_raw_reward": masked_mean(rewards, reward_mask).item(),
+                                "total_whitened_reward": masked_mean(
+                                    masked_whiten(rewards, reward_mask),
+                                    reward_mask).item(),
+                                "total_maximized_reward": masked_mean(
+                                    masked_whiten(rewards, reward_mask) - self.config.beta * kl,
+                                    reward_mask).item(),
+                                "kl": masked_mean(kl, reward_mask).item(),
+                                "R": masked_mean(R, pad_mask).item(),
                                 "batch_idx": batch_idx,
                                 "k": k,
                                 "global_step": self.global_step

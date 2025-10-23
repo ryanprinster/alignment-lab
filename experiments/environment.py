@@ -225,7 +225,6 @@ class RLHFEnvironment(BaseEnvironment):
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards = self.set_reward_for_no_eos(reward_mask, rewards)
             # NOTE: whitened before computing kl to follow https://arxiv.org/pdf/2403.17031
-            rewards = masked_whiten(rewards * reward_mask, reward_mask, shift_mean=False)
 
             tj = Trajectory(init_state=states.unsqueeze(-1), 
                     action_dim=self.action_dim,
@@ -243,10 +242,13 @@ class RLHFEnvironment(BaseEnvironment):
             tj.compute_probs(policy_logits)
             del policy_logits
 
-            tj.rewards = tj.rewards - self.config.beta * tj.kl
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
-            tj.compute_R(gamma=self.config.gamma)
-
+            
+            # rewards = whiten(r) - beta * kl
+            transformed_rewards = masked_whiten(rewards, reward_mask, shift_mean=False)
+            transformed_rewards -= self.config.beta * tj.kl
+            tj.compute_R(gamma=self.config.gamma, r=transformed_rewards)
+                         
         policy_model.train()
         value_model.train()
 
