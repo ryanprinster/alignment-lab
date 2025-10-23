@@ -185,8 +185,7 @@ class Trajectory():
         # TODO: Document why we are using the reward_mask here
         kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
         
-        reward_mask = (self.states == self.eos_token_id).squeeze(-1)
-        self._kl = kl_div.masked_fill(~reward_mask, 0)
+        self._kl = kl_div.masked_fill(~self._reward_mask, 0)
         return self.kl
 
         # return self.rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
