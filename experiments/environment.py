@@ -8,7 +8,7 @@ import pdb
 from experiments.profiler import profile
 from experiments.trajectory import Trajectory
 from experiments.monitor import detect_nans
-from experiments.util import masked_mean, masked_var, masked_softmax, masked_log_softmax
+from experiments.util import masked_mean, masked_log_softmax, masked_whiten
 
 import gymnasium as gym
 
@@ -82,6 +82,33 @@ class RLHFEnvironment(BaseEnvironment):
     def _close(self):
         self._closed = True
 
+
+
+    @detect_nans
+    @profile
+    def rewards_with_kl_penalty(self, rewards, policy_logits, sft_policy_logits, pad_mask, reward_mask):
+        """
+        Averages kl over action_space = vocab_size space, and over sequence space.
+        """
+        # NOTE: KL could be computed in different ways. 
+        # - KL of the full distribution, on the top_p or top_k, or just actions taken.
+        # - KL could be averaged or summed across the sequence dimension. 
+        # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
+
+
+        log_P = masked_log_softmax(policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).masked_fill(~pad_mask.unsqueeze(2), 0)
+        P = torch.exp(log_P).masked_fill(~pad_mask.unsqueeze(2), 0)
+        log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).masked_fill(~pad_mask.unsqueeze(2), 0)
+
+        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask.unsqueeze(2), 0), dim=-1)
+        kl_div = masked_mean(kl_div, pad_mask, dim=-1)
+        # The math technically says to sum over both dims, but averaging over time makes sense for initial stability
+        # and is also tunable by beta.
+
+        kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
+
+        return rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
+
     def construct_mask(self, states, tokenizer):
         
         pad_mask = (states == tokenizer.pad_token_id)
@@ -100,64 +127,54 @@ class RLHFEnvironment(BaseEnvironment):
 
         return after_pad_mask
 
-    @detect_nans
-    @profile
-    def rewards_with_kl_penalty(self, rewards, policy_logits, sft_policy_logits, pad_mask, reward_mask):
-        """
-        Averages kl over action_space = vocab_size space, and over sequence space.
-        """
-        # NOTE: KL could be computed in different ways. 
-        # - KL of the full distribution, on the top_p or top_k, or just actions taken.
-        # - KL could be averaged or summed across the sequence dimension. 
-        # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
-
-
-
-        log_P = masked_log_softmax(policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).masked_fill(~pad_mask.unsqueeze(2), 0)
-        P = torch.exp(log_P).masked_fill(~pad_mask.unsqueeze(2), 0)
-        log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).masked_fill(~pad_mask.unsqueeze(2), 0)
-
-        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask.unsqueeze(2), 0), dim=-1)
-        kl_div = masked_mean(kl_div, pad_mask, dim=-1)
-        # The math technically says to sum over both dims, but averaging over time makes sense for initial stability
-        # and is also tunable by beta.
-
-        # TODO: verify masked_log_softmax works as intendend
-        kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
-
-        return rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
-
-    @profile
-    def set_pad_after_eos(self, states, tokenizer):
-        eos_mask = (states == tokenizer.eos_token_id)
-        first_eos_pos = torch.where(
-            eos_mask.any(dim=1),
-            eos_mask.int().argmax(dim=1),
+    def _find_first_token_position(self, states, token_id):
+        """Find the position of the first occurrence of token_id in each sequence."""
+        token_mask = (states == token_id)
+        first_token_pos = torch.where(
+            token_mask.any(dim=1),
+            token_mask.int().argmax(dim=1),
             torch.full((states.size(0),), states.size(1), device=states.device)
         )
+        return first_token_pos
 
+    def enforce_padding(self, states, tokenizer):
+        """Sets all tokens after the first EOS or PAD token to PAD token."""
+        first_eos_pos = self._find_first_token_position(states, tokenizer.eos_token_id)
+        first_pad_pos = self._find_first_token_position(states, tokenizer.pad_token_id)
+        
+        first_termination_pos = torch.min(first_eos_pos, first_pad_pos)
+        
+        # Set everything after to pad
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
-        after_eos_mask = pos > first_eos_pos.unsqueeze(1)
-
-        states[after_eos_mask] = tokenizer.pad_token_id
+        after_termination_mask = pos > first_termination_pos.unsqueeze(1)
+        states[after_termination_mask] = tokenizer.pad_token_id
+        
         return states
+
+    def construct_pad_mask(self, states, tokenizer):
+        """Constructs a boolean mask where True indicates valid tokens before the first padding token."""
+        first_pad_pos = self._find_first_token_position(states, tokenizer.pad_token_id)
+        pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
+        return ~(pos >= first_pad_pos.unsqueeze(1))
     
-    @profile
-    def set_reward_for_no_eos(self, states, rewards):
-        """ Assumes rewards as been set to all zeros for a given trajectory if no eos token"""
-        # TODO: remove above assumption
-        all_zero_no_eos = (rewards == 0).all(dim=1)
-        rewards[all_zero_no_eos, -1] = -1
+    def construct_reward_mask(self, states, tokenizer):
+        return (states == tokenizer.eos_token_id)
+
+    
+    def set_reward_for_no_eos(self, eos_mask, rewards):
+        """Penalizes sequences that don't contain an EOS token by setting the final reward to -1."""
+        has_no_eos = ~eos_mask.any(dim=1)
+        rewards[has_no_eos, -1] = -1
         return rewards
 
-    # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
-    @profile
-    def whiten(self, values, mask, shift_mean=True):
-        mean, var = masked_mean(values, mask), masked_var(values, mask, unbiased=False)
-        whitened = (values - mean) * torch.rsqrt(var + 1e-8)
-        if not shift_mean:
-            whitened += mean
-        return whitened * mask
+    # # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
+    # @profile
+    # def whiten(self, values, mask, shift_mean=True):
+    #     mean, var = masked_mean(values, mask), masked_var(values, mask, unbiased=False)
+    #     whitened = (values - mean) * torch.rsqrt(var + 1e-8)
+    #     if not shift_mean:
+    #         whitened += mean
+    #     return whitened * mask
     
 
 
@@ -183,76 +200,54 @@ class RLHFEnvironment(BaseEnvironment):
                 temp,
                 max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
             )
-
             sft_policy_logits, _ = sft_model.forward(
                 states
             )
 
+            values = value_model.forward(states, batch['attention_mask'])
+            rewards = reward_model.forward(states, batch['attention_mask'])
+
             respose_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
-            values = value_model.forward(states, batch['attention_mask'])
-
-            rewards = reward_model.forward(states, batch['attention_mask'])
-            
-
             states = states[:,-respose_length:]
-            # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
-            states = self.set_pad_after_eos(states, tokenizer)
-    
-            mask = self.construct_mask(states, tokenizer)
-
-            values = values[:,-respose_length:] * mask
-
+            values = values[:,-respose_length:]
             policy_logits = policy_logits[:,-respose_length:,:] # don't mask yet
             sft_policy_logits = sft_policy_logits[:,-respose_length:,:] # don't mask yet
-
             rewards = rewards[:,-respose_length:]
-            reward_mask = (states == tokenizer.eos_token_id)
-            
-            rewards = rewards * reward_mask
-            rewards = self.whiten(rewards, reward_mask, shift_mean=False)
 
-            """
-            reward operations:
-                0. modify length of reward vector
-                1. get reward mask 
-                2. use reward mask to get reward @ eos tokens
-            reward @ eos tokens
-            whiten over batch <- note that this could come after KL penalty too, following implementation tho
-            """
-            
-            # Detail 12 (RM Training -> Extract reward from the EOS token)
+            # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
+            states = self.enforce_padding(states, tokenizer)
+            pad_mask = self.construct_pad_mask(states, tokenizer)
         
-            # rewards = self.rewards_with_kl_penalty(rewards=rewards, 
-            #                                        policy_logits=policy_logits, 
-            #                                        sft_policy_logits=sft_policy_logits, 
-            #                                        pad_mask=mask,
-            #                                        reward_mask=reward_mask)
-            # del sft_policy_logits
+            # Detail 12 (RM Training -> Extract reward from the EOS token)
+            reward_mask = self.construct_reward_mask(states, tokenizer)
 
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
-            rewards = self.set_reward_for_no_eos(states, rewards)
+            rewards = self.set_reward_for_no_eos(reward_mask, rewards)
+            # NOTE: whitened before computing kl to follow https://arxiv.org/pdf/2403.17031
+            rewards = masked_whiten(rewards * reward_mask, reward_mask, shift_mean=False)
 
             tj = Trajectory(init_state=states.unsqueeze(-1), 
                     action_dim=self.action_dim,
                     max_sequence_length=respose_length,
-                    tokenizer=self.data.tokenizer,
-                    values=values,
-                    rewards=rewards)
+                    tokenizer=tokenizer,
+                    values=values * pad_mask,
+                    rewards=rewards,
+                    pad_mask=pad_mask,
+                    reward_mask=reward_mask)
         
             tj.compute_kl(policy_logits, sft_policy_logits)
             del sft_policy_logits
-
-            tj.rewards = tj.rewards - self.config.beta * tj.kl
 
             tj.actions = states
             tj.compute_probs(policy_logits)
             del policy_logits
 
+            tj.rewards = tj.rewards - self.config.beta * tj.kl
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
             tj.compute_R(gamma=self.config.gamma)
 
-            policy_model.train()
-            value_model.train()
+        policy_model.train()
+        value_model.train()
 
-            return tj
+        return tj

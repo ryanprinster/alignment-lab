@@ -94,3 +94,12 @@ def masked_log_softmax(tensor, mask, dim=-1, mask_value=-1e9):
     log_probs = log_probs.masked_fill(~mask, mask_value)
     
     return log_probs
+
+
+# Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
+def masked_whiten(values, mask, shift_mean=True):
+    mean, var = masked_mean(values, mask), masked_var(values, mask, unbiased=False)
+    whitened = (values - mean) * torch.rsqrt(var + 1e-8)
+    if not shift_mean:
+        whitened += mean
+    return whitened * mask

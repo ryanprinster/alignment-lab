@@ -14,7 +14,17 @@ class Trajectory():
     TORCH_FIELDS = ['states', 'actions', 'rewards', 'policies', 'values', 'probs', 'R', 'A'] 
 
     @profile
-    def __init__(self, init_state, action_dim, max_sequence_length, values, rewards, policies = None, tokenizer=None):
+    def __init__(self, 
+                 init_state, 
+                 action_dim, 
+                 max_sequence_length, 
+                 values, 
+                 rewards, 
+                 policies = None, 
+                 tokenizer=None,
+                 pad_mask=None,
+                 reward_mask=None,
+                 ):
         """
         init_state - tensor of shape (batch_size, max_sequence_length, obs_dim)
             --> Assume for now that tensors are padded to be of max_sequence_length
@@ -23,11 +33,11 @@ class Trajectory():
         """
         if tokenizer is not None:
             pad_token_id = tokenizer.pad_token_id
-            self.eos_token_id = tokenizer.eos_token_id
+            eos_token_id = tokenizer.eos_token_id
         else:
-            pad_token_id, self.eos_token_id = None, None
+            pad_token_id, eos_token_id = None, None
         
-        ### Verify base input
+        ### Verify base input ###
         init_state = torch.from_numpy(init_state) if isinstance(init_state, np.ndarray) else init_state
 
         if init_state.dim() != 3:
@@ -41,30 +51,38 @@ class Trajectory():
         self.max_sequence_length = max_sequence_length
         self.obs_dim = init_state.shape[2]
 
-        ### Handle padding
-        if pad_token_id is not None:
+        ### Handle padding ###
+        if pad_mask is not None:
+            self._pad_mask = pad_mask
+        elif pad_token_id is not None:
             # Detect and create a mask
             if self.obs_dim == 1: 
-                self._mask = ~(init_state.squeeze(-1) == pad_token_id)
-                # self._mask_3d = ~(init_state == pad_token_id)
+                self._pad_mask = ~(init_state.squeeze(-1) == pad_token_id)
             else:
                 raise ValueError("Padding detection only supported for obs_dim=1")
         else:
             # Assume no padding - all sequences use full length
             warnings.warn(f"No pad_token_id provided. Assuming all sequences are valid")
-            self._mask = torch.ones((batch_size, max_sequence_length), dtype=torch.bool)
+            self._pad_mask = torch.ones((batch_size, max_sequence_length), dtype=torch.bool)
 
-        self._states = init_state * self._mask.unsqueeze(2)
+        self._states = init_state * self._pad_mask.unsqueeze(2)
         self._actions = torch.zeros((batch_size, max_sequence_length), device=device) 
-        self._rewards = rewards * self._mask if rewards is not None else \
+        self._rewards = rewards * self._pad_mask if rewards is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
-        self._policies = policies * self._mask.unsqueeze(2) if policies is not None else None
-        self._values = values * self._mask if values is not None else \
+        self._policies = policies * self._pad_mask.unsqueeze(2) if policies is not None else None
+        self._values = values * self._pad_mask if values is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
         self._probs = torch.zeros((batch_size, max_sequence_length), device=device)
         self._R = torch.zeros((batch_size, max_sequence_length), device=device)
         self._A = torch.zeros((batch_size, max_sequence_length), device=device)
         self._kl = torch.zeros((batch_size, max_sequence_length), device=device)
+
+        if reward_mask is not None:
+            self._reward_mask = reward_mask
+        elif eos_token_id is not None:
+            self._reward_mask = (self.states == eos_token_id).squeeze(-1)
+        else:
+            self._reward_mask = None
 
     def get_trajectory(self):
         return (
@@ -76,7 +94,8 @@ class Trajectory():
             self.R,
             self.A,
             self.kl,
-            self.mask
+            self.pad_mask,
+            self.reward_mask
         )
 
     @profile
@@ -93,9 +112,9 @@ class Trajectory():
 
         # Get discounts
         discounts_rev = torch.ones_like(self.rewards, device=self.device) * gamma 
-        discounts_rev = discounts_rev.masked_fill(~self._mask.flip(dims=[time_dim]), 1)
+        discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 1)
         discounts_rev = torch.cumprod(discounts_rev,dim=time_dim) / gamma
-        discounts_rev = discounts_rev.masked_fill(~self._mask.flip(dims=[time_dim]), 0)
+        discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
 
         # Calculate
         r_rev = torch.flip(r, dims=[time_dim])
@@ -125,9 +144,9 @@ class Trajectory():
 
         # 2. Get discounts 
         discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
-        discounts_rev = discounts_rev.masked_fill(~self._mask.flip(dims=[time_dim]), 1)        
+        discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 1)        
         discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
-        discounts_rev = discounts_rev.masked_fill(~self._mask.flip(dims=[time_dim]), 0)
+        discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
         
         # 3. Calculate GAE via cumulative sum in reverse
         TD_rev = TD_error.flip(dims=[time_dim]) 
@@ -137,11 +156,10 @@ class Trajectory():
         return self.A
     
     def compute_probs(self, policy_logits):
-
         if torch.all(self.actions == 0).item():
             raise ValueError("actions is not set, set non-zero actions attribute first")
 
-        self._probs = torch.gather(masked_softmax(policy_logits, self._mask.unsqueeze(2), dim=-1), dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
+        self._probs = torch.gather(masked_softmax(policy_logits, self._pad_mask.unsqueeze(2), dim=-1), dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
         return self.probs
     
     def compute_kl(self, policy_logits, sft_policy_logits):
@@ -153,14 +171,14 @@ class Trajectory():
         # - KL could be averaged or summed across the sequence dimension. 
         # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
         
-        mask_3d = self._mask.unsqueeze(2)
-        log_P = masked_log_softmax(policy_logits, mask_3d, mask_value=0, dim=-1).masked_fill(~mask_3d, 0)
-        P = torch.exp(log_P).masked_fill(~mask_3d, 0)
-        log_Q = sft = masked_log_softmax(sft_policy_logits, mask_3d, mask_value=0, dim=-1).masked_fill(~mask_3d, 0)
+        pad_mask_3d = self._pad_mask.unsqueeze(2)
+        log_P = masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
+        P = torch.exp(log_P).masked_fill(~pad_mask_3d, 0)
+        log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
 
-        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~mask_3d, 0), dim=-1)
-        del mask_3d
-        kl_div = masked_mean(kl_div, self._mask, dim=-1)
+        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=-1)
+        del pad_mask_3d
+        kl_div = masked_mean(kl_div, self._pad_mask, dim=-1)
         # The math technically says to sum over both dims, but averaging over time makes sense for initial stability
         # and is also tunable by beta.
 
@@ -172,8 +190,7 @@ class Trajectory():
         return self.kl
 
         # return self.rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
-    
-    # # Taken from https://arxiv.org/pdf/2403.17031
+
     
     # def __len__(self):
     #     # TODO: Decide what exactly length should return here
@@ -192,17 +209,6 @@ class Trajectory():
 
     # TODO: Review how returning whole tensor will interact with everything else
     @property
-    def mask(self):
-        return self._mask
-    
-    @mask.setter
-    def mask(self, new_mask):
-        new_mask = torch.as_tensor(new_mask, device=self._actions.device, dtype=self._actions.dtype)
-        if new_mask.shape != self._mask.shape:
-            raise ValueError(f"Mask shape {new_mask.shape} doesn't match expected {self._mask.shape}")
-        self._mask = new_mask
-
-    @property
     def states(self):
         return self._states
     
@@ -215,7 +221,7 @@ class Trajectory():
         new_actions = torch.as_tensor(new_actions, device=self._actions.device, dtype=self._actions.dtype)
         if new_actions.shape != self._actions.shape:
             raise ValueError(f"Actions shape {new_actions.shape} doesn't match expected {self._actions.shape}")
-        self._actions = new_actions * self._mask
+        self._actions = new_actions * self._pad_mask
 
     @property
     def rewards(self):
@@ -226,7 +232,7 @@ class Trajectory():
         new_rewards = torch.as_tensor(new_rewards, device=self._rewards.device, dtype=self._rewards.dtype)
         if new_rewards.shape != self._rewards.shape:
             raise ValueError(f"Rewards shape {new_rewards.shape} doesn't match expected {self._rewards.shape}")
-        self._rewards = new_rewards * self._mask
+        self._rewards = new_rewards * self._pad_mask
 
     @property
     def policies(self):
@@ -238,7 +244,6 @@ class Trajectory():
     
     @property
     def probs(self):
-        # TODO: need to compute these
         return self._probs
     
     @property
@@ -253,6 +258,20 @@ class Trajectory():
     def kl(self):
         return self._kl
     
+    @property
+    def pad_mask(self):
+        return self._pad_mask
+    
+    @pad_mask.setter
+    def pad_mask(self, new_mask):
+        new_pad_mask = torch.as_tensor(new_pad_mask, device=self._actions.device, dtype=self._actions.dtype)
+        if new_pad_mask.shape != self._pad_mask.shape:
+            raise ValueError(f"Mask shape {new_pad_mask.shape} doesn't match expected {self._pad_mask.shape}")
+        self._pad_mask = new_pad_mask
+
+    @property
+    def reward_mask(self):
+        return self._reward_mask 
 
     # def add_step(self, state, action, reward, policy, value, prob):
     #     if self.batch_size != 1:
@@ -344,7 +363,8 @@ class TrajectorySet(Dataset):
             self._tjs.R[idx,:], \
             self._tjs.A[idx,:], \
             self._tjs.kl[idx,:], \
-            self._tjs.mask[idx,:]
+            self._tjs.pad_mask[idx,:], \
+            self._tjs.reward_mask[idx,:]
 
 # TODO: Make another TrajectorySet which shuffles the time dimension 
 # into the batch dimension for cartpole or non-sequence environments
