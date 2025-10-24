@@ -11,7 +11,7 @@ from experiments.util import masked_mean, masked_var, masked_softmax, masked_log
 @dataclass
 class Trajectory():
     BATCH_DIM, TIME_DIM = 0, 1
-    TORCH_FIELDS = ['states', 'actions', 'rewards', 'policies', 'values', 'probs', 'R', 'A'] 
+    TORCH_FIELDS = ['states', 'actions', 'rewards', 'policies', 'values', 'log_probs', 'R', 'A', 'kl', 'pad_mask', 'reward_mask'] 
 
     @profile
     def __init__(self, 
@@ -72,7 +72,7 @@ class Trajectory():
         self._policies = policies * self._pad_mask.unsqueeze(2) if policies is not None else None
         self._values = values * self._pad_mask if values is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
-        self._probs = torch.zeros((batch_size, max_sequence_length), device=device)
+        self._log_probs = torch.zeros((batch_size, max_sequence_length), device=device)
         self._R = torch.zeros((batch_size, max_sequence_length), device=device)
         self._A = torch.zeros((batch_size, max_sequence_length), device=device)
         self._kl = torch.zeros((batch_size, max_sequence_length), device=device)
@@ -90,7 +90,7 @@ class Trajectory():
             self.actions,
             self.rewards,
             self.values,
-            self.probs,
+            self.log_probs,
             self.R,
             self.A,
             self.kl,
@@ -154,12 +154,12 @@ class Trajectory():
 
         return self.A
     
-    def compute_probs(self, policy_logits):
+    def compute_log_probs(self, policy_logits):
         if torch.all(self.actions == 0).item():
             raise ValueError("actions is not set, set non-zero actions attribute first")
 
-        self._probs = torch.gather(masked_softmax(policy_logits, self._pad_mask.unsqueeze(2), dim=-1), dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
-        return self.probs
+        self._log_probs = torch.gather(masked_log_softmax(policy_logits, self._pad_mask.unsqueeze(2), dim=-1), dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
+        return self.log_probs
     
     def compute_kl(self, policy_logits, sft_policy_logits):
         """
@@ -201,7 +201,7 @@ class Trajectory():
     #         self.rewards[idx,:], \
     #         self.policies[idx,:,:], \
     #         self.values[idx,:], \
-    #         self.probs[idx,:], \
+    #         self.log_probs[idx,:], \
     #         self.R[idx,:], \
     #         self.A[idx,:]
 
@@ -241,8 +241,8 @@ class Trajectory():
         return self._values
     
     @property
-    def probs(self):
-        return self._probs
+    def log_probs(self):
+        return self._log_probs
     
     @property
     def R(self):
@@ -292,7 +292,7 @@ class Trajectory():
     #     self._rewards[i] = reward
     #     self._policies[i] = torch.as_tensor(policy)
     #     self._values[i] = value
-    #     self._probs[i] = policy[action]
+    #     self._log_probs[i] = policy[action]
 
     #     self._length += 1
 
@@ -365,7 +365,7 @@ class TrajectorySet(Dataset):
             self._tjs.actions[idx,:], \
             self._tjs.rewards[idx,:], \
             self._tjs.values[idx,:], \
-            self._tjs.probs[idx,:], \
+            self._tjs.log_probs[idx,:], \
             self._tjs.R[idx,:], \
             self._tjs.A[idx,:], \
             self._tjs.kl[idx,:], \
