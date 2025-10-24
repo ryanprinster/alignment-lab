@@ -198,7 +198,7 @@ class PPORLHFTrainer(BaseTrainer):
                             # 2.2 Compute ppo loss for policy model
                             loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_log_probs, A, new_log_policies, pad_mask)
 
-                            del new_policies
+                            del new_log_policies
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
