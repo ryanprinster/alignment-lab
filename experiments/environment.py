@@ -194,15 +194,17 @@ class RLHFEnvironment(BaseEnvironment):
 
             tokenizer = policy_model.tokenizer
 
-            states, policy_logits = policy_model.generate(
+
+            states, _ = policy_model.generate(
                 batch,
                 self.max_sequence_length,
                 temp,
                 max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
             )
-            sft_policy_logits, _ = sft_model.forward(
-                states
-            )
+            del _
+            
+            policy_logits, _ = policy_model.forward(states)
+            sft_policy_logits, _ = sft_model.forward(states)
 
             values = value_model.forward(states, batch['attention_mask'])
             rewards = reward_model.forward(states, batch['attention_mask'])

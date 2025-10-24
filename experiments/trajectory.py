@@ -170,7 +170,6 @@ class Trajectory():
         # - KL could be averaged or summed across the sequence dimension. 
         # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
         
-        pdb.set_trace()
         pad_mask_3d = self._pad_mask.unsqueeze(2)
         log_P = masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
         P = torch.exp(log_P).masked_fill(~pad_mask_3d, 0)
