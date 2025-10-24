@@ -57,8 +57,8 @@ class PPORLHFTrainer(BaseTrainer):
 
 
         # Optimizers
-        self.optimizer_policy = optim.Adam(self.policy_model.parameters(), lr = self.config.alpha)
-        self.optimizer_value = optim.Adam(self.value_model.parameters(), lr = self.config.alpha)
+        self.optimizer_policy = optim.AdamW(self.policy_model.parameters(), lr = self.config.alpha)
+        self.optimizer_value = optim.AdamW(self.value_model.parameters(), lr = self.config.alpha)
 
         self.lr_scheduler_policy = LinearLR(self.optimizer_policy, 
                                         total_iters=int(self.config.max_episodes / self.config.batch_size) * self.config.K,
@@ -233,6 +233,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 },
                             models=[self.policy_model, self.value_model]
                             )
+                    
+                        pdb.set_trace()
                         
                 # 3. Theta old <-- theta new
                 self._update_old_models()
