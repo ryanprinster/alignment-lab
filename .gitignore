@@ -3,7 +3,6 @@ runs/
 model_weights/
 cartpole-ppo-videos/
 checkpoints/
-util.py
 crash_log.txt
 sft_training_log.jsonl
 startup_1.md
