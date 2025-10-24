@@ -190,7 +190,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
-                            new_values, new_log_policies = self._forward(states)
+                            new_values, new_log_policies = self._forward(states, pad_mask)
                             # TODO: Reconcile full policy here vs top_p in generation
 
                             # 2.1 Compute mse loss for value model
