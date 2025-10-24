@@ -161,7 +161,6 @@ class PPORLHFTrainer(BaseTrainer):
                 if self.global_step * self.data.train_loader.batch_size > self.config.max_episodes: 
                     break 
 
-                pdb.set_trace()
                 
                 batch = self._to_device(batch)
 
@@ -201,6 +200,9 @@ class PPORLHFTrainer(BaseTrainer):
                             loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_log_probs, A, new_log_policies, pad_mask)
 
                             del new_log_policies
+
+
+                        pdb.set_trace()
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
