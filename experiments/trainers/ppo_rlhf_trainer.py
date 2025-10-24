@@ -24,7 +24,7 @@ from experiments.logger import Logger
 from experiments.environment import RLHFEnvironment
 from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
-from experiments.util import masked_mean, masked_var, masked_whiten
+from experiments.util import masked_mean, masked_var, masked_whiten, masked_log_softmax
 
 from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
 from experiments.trajectory import Trajectory, TrajectorySet
@@ -80,12 +80,12 @@ class PPORLHFTrainer(BaseTrainer):
         optimizer_value.zero_grad()
 
     @profile
-    def _forward(self, states):
+    def _forward(self, states, pad_mask):
         new_values = self.value_model.forward(states).squeeze(1)
         new_policy_logits, _ = self.policy_model.forward(states)
-        new_policies = torch.softmax(new_policy_logits, dim=-1)
+        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask, dim=-1)
 
-        return new_values, new_policies
+        return new_values, new_log_policies
 
     @detect_nans
     def compute_value_loss_mse(self, R, new_values, mask):
@@ -93,22 +93,23 @@ class PPORLHFTrainer(BaseTrainer):
         return loss_value
 
     @detect_nans
-    def compute_policy_loss_ppo(self, old_actions, old_probs, A, new_policies, mask):
+    def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_log_policies, mask):
         # Assumption that A is calculated with the old, static values
 
-        old_probs = old_probs.detach()
+        old_log_probs = old_log_probs.detach()
         A = A.detach()
         
-        new_probs = torch.gather(new_policies, 2, old_actions.long().unsqueeze(1)).squeeze(1)
-        r = new_probs / old_probs
-        r = r.masked_fill(~mask, 0)
+        new_log_probs = torch.gather(new_log_policies, 2, old_actions.long().unsqueeze(1)).squeeze(1)
+        r = torch.exp(new_log_probs - old_log_probs)
+        # r = r.masked_fill(~mask, 0)
 
         # Compute ppo loss
         loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
         loss_ppo = -masked_mean(loss_ppo, mask)
 
         # Entropy regularization
-        entropy = -masked_mean(new_policies * torch.log(new_policies), mask.unsqueeze(2))
+        entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
+        entropy = -masked_mean(entropy, mask)
         loss_ppo -= self.config.beta * entropy
 
         return loss_ppo, entropy
@@ -183,20 +184,20 @@ class PPORLHFTrainer(BaseTrainer):
                 for k in range(self.config.K):
                     # Update new policy for each minibatch
 
-                    for _, (states, old_actions, rewards, old_values, old_probs, R, A, kl, pad_mask, reward_mask) in enumerate(tj_loader):
+                    for _, (states, old_actions, rewards, old_values, old_log_probs, R, A, kl, pad_mask, reward_mask) in enumerate(tj_loader):
 
                         self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
-                            new_values, new_policies = self._forward(states)
+                            new_values, new_log_policies = self._forward(states)
                             # TODO: Reconcile full policy here vs top_p in generation
 
                             # 2.1 Compute mse loss for value model
                             loss_value = self.compute_value_loss_mse(R, new_values, reward_mask)
                 
                             # 2.2 Compute ppo loss for policy model
-                            loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_probs, A, new_policies, pad_mask)
+                            loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_log_probs, A, new_log_policies, pad_mask)
 
                             del new_policies
 

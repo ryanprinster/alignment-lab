@@ -239,7 +239,7 @@ class RLHFEnvironment(BaseEnvironment):
             del sft_policy_logits
 
             tj.actions = states
-            tj.compute_probs(policy_logits)
+            tj.compute_log_probs(policy_logits)
             del policy_logits
 
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
