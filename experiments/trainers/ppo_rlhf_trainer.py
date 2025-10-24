@@ -226,8 +226,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 "R": masked_mean(R, pad_mask).item(),
                                 "batch_idx": batch_idx,
                                 "k": k,
-                                "global_step": self.global_step
-                                # "lr": self.lr_scheduler.get_last_lr()[0]
+                                "global_step": self.global_step,
+                                "lr_policy": self.lr_scheduler_policy.get_last_lr()[0]
                                 },
                             models=[self.policy_model, self.value_model]
                             )
