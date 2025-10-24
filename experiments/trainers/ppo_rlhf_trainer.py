@@ -47,8 +47,8 @@ class PPORLHFTrainer(BaseTrainer):
         self.value_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
-        # self.sft_model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
-        self.sft_model = copy.deepcopy(self.policy_model).to(self.device).requires_grad_(False)
+        self.sft_model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
+        # self.sft_model = copy.deepcopy(self.policy_model).to(self.device).requires_grad_(False)
         self.reward_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
 
         # Class members
@@ -160,6 +160,8 @@ class PPORLHFTrainer(BaseTrainer):
             for batch_idx, batch in enumerate(self.data.train_loader):
                 if self.global_step * self.data.train_loader.batch_size > self.config.max_episodes: 
                     break 
+
+                pdb.set_trace()
                 
                 batch = self._to_device(batch)
 
