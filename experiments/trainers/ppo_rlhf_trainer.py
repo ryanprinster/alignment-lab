@@ -83,8 +83,7 @@ class PPORLHFTrainer(BaseTrainer):
     def _forward(self, states, pad_mask):
         new_values = self.value_model.forward(states).squeeze(1)
         new_policy_logits, _ = self.policy_model.forward(states)
-        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask, dim=-1)
-
+        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(-1), dim=-1)
         return new_values, new_log_policies
 
     @detect_nans
