@@ -95,6 +95,8 @@ class PPORLHFTrainer(BaseTrainer):
     def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_log_policies, mask):
         # Assumption that A is calculated with the old, static values
 
+        pdb.set_trace()
+
         old_log_probs = old_log_probs.detach()
         A = A.detach()
         
@@ -191,7 +193,6 @@ class PPORLHFTrainer(BaseTrainer):
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
                             new_values, new_log_policies = self._forward(states, pad_mask)
-                            # TODO: Reconcile full policy here vs top_p in generation
 
                             # 2.1 Compute mse loss for value model
                             loss_value = self.compute_value_loss_mse(R, new_values, reward_mask)
@@ -200,9 +201,6 @@ class PPORLHFTrainer(BaseTrainer):
                             loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_log_probs, A, new_log_policies, pad_mask)
 
                             del new_log_policies
-
-
-                        pdb.set_trace()
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
