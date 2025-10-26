@@ -101,7 +101,7 @@ class PPORLHFTrainer(BaseTrainer):
         
         new_log_probs = torch.gather(new_log_policies, 2, old_actions.long().unsqueeze(1)).squeeze(1)
         r = torch.exp(new_log_probs - old_log_probs)
-        # r = r.masked_fill(~mask, 0)
+        r = r.clamp(min=1e-10, max=1e4)
 
         # Compute ppo loss
         loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
@@ -111,6 +111,7 @@ class PPORLHFTrainer(BaseTrainer):
         entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
         entropy = -masked_mean(entropy, mask)
 
+        # It comes from loss_ppo not entropy.
         loss_ppo -= self.config.beta * entropy
 
         return loss_ppo, entropy
