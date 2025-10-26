@@ -100,8 +100,9 @@ class PPORLHFTrainer(BaseTrainer):
         pdb.set_trace()
         
         new_log_probs = torch.gather(new_log_policies, 2, old_actions.long().unsqueeze(1)).squeeze(1)
-        r = torch.exp(new_log_probs - old_log_probs)
-        r = r.clamp(min=1e-1, max=1e1)
+        
+        r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
+        # r = r.clamp(min=1e-1, max=1e1) # clamping to small values increases
 
         # Compute ppo loss
         loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
