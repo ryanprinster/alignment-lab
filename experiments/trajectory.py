@@ -157,8 +157,10 @@ class Trajectory():
     def compute_log_probs(self, policy_logits):
         if torch.all(self.actions == 0).item():
             raise ValueError("actions is not set, set non-zero actions attribute first")
-
-        self._log_probs = torch.gather(masked_log_softmax(policy_logits, self._pad_mask.unsqueeze(2), dim=-1), dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
+        
+        # NOTE: Mask value here can't be the logically correct large negative number, 
+        # as the will cause infs in backward gradient computation later
+        self._log_probs = torch.gather(masked_log_softmax(policy_logits, self._pad_mask.unsqueeze(2), mask_value=0, dim=-1), dim=-1, index=self.actions.long().unsqueeze(-1)).squeeze(-1)
         return self.log_probs
     
     def compute_kl(self, policy_logits, sft_policy_logits):

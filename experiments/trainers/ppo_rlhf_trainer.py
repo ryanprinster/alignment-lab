@@ -196,8 +196,9 @@ class PPORLHFTrainer(BaseTrainer):
 
                             # 2.1 Compute mse loss for value model
                             loss_value = self.compute_value_loss_mse(R, new_values, reward_mask)
-                
+
                             # 2.2 Compute ppo loss for policy model
+                            # NOTE: all tensors in function below are in fp32?
                             loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_log_probs, A, new_log_policies, pad_mask)
 
                             del new_log_policies
