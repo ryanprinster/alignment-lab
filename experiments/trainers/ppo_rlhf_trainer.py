@@ -101,7 +101,7 @@ class PPORLHFTrainer(BaseTrainer):
         
         new_log_probs = torch.gather(new_log_policies, 2, old_actions.long().unsqueeze(1)).squeeze(1)
         r = torch.exp(new_log_probs - old_log_probs)
-        r = r.clamp(min=1e-4, max=1e4)
+        r = r.clamp(min=1e-1, max=1e1)
 
         # Compute ppo loss
         loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
