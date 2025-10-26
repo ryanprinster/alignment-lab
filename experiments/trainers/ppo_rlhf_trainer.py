@@ -111,6 +111,7 @@ class PPORLHFTrainer(BaseTrainer):
         entropy = -masked_mean(entropy, mask)
 
         # loss_ppo -= self.config.beta * entropy
+        loss_ppo = entropy
 
         return loss_ppo, entropy
     
