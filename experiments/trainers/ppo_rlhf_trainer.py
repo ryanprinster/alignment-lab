@@ -95,8 +95,6 @@ class PPORLHFTrainer(BaseTrainer):
     def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_log_policies, mask):
         # Assumption that A is calculated with the old, static values
 
-        pdb.set_trace()
-
         old_log_probs = old_log_probs.detach()
         A = A.detach()
         
