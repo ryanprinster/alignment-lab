@@ -13,7 +13,7 @@ import torch.nn.init as init
 import pdb
 import warnings
 
-import experiments.debug
+from experiments.debug import DEBUG
 
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForTokenClassification

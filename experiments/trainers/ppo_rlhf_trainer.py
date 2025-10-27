@@ -7,7 +7,7 @@ from datetime import datetime
 import pdb
 from contextlib import nullcontext
 
-import experiments.debug
+from experiments.debug import DEBUG
 
 # Third-party imports
 import gymnasium as gym
