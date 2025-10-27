@@ -102,6 +102,7 @@ class PPORLHFTrainer(BaseTrainer):
         new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(1)
         
         r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
+        pdb.set_trace()
         # TODO: I think this difference can be too big, even without the mask
         # r = r.clamp(min=1e-1, max=1e1) # clamping to small values increases
 
