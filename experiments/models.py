@@ -168,7 +168,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             output_attentions=False,
             use_cache=False 
         )
-        pdb.set_trace()
+        
         return outputs.logits, outputs.loss
 
     @profile   
