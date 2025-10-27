@@ -7,6 +7,7 @@ from datetime import datetime
 import pdb
 from contextlib import nullcontext
 
+import experiments.debug
 
 # Third-party imports
 import gymnasium as gym
@@ -99,7 +100,7 @@ class PPORLHFTrainer(BaseTrainer):
         A = A.detach()
         pdb.set_trace()
         
-        new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(1)
+        new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
         
         r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
         pdb.set_trace()

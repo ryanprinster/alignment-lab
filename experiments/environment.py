@@ -5,6 +5,9 @@ import sys
 import psutil
 import pdb
 
+import experiments.debug
+
+
 from experiments.profiler import profile
 from experiments.trajectory import Trajectory
 from experiments.monitor import detect_nans
