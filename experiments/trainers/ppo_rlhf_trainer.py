@@ -83,7 +83,7 @@ class PPORLHFTrainer(BaseTrainer):
     def _forward(self, states, pad_mask):
         new_values = self.value_model.forward(states).squeeze(1)
         new_policy_logits, _ = self.policy_model.forward(states)
-        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(-1), dim=-1)
+        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
         return new_values, new_log_policies
 
     @detect_nans
@@ -99,7 +99,7 @@ class PPORLHFTrainer(BaseTrainer):
         A = A.detach()
         pdb.set_trace()
         
-        new_log_probs = torch.gather(new_log_policies, 2, old_actions.long().unsqueeze(1)).squeeze(1)
+        new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(1)
         
         r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
         # TODO: I think this difference can be too big, even without the mask
