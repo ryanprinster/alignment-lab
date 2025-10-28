@@ -84,6 +84,10 @@ class PPORLHFTrainer(BaseTrainer):
     def _forward(self, states, pad_mask):
         new_values = self.value_model.forward(states).squeeze(1)
         new_policy_logits, _ = self.policy_model.forward(states)
+
+        new_values = new_values[:,self.data.SFT_MAX_QUERY_LENGTH:,:]
+        new_policy_logits = new_policy_logits[:,self.data.SFT_MAX_QUERY_LENGTH:,:]
+        
         new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
         return new_values, new_log_policies
 
@@ -191,13 +195,15 @@ class PPORLHFTrainer(BaseTrainer):
                 for k in range(self.config.K):
                     # Update new policy for each minibatch
 
-                    for _, (states, old_actions, rewards, old_values, old_log_probs, R, A, kl, pad_mask, reward_mask) in enumerate(tj_loader):
+                    for _, (full_states, old_actions, rewards, old_values, old_log_probs, R, A, kl, pad_mask, reward_mask) in enumerate(tj_loader):
+                        # TODO: states is not the full state, so we can't predict on this I think.
 
                         self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
-                            new_values, new_log_policies = self._forward(states, pad_mask)
+                            # are states not 
+                            new_values, new_log_policies = self._forward(full_states, pad_mask)
 
                             # 2.1 Compute mse loss for value model
                             loss_value = self.compute_value_loss_mse(R, new_values, reward_mask)

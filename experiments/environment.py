@@ -214,6 +214,7 @@ class RLHFEnvironment(BaseEnvironment):
 
             respose_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
+            full_states = states
             states = states[:,-respose_length:]
             values = values[:,-respose_length:]
             policy_logits = policy_logits[:,-respose_length:,:] # don't mask yet
@@ -262,6 +263,9 @@ class RLHFEnvironment(BaseEnvironment):
             # rewards = whiten(r) - beta * kl
             rewards -= self.config.beta * tj.kl
             tj.compute_R(gamma=self.config.gamma, r=rewards)
+
+            tj.full_states = full_states
+
                          
         policy_model.train()
         value_model.train()

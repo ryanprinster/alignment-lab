@@ -66,6 +66,7 @@ class Trajectory():
             self._pad_mask = torch.ones((batch_size, max_sequence_length), dtype=torch.bool)
 
         self._states = init_state * self._pad_mask.unsqueeze(2)
+        self._full_states = None
         self._actions = torch.zeros((batch_size, max_sequence_length), device=device) 
         self._rewards = rewards * self._pad_mask if rewards is not None else \
             torch.zeros((batch_size, max_sequence_length), device=device)
@@ -86,7 +87,7 @@ class Trajectory():
 
     def get_trajectory(self):
         return (
-            self.states,
+            self.full_states,
             self.actions,
             self.rewards,
             self.values,
@@ -280,6 +281,18 @@ class Trajectory():
     @property
     def reward_mask(self):
         return self._reward_mask 
+    
+    @property
+    def full_states(self):
+        return self._full_states
+    
+    @full_states.setter
+    def full_states(self, new_full_states):
+        new_full_states = torch.as_tensor(new_full_states, device=self._full_states.device, dtype=self._full_states.dtype)
+        if new_full_states.shape != self._full_states.shape:
+            raise ValueError(f"full_states shape {new_full_states.shape} doesn't match expected {self._full_states.shape}")
+        self._full_states = new_full_states * self._pad_mask
+
 
     # def add_step(self, state, action, reward, policy, value, prob):
     #     if self.batch_size != 1:
@@ -363,7 +376,7 @@ class TrajectorySet(Dataset):
         return self._tjs.batch_size
     
     def __getitem__(self, idx):
-        return self._tjs.states[idx,:,:], \
+        return self._tjs.full_states[idx,:,:], \
             self._tjs.actions[idx,:], \
             self._tjs.rewards[idx,:], \
             self._tjs.values[idx,:], \
