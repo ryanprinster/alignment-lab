@@ -82,10 +82,9 @@ class PPORLHFTrainer(BaseTrainer):
 
     @profile
     def _forward(self, states, pad_mask):
-        pdb.set_trace()
         new_values = self.value_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH).squeeze(1) 
         new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH)
-
+        pdb.set_trace()
         new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
         return new_values, new_log_policies
 
