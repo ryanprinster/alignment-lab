@@ -78,7 +78,6 @@ class Llama_3p2_1B(nn.Module, ABC):
     def generate(self, inputs, max_length, temp):
         pass
 
-    @profile
     def clean_logits(self, logits):
         # clean scores, -inf --> 1e-9
         return logits.masked_fill_(torch.isinf(logits), 1e-9)
@@ -154,7 +153,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         return padded_tokens, policy_logits
 
     @profile
-    def forward(self, input_ids, attention_mask=None, labels=None):
+    def forward(self, input_ids, attention_mask=None, labels=None, max_query_length_truncate=None):
 
         if labels is not None:
             labels = labels.squeeze(-1)
@@ -170,11 +169,13 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             output_attentions=False,
             use_cache=False 
         )
+
+        if max_query_length_truncate is not None:
+            return outputs.logits[:,max_query_length_truncate:,:], outputs.loss
         
         pdb.set_trace()
         return outputs.logits, outputs.loss
 
-    @profile   
     def _set_model_class(self):
         return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
 
@@ -212,7 +213,6 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
         # Calculated from the cu         
 
-    @profile   
     def _set_model_class(self):
         return AutoModelForSequenceClassification.from_pretrained(
             Llama_3p2_1B.HF_MODEL_NAME, 
@@ -237,7 +237,6 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         self._init_model_weights()
 
-    @profile   
     def _set_model_class(self):
         return AutoModelForTokenClassification.from_pretrained(
             Llama_3p2_1B.HF_MODEL_NAME,
@@ -245,7 +244,7 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
         )
 
     @profile
-    def forward(self, input_ids, attention_mask=None):
+    def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
         # Forward parallel decode
 
         # Mask pad tokens
@@ -256,5 +255,8 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
             input_ids=input_ids.squeeze(-1),
             attention_mask=attention_mask.squeeze(-1),
         )
+        
+        if max_query_length_truncate is not None:
+            return outputs.logits[:,max_query_length_truncate:,:].squeeze(-1)
         
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
