@@ -87,7 +87,7 @@ class Trajectory():
 
     def get_trajectory(self):
         return (
-            self.full_states,
+            self.states,
             self.actions,
             self.rewards,
             self.values,
@@ -96,7 +96,8 @@ class Trajectory():
             self.A,
             self.kl,
             self.pad_mask,
-            self.reward_mask
+            self.reward_mask,
+            self.full_states
         )
 
     @profile
@@ -377,7 +378,7 @@ class TrajectorySet(Dataset):
         return self._tjs.batch_size
     
     def __getitem__(self, idx):
-        return self._tjs.full_states[idx,:,:], \
+        return self._tjs.states[idx,:,:], \
             self._tjs.actions[idx,:], \
             self._tjs.rewards[idx,:], \
             self._tjs.values[idx,:], \
@@ -386,7 +387,8 @@ class TrajectorySet(Dataset):
             self._tjs.A[idx,:], \
             self._tjs.kl[idx,:], \
             self._tjs.pad_mask[idx,:], \
-            self._tjs.reward_mask[idx,:]
+            self._tjs.reward_mask[idx,:], \
+            self._tjs.full_states[idx,:]
 
 # TODO: Make another TrajectorySet which shuffles the time dimension 
 # into the batch dimension for cartpole or non-sequence environments

@@ -87,7 +87,7 @@ class PPORLHFTrainer(BaseTrainer):
 
         new_values = new_values[:,self.data.SFT_MAX_QUERY_LENGTH:,:]
         new_policy_logits = new_policy_logits[:,self.data.SFT_MAX_QUERY_LENGTH:,:]
-        
+
         new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
         return new_values, new_log_policies
 
@@ -108,7 +108,6 @@ class PPORLHFTrainer(BaseTrainer):
         
         r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
         pdb.set_trace()
-        # TODO: I think this difference can be too big, even without the mask
         # r = r.clamp(min=1e-1, max=1e1) # clamping to small values increases
 
         # Compute ppo loss
@@ -195,7 +194,7 @@ class PPORLHFTrainer(BaseTrainer):
                 for k in range(self.config.K):
                     # Update new policy for each minibatch
 
-                    for _, (full_states, old_actions, rewards, old_values, old_log_probs, R, A, kl, pad_mask, reward_mask) in enumerate(tj_loader):
+                    for _, (states, old_actions, rewards, old_values, old_log_probs, R, A, kl, pad_mask, reward_mask, full_states) in enumerate(tj_loader):
                         # TODO: states is not the full state, so we can't predict on this I think.
 
                         self._zero_grad(self.optimizer_policy, self.optimizer_value)
