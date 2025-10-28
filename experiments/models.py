@@ -245,6 +245,7 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
     @profile
     def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
         # Forward parallel decode
+        pdb.set_trace()
 
         # Mask pad tokens
         if attention_mask is None:
