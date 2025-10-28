@@ -56,7 +56,9 @@ class Llama_3p2_1B(nn.Module, ABC):
         self.config = config
         self.transformer = self._set_model_class()
         if config.enable_gradient_checkpointing:
-            self.transformer.gradient_checkpointing_enable()
+            self.transformer.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
         self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
         
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
