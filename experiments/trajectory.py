@@ -288,7 +288,7 @@ class Trajectory():
     
     @full_states.setter
     def full_states(self, new_full_states):
-        new_full_states = torch.as_tensor(new_full_states, device=self._full_states.device, dtype=self._full_states.dtype)
+        new_full_states = torch.as_tensor(new_full_states, device=self.device, dtype=self._full_states.dtype)
         if new_full_states.shape != self._full_states.shape:
             raise ValueError(f"full_states shape {new_full_states.shape} doesn't match expected {self._full_states.shape}")
         self._full_states = new_full_states * self._pad_mask
