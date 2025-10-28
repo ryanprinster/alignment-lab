@@ -92,7 +92,6 @@ class Llama_3p2_1B(nn.Module, ABC):
         self.load_state_dict(
             torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
 
-
 class Llama_3p2_1B_Causal(Llama_3p2_1B):
     def __init__(self, config, init_model_path=None):
         self.init_model_path = init_model_path
@@ -255,6 +254,7 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
             input_ids=input_ids.squeeze(-1),
             attention_mask=attention_mask.squeeze(-1),
         )
+        pdb.set_trace()
         
         if max_query_length_truncate is not None:
             return outputs.logits[:,max_query_length_truncate:,:].squeeze(-1)

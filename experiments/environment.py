@@ -265,6 +265,7 @@ class RLHFEnvironment(BaseEnvironment):
             tj.compute_R(gamma=self.config.gamma, r=rewards)
 
             tj.full_states = full_states
+            pdb.set_trace()
 
                          
         policy_model.train()
