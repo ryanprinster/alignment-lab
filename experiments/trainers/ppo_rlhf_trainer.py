@@ -99,9 +99,12 @@ class PPORLHFTrainer(BaseTrainer):
         old_log_probs = old_log_probs.detach()
         A = A.detach()
         pdb.set_trace()
+
+
         
         new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
         
+        # TODO: ratios are now 1 on first iteration, but don't improve after. Suspicion - mixed precision training?
         r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
         pdb.set_trace()
         # r = r.clamp(min=1e-1, max=1e1) # clamping to small values increases
@@ -191,7 +194,6 @@ class PPORLHFTrainer(BaseTrainer):
                     # Update new policy for each minibatch
 
                     for _, (states, old_actions, rewards, old_values, old_log_probs, R, A, kl, pad_mask, reward_mask, full_states) in enumerate(tj_loader):
-                        # TODO: states is not the full state, so we can't predict on this I think.
 
                         self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
