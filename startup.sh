@@ -26,26 +26,26 @@ python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 
 
 
 
+### WORKING ###
+# From YOUR LOCAL MACHINE:
+# Step 1: Copy SSH key to source pod
+scp -P 28353 -i ~/.ssh/id_ed25519 ~/.ssh/id_ed25519 root@103.196.86.188:~/.ssh/
+# Step 2: SSH into source pod
+ssh root@103.196.86.188 -p 28353 -i ~/.ssh/id_ed25519
 
-# Transfer between pods = source_pod --> local --> dest_pod
-# Significantly less efficient
-scp -r -P 23898 -i ~/.ssh/id_ed25519 root@103.196.86.188:/path/to/source/directory ./local-directory
-scp -r -P 12634 -i ~/.ssh/id_ed25519 ./local-directory root@198.145.108.49:/path/to/destination/
-
-
-# rsync pod to pod
-
-apt update && apt install -y rsync
-
-# if needed, kill previous tries:
-kill %1 %2
-
-# test ssh connection pod to pod first
-ssh -p 12634 -i ~/.ssh/id_ed25519 root@198.145.108.49
-
-nohup rsync -avzP -e "ssh -p 12634 -i ~/.ssh/id_ed25519" \
-  /workspace/alignment-lab/keep/ \
-  root@198.145.108.49:/workspace/keep/ \
+# From INSIDE THE SOURCE POD:
+# (After Step 2 connects you to the source pod, run everything below)
+# Step 3: Test connection to destination
+ssh -p 13751 -i ~/.ssh/id_ed25519 root@198.145.108.61
+# (Type yes, then exit)
+# Step 4: Check/install rsync
+which rsync
+# If needed:
+apt-get update && apt-get install -y rsync
+# Step 5: Start the transfer
+nohup rsync -avzP -e "ssh -p 13751 -i ~/.ssh/id_ed25519" \
+  /workspace/alignment-lab/checkpoints/ \
+  root@198.145.108.61:/workspace/checkpoints/ \
   > rsync.log 2>&1 &
-
+# Step 6: Monitor progress
 tail -f rsync.log

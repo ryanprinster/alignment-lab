@@ -100,11 +100,10 @@ class PPORLHFTrainer(BaseTrainer):
         A = A.detach()
         pdb.set_trace()
 
-
-        
         new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
         
         # TODO: ratios are now 1 on first iteration, but don't improve after. Suspicion - mixed precision training?
+        # Still have a few inf gradients somehow <- wait this is after the first iteration, not necessarily the mixed precision trainig
         r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
         pdb.set_trace()
         # r = r.clamp(min=1e-1, max=1e1) # clamping to small values increases
@@ -117,7 +116,6 @@ class PPORLHFTrainer(BaseTrainer):
         entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
         entropy = -masked_mean(entropy, mask)
 
-        # It comes from loss_ppo not entropy.
         loss_ppo -= self.config.beta * entropy
 
         return loss_ppo, entropy
