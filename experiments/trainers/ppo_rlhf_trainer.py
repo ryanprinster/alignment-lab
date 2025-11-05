@@ -33,7 +33,6 @@ from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
 from torch.optim.lr_scheduler import LinearLR
 from experiments.monitor import detect_nans
-import copy
 
 
 class PPORLHFTrainer(BaseTrainer):
@@ -49,7 +48,6 @@ class PPORLHFTrainer(BaseTrainer):
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
         self.sft_model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
-        # self.sft_model = copy.deepcopy(self.policy_model).to(self.device).requires_grad_(False)
         self.reward_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
 
         # Class members
@@ -84,9 +82,8 @@ class PPORLHFTrainer(BaseTrainer):
     def _forward(self, states, pad_mask):
         new_values = self.value_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH).squeeze(1) 
         new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH)
-        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
+        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).half()
         pdb.set_trace()
-        
         return new_values, new_log_policies
 
     @detect_nans
@@ -100,7 +97,6 @@ class PPORLHFTrainer(BaseTrainer):
 
         old_log_probs = old_log_probs.detach()
         A = A.detach()
-        pdb.set_trace()
 
         new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
         
@@ -203,7 +199,6 @@ class PPORLHFTrainer(BaseTrainer):
 
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
-                            # are states not 
                             new_values, new_log_policies = self._forward(full_states, pad_mask)
 
                             # 2.1 Compute mse loss for value model

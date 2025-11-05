@@ -22,7 +22,7 @@ python -m experiments RMTrainer compute_model_bias --config RLFHCaseStudyConfig 
 python -m experiments RMTrainer train --config RLFHCaseStudyConfig --load_checkpoint_path checkpoints/sft_final_checkpoint.pt --calculated_sft_bias -8.703847885131836 --save_freq_steps 9999999 --batch_size 32 --accumulation_steps 2
 
 # PPORLHFTrainer
-python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128 --mini_batch_accumulation_steps 1
+python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128 --mini_batch_accumulation_steps 1 --enable_gradient_checkpointing
 
 
 
@@ -49,3 +49,15 @@ nohup rsync -avzP -e "ssh -p 13751 -i ~/.ssh/id_ed25519" \
   > rsync.log 2>&1 &
 # Step 6: Monitor progress
 tail -f rsync.log
+
+
+
+
+
+# THEN
+git clone https://github.com/ryanprinster/alignment-lab
+git checkout origin/rlhf_ppo_tweaks
+git push -u origin rlhf_ppo_tweaks
+
+#  
+mv /workspace/checkpoints /workspace/alignment-lab/checkpoints

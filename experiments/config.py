@@ -161,7 +161,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.log_file_name="sft_training_log"
 
         # Efficiency
-        self.enable_gradient_checkpointing = False
+        self.enable_gradient_checkpointing = True
         self.enable_mixed_precision_training = True
         self.pre_compute_rm_scores = True
 

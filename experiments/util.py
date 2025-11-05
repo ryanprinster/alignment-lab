@@ -88,13 +88,14 @@ def masked_log_softmax(tensor, mask, dim=-1, mask_value=-1e9):
     Returns:
         Masked log_softmax (masked positions will be -inf)
     """
+    
     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
 
     log_probs = F.log_softmax(masked_tensor, dim=dim)
 
     log_probs = log_probs.masked_fill(~mask, mask_value)
     
-    return log_probs
+    return log_probs.to(tensor.dtype)
 
 
 # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
