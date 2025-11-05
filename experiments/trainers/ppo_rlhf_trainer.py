@@ -115,24 +115,27 @@ class PPORLHFTrainer(BaseTrainer):
     
     @profile
     def _backward(self, loss_value, loss_ppo):
-        if self.config.enable_mixed_precision_training:
-            loss_value = self.scaler_value.scale(loss_value)
-            loss_ppo = self.scaler_policy.scale(loss_ppo)
+        # if self.config.enable_mixed_precision_training:
+        #     loss_value = self.scaler_value.scale(loss_value)
+        #     loss_ppo = self.scaler_policy.scale(loss_ppo)
         loss_value.backward()
         loss_ppo.backward()
     
     @profile
     def _step(self, optimizer_policy, optimizer_value):
 
-        if self.config.enable_mixed_precision_training:
-            # Unscale gradient, take optimizer step, and update scale factor
-            self.scaler_policy.step(self.optimizer_policy)
-            self.scaler_value.step(self.optimizer_value)
-            self.scaler_policy.update()
-            self.scaler_value.update()
-        else:
-            optimizer_policy.step()
-            optimizer_value.step()
+        # if self.config.enable_mixed_precision_training:
+        #     # Unscale gradient, take optimizer step, and update scale factor
+        #     self.scaler_policy.step(self.optimizer_policy)
+        #     self.scaler_value.step(self.optimizer_value)
+        #     self.scaler_policy.update()
+        #     self.scaler_value.update()
+        # else:
+        #     optimizer_policy.step()
+        #     optimizer_value.step()
+        
+        optimizer_policy.step()
+        optimizer_value.step()
 
         self.lr_scheduler_policy.step()
         self.lr_scheduler_value.step()
