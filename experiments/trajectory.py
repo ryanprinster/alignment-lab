@@ -108,7 +108,7 @@ class Trajectory():
 
         if torch.all(r == 0).item():
             pdb.set_trace()
-            raise ValueError("rewards is not set, set non-zero rewards attribute first")
+            # raise ValueError("rewards is not set, set non-zero rewards attribute first")
 
         time_dim = Trajectory.TIME_DIM
 
