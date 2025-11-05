@@ -83,7 +83,6 @@ class PPORLHFTrainer(BaseTrainer):
         new_values = self.value_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH).squeeze(1) 
         new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH)
         new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
-        pdb.set_trace()
         return new_values, new_log_policies
 
     @detect_nans
@@ -100,15 +99,7 @@ class PPORLHFTrainer(BaseTrainer):
 
         new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
         
-        # TODO: ratios are now 1 on first iteration, but don't improve after.
-        # Infinite gradients are showing up after the first backprop step
-        # Likely mixed precision training - issue did not show up when disabling mixed precision trianing
-        # Not an entropy term issue
-        # not a ratio issue
-        # Advantages look fine
         r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
-        pdb.set_trace()
-        # r = r.clamp(min=1e-1, max=1e1) # clamping to small values increases
 
         # Compute ppo loss
         loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
@@ -120,7 +111,6 @@ class PPORLHFTrainer(BaseTrainer):
 
         loss_ppo -= self.config.beta * entropy
 
-        # return loss_ppo.half(), entropy.half()
         return loss_ppo, entropy
     
     @profile
@@ -242,9 +232,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 },
                             models=[self.policy_model, self.value_model]
                             )
-                    
-                        pdb.set_trace()
-                        
+                                            
                 # 3. Theta old <-- theta new
                 self._update_old_models()
 
