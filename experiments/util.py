@@ -22,9 +22,8 @@ def masked_mean(tensor, mask, dim=None, keepdim=False):
     
     # Avoid division by zero
     count_valid = count_valid.clamp(min=1)
-    
-    return sum_valid / count_valid
-
+    mean = sum_valid / count_valid
+    return mean.to(tensor.dtype)
 
 def masked_var(tensor, mask, dim=None, keepdim=False, unbiased=True):
     """
@@ -56,7 +55,8 @@ def masked_var(tensor, mask, dim=None, keepdim=False, unbiased=True):
     else:
         count_valid = count_valid.clamp(min=1)
     
-    return sum_squared_diff / count_valid
+    var = sum_squared_diff / count_valid
+    return var.to(tensor.dtype)
 
 def masked_softmax(tensor, mask, dim=-1):
     """
@@ -74,7 +74,8 @@ def masked_softmax(tensor, mask, dim=-1):
     masked_tensor = tensor.masked_fill(~mask, float('-inf'))
 
     # Apply softmax
-    return F.softmax(masked_tensor, dim=dim) * mask
+    result = F.softmax(masked_tensor, dim=dim) * mask
+    return result.to(tensor.dtype)
 
 def masked_log_softmax(tensor, mask, dim=-1, mask_value=-1e9):
     """
@@ -104,4 +105,5 @@ def masked_whiten(values, mask, shift_mean=True):
     whitened = (values - mean) * torch.rsqrt(var + 1e-8)
     if not shift_mean:
         whitened += mean
-    return whitened * mask
+    result = whitened * mask
+    return result.to(values.dtype)
