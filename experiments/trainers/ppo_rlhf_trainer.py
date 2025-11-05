@@ -69,7 +69,7 @@ class PPORLHFTrainer(BaseTrainer):
                                         end_factor=self.config.lr_final_ratio * self.config.lr)
         
         # Mixed precision training
-        self.mixed_precision_context = autocast("cuda") if self.config.enable_mixed_precision_training else nullcontext()
+        self.mixed_precision_context = autocast("cuda", dtype=torch.bfloat16) if self.config.enable_mixed_precision_training else nullcontext()
         self.scaler_policy = GradScaler("cuda") 
         self.scaler_value = GradScaler("cuda") 
 
@@ -82,7 +82,7 @@ class PPORLHFTrainer(BaseTrainer):
     def _forward(self, states, pad_mask):
         new_values = self.value_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH).squeeze(1) 
         new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH)
-        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).half()
+        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
         pdb.set_trace()
         return new_values, new_log_policies
 
@@ -121,13 +121,13 @@ class PPORLHFTrainer(BaseTrainer):
         loss_ppo -= self.config.beta * entropy
 
         # return loss_ppo.half(), entropy.half()
-        return loss_ppo, entropy.half()
+        return loss_ppo, entropy
     
     @profile
     def _backward(self, loss_value, loss_ppo):
         if self.config.enable_mixed_precision_training:
             loss_value = self.scaler_value.scale(loss_value)
-            # loss_ppo = self.scaler_policy.scale(loss_ppo)
+            loss_ppo = self.scaler_policy.scale(loss_ppo)
         loss_value.backward()
         loss_ppo.backward()
     
@@ -136,17 +136,13 @@ class PPORLHFTrainer(BaseTrainer):
 
         if self.config.enable_mixed_precision_training:
             # Unscale gradient, take optimizer step, and update scale factor
-            # self.scaler_policy.step(self.optimizer_policy)
+            self.scaler_policy.step(self.optimizer_policy)
             self.scaler_value.step(self.optimizer_value)
-            # self.scaler_policy.update()
+            self.scaler_policy.update()
             self.scaler_value.update()
         else:
-            # optimizer_policy.step()
+            optimizer_policy.step()
             optimizer_value.step()
-        
-        # temp
-        optimizer_policy.step()
-
 
         self.lr_scheduler_policy.step()
         self.lr_scheduler_value.step()
