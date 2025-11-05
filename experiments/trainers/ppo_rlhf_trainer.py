@@ -85,6 +85,7 @@ class PPORLHFTrainer(BaseTrainer):
         new_values = self.value_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH).squeeze(1) 
         new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH)
         new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
+        pdb.set_trace()
         return new_values, new_log_policies
 
     @detect_nans
@@ -102,8 +103,12 @@ class PPORLHFTrainer(BaseTrainer):
 
         new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
         
-        # TODO: ratios are now 1 on first iteration, but don't improve after. Suspicion - mixed precision training?
-        # Still have a few inf gradients somehow <- wait this is after the first iteration, not necessarily the mixed precision trainig
+        # TODO: ratios are now 1 on first iteration, but don't improve after.
+        # Infinite gradients are showing up after the first backprop step
+        # Likely mixed precision training - issue did not show up when disabling mixed precision trianing
+        # Not an entropy term issue
+        # not a ratio issue
+        # Advantages look fine
         r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
         pdb.set_trace()
         # r = r.clamp(min=1e-1, max=1e1) # clamping to small values increases
