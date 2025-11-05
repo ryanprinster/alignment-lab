@@ -120,7 +120,7 @@ class PPORLHFTrainer(BaseTrainer):
 
         loss_ppo -= self.config.beta * entropy
 
-        return loss_ppo, entropy
+        return loss_ppo.half(), entropy.half()
     
     @profile
     def _backward(self, loss_value, loss_ppo):
