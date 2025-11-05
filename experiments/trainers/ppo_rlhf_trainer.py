@@ -136,14 +136,18 @@ class PPORLHFTrainer(BaseTrainer):
 
         if self.config.enable_mixed_precision_training:
             # Unscale gradient, take optimizer step, and update scale factor
-            self.scaler_policy.step(self.optimizer_policy)
+            # self.scaler_policy.step(self.optimizer_policy)
             self.scaler_value.step(self.optimizer_value)
-            self.scaler_policy.update()
+            # self.scaler_policy.update()
             self.scaler_value.update()
         else:
-            optimizer_policy.step()
+            # optimizer_policy.step()
             optimizer_value.step()
         
+        # temp
+        optimizer_policy.step()
+
+
         self.lr_scheduler_policy.step()
         self.lr_scheduler_value.step()
 
