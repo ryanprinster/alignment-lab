@@ -165,10 +165,12 @@ class RLHFEnvironment(BaseEnvironment):
 
     
     def set_reward_for_no_eos(self, eos_mask, rewards):
-        """Penalizes sequences that don't contain an EOS token by setting the final reward to -1."""
+        """Penalizes sequences that don't contain an EOS token by setting the final reward to -1.
+        Also marks the last position as EOS in the mask for sequences without EOS."""
         has_no_eos = ~eos_mask.any(dim=1)
         rewards[has_no_eos, -1] = -1
-        return rewards
+        eos_mask[has_no_eos, -1] = True
+        return rewards, eos_mask
 
     # # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
     # @profile
@@ -229,7 +231,7 @@ class RLHFEnvironment(BaseEnvironment):
             reward_mask = self.construct_reward_mask(states, tokenizer)
 
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
-            rewards = self.set_reward_for_no_eos(reward_mask, rewards)
+            rewards, reward_mask = self.set_reward_for_no_eos(reward_mask, rewards)
             # NOTE: whitened before computing kl to follow https://arxiv.org/pdf/2403.17031
 
             tj = Trajectory(init_state=states.unsqueeze(-1), 
