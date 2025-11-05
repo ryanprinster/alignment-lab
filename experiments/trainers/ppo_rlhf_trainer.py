@@ -127,7 +127,7 @@ class PPORLHFTrainer(BaseTrainer):
     def _backward(self, loss_value, loss_ppo):
         if self.config.enable_mixed_precision_training:
             loss_value = self.scaler_value.scale(loss_value)
-            loss_ppo = self.scaler_policy.scale(loss_ppo)
+            # loss_ppo = self.scaler_policy.scale(loss_ppo)
         loss_value.backward()
         loss_ppo.backward()
     
