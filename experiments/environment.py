@@ -207,6 +207,7 @@ class RLHFEnvironment(BaseEnvironment):
                 max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
             )
             del _
+            pdb.set_trace()
             
             policy_logits, _ = policy_model.forward(states)
             sft_policy_logits, _ = sft_model.forward(states)
