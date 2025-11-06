@@ -179,13 +179,13 @@ class Trajectory():
         P = torch.exp(log_P).masked_fill(~pad_mask_3d, 0)
         log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
 
+        pdb.set_trace()
         kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=-1)
         del pad_mask_3d
         kl_div = masked_mean(kl_div, self._pad_mask, dim=-1)
         # The math technically says to sum over both dims, but averaging over time makes sense for initial stability
         # and is also tunable by beta.
 
-        # TODO: Document why we are using the reward_mask here
         kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
         
         self._kl = kl_div.masked_fill(~self._reward_mask, 0)
