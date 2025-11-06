@@ -109,7 +109,7 @@ class PPORLHFTrainer(BaseTrainer):
         entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
         entropy = -masked_mean(entropy, mask)
 
-        loss_ppo -= self.config.beta * entropy
+        # loss_ppo -= self.config.beta * entropy
 
         return loss_ppo, entropy
     
