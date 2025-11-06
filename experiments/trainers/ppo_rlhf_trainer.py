@@ -191,6 +191,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
+                        pdb.set_trace()
                         self._step(self.optimizer_policy, self.optimizer_value)
 
                         # Logging
@@ -220,6 +221,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 },
                             models=[self.policy_model, self.value_model]
                             )
+                        
+                        
                                             
                 # 3. Theta old <-- theta new
                 self._update_old_models()
