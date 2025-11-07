@@ -203,7 +203,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 "loss_ppo": loss_ppo.item(),
                                 "train_iter": epoch,
                                 "global_step": self.global_step,
-                                "A": masked_mean(A, pad_mask).item(),
+                                "A_max": A.max().item(),
+                                "A_min": A.min().item(),
                                 # 1 - var(A) / var(A + V)
                                 "explained_var": 1 - masked_var(A, pad_mask).item() / masked_var(A + old_values, pad_mask).item(),
                                 "policy_entropy": entropy.item(),
