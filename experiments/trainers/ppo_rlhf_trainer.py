@@ -105,6 +105,8 @@ class PPORLHFTrainer(BaseTrainer):
         loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
         loss_ppo = -masked_mean(loss_ppo, mask)
 
+        pdb.set_trace()
+
         # Entropy for tracking, but KL is doing regularization
         entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
         entropy = -masked_mean(entropy, mask)
@@ -113,10 +115,7 @@ class PPORLHFTrainer(BaseTrainer):
     
     @profile
     def _backward(self, loss_value, loss_ppo):
-
         loss_value.backward()
-        pdb.set_trace()
-
         loss_ppo.backward()
     
     @profile
