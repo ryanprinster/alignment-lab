@@ -85,12 +85,12 @@ class PPORLHFTrainer(BaseTrainer):
         new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
         return new_values, new_log_policies
 
-    @detect_nans
+    # @detect_nans
     def compute_value_loss_mse(self, R, new_values, mask):
         loss_value = masked_mean((new_values - R) ** 2, mask)
         return loss_value
 
-    @detect_nans
+    # @detect_nans
     def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_log_policies, mask):
         # Assumption that A is calculated with the old, static values
 
@@ -113,8 +113,9 @@ class PPORLHFTrainer(BaseTrainer):
     
     @profile
     def _backward(self, loss_value, loss_ppo):
-        loss_value.backward()
         loss_ppo.backward()
+        pdb.set_trace()
+        loss_value.backward()
     
     @profile
     def _step(self, optimizer_policy, optimizer_value):
