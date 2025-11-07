@@ -115,8 +115,8 @@ class PPORLHFTrainer(BaseTrainer):
     
     @profile
     def _backward(self, loss_value, loss_ppo):
-        loss_value.backward()
         loss_ppo.backward()
+        loss_value.backward()
     
     @profile
     def _step(self, optimizer_policy, optimizer_value):
