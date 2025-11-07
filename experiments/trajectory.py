@@ -154,6 +154,8 @@ class Trajectory():
         A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
         self._A = torch.flip(A_rev, dims=[time_dim])
 
+        pdb.set_trace()
+
         return self.A
     
     def compute_log_probs(self, policy_logits):
