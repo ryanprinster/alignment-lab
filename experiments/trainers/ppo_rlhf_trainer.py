@@ -80,6 +80,7 @@ class PPORLHFTrainer(BaseTrainer):
 
     @profile
     def _forward(self, states, pad_mask):
+        # passing in pad mask?
         new_values = self.value_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH).squeeze(1) 
         new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH)
         new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
@@ -188,12 +189,12 @@ class PPORLHFTrainer(BaseTrainer):
                             # 2.2 Compute ppo loss for policy model
                             # NOTE: all tensors in function below are in fp32?
                             loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_log_probs, A, new_log_policies, pad_mask)
+                            pdb.set_trace()
 
                             del new_log_policies
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
-                        pdb.set_trace()
                         self._step(self.optimizer_policy, self.optimizer_value)
 
                         # Logging
