@@ -230,6 +230,9 @@ class RLHFEnvironment(BaseEnvironment):
             # Detail 12 (RM Training -> Extract reward from the EOS token)
             reward_mask = self.construct_reward_mask(states, tokenizer)
 
+            # TEMP
+            rewards = rewards * (reward_mask * 10)
+
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             rewards, reward_mask = self.set_reward_for_no_eos(reward_mask, rewards)
             # NOTE: whitened before computing kl to follow https://arxiv.org/pdf/2403.17031

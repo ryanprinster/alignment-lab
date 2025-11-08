@@ -155,6 +155,11 @@ class Trajectory():
         self._A = torch.flip(A_rev, dims=[time_dim])
 
         pdb.set_trace()
+        # Should advantages be calculated on V and r at every step?
+        # Do we require the behavior of negative reward / value prediction at almost every location except eos?
+        # The final step behavior may actually matter, as there is a lam discount of 0.95
+        # --> This discount is what makes advantages monitonically decrease, since the reward difference isn't huge
+
 
         return self.A
     
