@@ -148,12 +148,17 @@ class Trajectory():
         # V_next = torch.cat([V[:,1:], torch.zeros(self.batch_size, 1, device=self.device)], dim=time_dim) # Assumes V(s_{T+1}) = 0 TODO: is this a good assumption for LLMs
         TD_error = r + gamma * V_next - V
 
+        pdb.set_trace()
+
+
         # 2. Get discounts 
         discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
         discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 1)        
         discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
         discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
         
+        pdb.set_trace()
+
         # 3. Calculate GAE via cumulative sum in reverse
         TD_rev = TD_error.flip(dims=[time_dim]) 
         A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
