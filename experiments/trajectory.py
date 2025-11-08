@@ -140,7 +140,12 @@ class Trajectory():
         r = self.rewards
 
         # 1. Compute delta_t (TD Error)
-        V_next = torch.cat([V[:,1:], torch.zeros(self.batch_size, 1, device=self.device)], dim=time_dim) # Assumes V(s_{T+1}) = 0 TODO: is this a good assumption for LLMs
+        V_next = torch.zeros_like(V)
+        V_next[:, :-1] = V[:, 1:]  # normal shift
+        last_valid_idx = self._pad_mask.sum(dim=time_dim, keepdim=True) - 1
+        V_next[:, -1] = V.gather(time_dim, last_valid_idx)
+        
+        # V_next = torch.cat([V[:,1:], torch.zeros(self.batch_size, 1, device=self.device)], dim=time_dim) # Assumes V(s_{T+1}) = 0 TODO: is this a good assumption for LLMs
         TD_error = r + gamma * V_next - V
 
         # 2. Get discounts 
