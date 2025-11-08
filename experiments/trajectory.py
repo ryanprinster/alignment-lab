@@ -144,7 +144,7 @@ class Trajectory():
         V_next[:, :-1] = V[:, 1:]  # normal shift
         last_valid_idx = self._pad_mask.sum(dim=time_dim) - 1  # shape: [B]
         batch_idx = torch.arange(V.size(0), device=V.device)        
-        V_next[:, -1] = V[batch_idx, last_valid_idx]
+        V_next[batch_idx, last_valid_idx] = V[batch_idx, last_valid_idx]
 
 
         # 1. Compute delta_t (TD Error)
