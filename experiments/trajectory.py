@@ -138,6 +138,7 @@ class Trajectory():
         # len(r) = T
         V = self.values.detach()
         r = self.rewards
+        r = r.masked_fill(~self.reward_mask, 0)
 
         # 0. Calculate V_next by bootstrapping last value
         V_next = torch.zeros_like(V)
