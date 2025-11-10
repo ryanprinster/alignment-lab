@@ -84,7 +84,7 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.enable_mixed_precision_training = True
 
         # RM 
-        self.calculated_sft_bias = 6.49
+        self.calculated_sft_bias = 0
 
         # TODO: Could move optimizer, lr scheduler, data to config
 
@@ -144,6 +144,8 @@ class RLFHPPOConfig(PPOConfigBase):
 
         self.whiten_A = True
         self.whiten_rewards = True
+
+        # self.mse_loss_clip_val = 
 
         
         

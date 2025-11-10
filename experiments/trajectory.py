@@ -149,6 +149,7 @@ class Trajectory():
 
         # 1. Compute delta_t (TD Error)
         TD_error = r + gamma * V_next - V
+        TD_error.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
 
         # 2. Get discounts 
         discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
