@@ -171,6 +171,7 @@ class RMTrainer(BaseTrainer):
                         "accuracy": self._accuracy(r_preferred, r_rejected).item(),
                         "r_preferred": torch.mean(r_preferred).item(),
                         "r_rejected": torch.mean(r_rejected).item(),
+                        "r_delta": torch.mean(r_preferred - r_rejected).item(), 
                         "epoch": epoch,
                         "global_step": self.global_step,
                         "lr": self.lr_scheduler.get_last_lr()[0]
