@@ -146,12 +146,8 @@ class Trajectory():
         batch_idx = torch.arange(V.size(0), device=V.device)        
         V_next[batch_idx, last_valid_idx] = V[batch_idx, last_valid_idx]
 
-
         # 1. Compute delta_t (TD Error)
         TD_error = r + gamma * V_next - V
-
-        pdb.set_trace()
-
 
         # 2. Get discounts 
         discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
@@ -159,8 +155,6 @@ class Trajectory():
         discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
         discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
         
-        pdb.set_trace()
-
         # 3. Calculate GAE via cumulative sum in reverse
         TD_rev = TD_error.flip(dims=[time_dim]) 
         A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)

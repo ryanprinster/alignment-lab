@@ -87,11 +87,8 @@ class PPORLHFTrainer(BaseTrainer):
         return new_values, new_log_policies
 
     # @detect_nans
-    def compute_value_loss_mse(self, R, new_values, mask, clip_value=None):
-        diff = new_values - R
-        if clip_value is not None:
-            diff = diff.clamp(min=-clip_value, max=clip_value)
-        loss_value = masked_mean(diff ** 2, mask)
+    def compute_value_loss_mse(self, R, new_values, mask):
+        loss_value = masked_mean((new_values - R) ** 2, mask)
         return loss_value
 
     # @detect_nans
@@ -108,8 +105,6 @@ class PPORLHFTrainer(BaseTrainer):
         # Compute ppo loss
         loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
         loss_ppo = -masked_mean(loss_ppo, mask)
-
-        pdb.set_trace()
 
         # Entropy for tracking, but KL is doing regularization
         entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
@@ -187,7 +182,7 @@ class PPORLHFTrainer(BaseTrainer):
                             new_values, new_log_policies = self._forward(full_states, pad_mask)
 
                             # 2.1 Compute mse loss for value model
-                            loss_value = self.compute_value_loss_mse(R, new_values, reward_mask, self.config.mse_loss_clip_val)
+                            loss_value = self.compute_value_loss_mse(R, new_values, reward_mask)
 
                             # 2.2 Compute ppo loss for policy model
                             # NOTE: all tensors in function below are in fp32?
