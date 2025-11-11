@@ -4,9 +4,9 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.amp import GradScaler, autocast
 from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
+import pdb
 
-
-from experiments.models import Llama_3p2_1B_RM
+from experiments.models import Llama_3p2_1B_RM, Llama_3p2_1B_Value
 from experiments.config import RMConfigBase
 from experiments.datasets import OpenAIPreferenceData
 from experiments.logger import Logger
@@ -194,11 +194,15 @@ class RMTrainer(BaseTrainer):
         
     @profile
     def validation(self):
-        # 0.6812722161559371
         from datetime import datetime
         import json
         print("Starting Validation!")
+
+        self.model_full = Llama_3p2_1B_Value(self.config).to(self.device)
+        self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
+
         self.model.eval()
+        self.model_full.eval()
 
         total_correct = 0
         total_examples = 0
@@ -210,10 +214,12 @@ class RMTrainer(BaseTrainer):
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
                     outputs = self._forward(batch)
+                    self.model_full.forward(batch['input_ids'])
                 
                     # Logits are scalar rewards
-                    r_preferred = outputs[0].logits
-                    r_rejected = outputs[1].logits
+                    r_preferred = outputs[0]
+                    r_rejected = outputs[1]
+                    pdb.set_trace()
 
                     correct = (r_preferred > r_rejected).float()
                     
