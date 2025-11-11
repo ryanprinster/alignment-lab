@@ -214,7 +214,7 @@ class RMTrainer(BaseTrainer):
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
                     outputs = self._forward(batch)
-                    self.model_full.forward(batch)
+                    self.model_full.forward(batch['preferred_input_ids'], batch['preferred_attention_mask'])
                 
                     # Logits are scalar rewards
                     r_preferred = outputs[0]
