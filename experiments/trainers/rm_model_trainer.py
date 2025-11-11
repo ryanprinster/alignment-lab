@@ -214,12 +214,11 @@ class RMTrainer(BaseTrainer):
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
                     outputs = self._forward(batch)
-                    self.model_full.forward(batch['input_ids'])
+                    self.model_full.forward(batch)
                 
                     # Logits are scalar rewards
                     r_preferred = outputs[0]
                     r_rejected = outputs[1]
-                    pdb.set_trace()
 
                     correct = (r_preferred > r_rejected).float()
                     
