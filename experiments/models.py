@@ -227,7 +227,7 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
             input_ids=input_ids,
             attention_mask=attention_mask
         )
-        return outputs.logits.squeeze(-1)
+        return outputs.logits.squeeze(-1)  # -> (batch, )
 
 
 class Llama_3p2_1B_Value(Llama_3p2_1B):
@@ -260,3 +260,12 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
             return outputs.logits[:,max_query_length_truncate:,:].squeeze(-1)
         
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
+
+
+#  For some reason, forward in Llama_3p2_1B_Value does not give the same or even close values to forward in Llama_3p2_1B_RM
+# Hypotheses include: 
+# off by one errors in indexing, 
+# some sort of randomness is added, 
+# the models are actually not equivalent for some sort of intialization issue 
+# This could be messing with ppo rlhf training
+# The RM one is not actually returning the reward at EOS token
