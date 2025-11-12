@@ -278,6 +278,7 @@ class RLHFEnvironment(BaseEnvironment):
                 rewards = whiten(rewards, shift_mean=False)
             
             # rewards = whiten(r) - beta * kl
+            pdb.set_trace()
             rewards -= self.config.beta * tj.kl
             tj.compute_R(gamma=self.config.gamma, r=rewards)
 
