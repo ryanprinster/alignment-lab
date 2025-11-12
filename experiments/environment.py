@@ -11,7 +11,7 @@ import experiments.debug
 from experiments.profiler import profile
 from experiments.trajectory import Trajectory
 from experiments.monitor import detect_nans
-from experiments.util import masked_mean, masked_log_softmax, masked_whiten
+from experiments.util import masked_mean, masked_log_softmax, masked_whiten, whiten
 
 import gymnasium as gym
 
@@ -160,17 +160,33 @@ class RLHFEnvironment(BaseEnvironment):
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         return ~(pos >= first_pad_pos.unsqueeze(1))
     
-    def construct_reward_mask(self, states, tokenizer):
-        return (states == tokenizer.eos_token_id)
+    # def construct_reward_mask(self, states, tokenizer):
+    #     has_eos = (states == tokenizer.eos_token_id).any(dim=1)
+    #     return ~has_eos
 
-    
-    def set_reward_for_no_eos(self, eos_mask, rewards):
+    def set_reward_for_no_eos(self, states, rewards, tokenizer, penalty=-1.0):
         """Penalizes sequences that don't contain an EOS token by setting the final reward to -1.
         Also marks the last position as EOS in the mask for sequences without EOS."""
-        has_no_eos = ~eos_mask.any(dim=1)
-        rewards[has_no_eos, -1] = -1
-        eos_mask[has_no_eos, -1] = True
-        return rewards, eos_mask
+
+        reward_mask = (states == tokenizer.eos_token_id)
+        has_eos = reward_mask.any(dim=1)
+        
+        # For sequences without EOS, set the last valid position to True in the mask
+        if (~has_eos).any():
+            last_valid_idx = self._pad_mask.sum(dim=1) - 1  # Get last non-padded position
+            batch_idx = torch.arange(states.size(0), device=states.device)
+            reward_mask[batch_idx[~has_eos], last_valid_idx[~has_eos]] = True
+        
+        # Set penalty reward for sequences without EOS
+        rewards = rewards.clone()
+        rewards[~has_eos] = penalty
+        
+        return rewards, reward_mask
+
+        # has_no_eos = ~eos_mask.any(dim=1)
+        # rewards[has_no_eos, -1] = -1
+        # eos_mask[has_no_eos, -1] = True
+        # return rewards, eos_mask
 
     # # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
     # @profile
@@ -230,13 +246,10 @@ class RLHFEnvironment(BaseEnvironment):
             pad_mask = self.construct_pad_mask(states, tokenizer)
         
             # Detail 12 (RM Training -> Extract reward from the EOS token)
-            reward_mask = self.construct_reward_mask(states, tokenizer)
-
-            # # TEMP
-            # rewards = rewards * (reward_mask * 10)
+            # NOTE: this is done by the model already
 
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
-            rewards, reward_mask = self.set_reward_for_no_eos(reward_mask, rewards)
+            rewards, reward_mask = self.set_reward_for_no_eos(states, rewards, tokenizer)
             # NOTE: whitened before computing kl to follow https://arxiv.org/pdf/2403.17031
 
             tj = Trajectory(init_state=states.unsqueeze(-1), 
@@ -265,7 +278,7 @@ class RLHFEnvironment(BaseEnvironment):
             if self.config.whiten_rewards:
                 # NOTE: we choose to whiten rewards with a reward_mask because only this 
                 # represents the only valid reward for the generated trajectory
-                rewards = masked_whiten(rewards, reward_mask, shift_mean=False)
+                rewards = whiten(rewards, shift_mean=False)
             
             # rewards = whiten(r) - beta * kl
             rewards -= self.config.beta * tj.kl

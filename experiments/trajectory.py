@@ -138,7 +138,9 @@ class Trajectory():
         # len(r) = T
         V = self.values.detach()
         r = self.rewards
-        r = r.masked_fill(~self.reward_mask, 0)
+        r_expanded = torch.zeros_like(V)
+        r_expanded = r_expanded.masked_fill(self.reward_mask, r.unsqueeze(-1))
+        pdb.set_trace()
 
         # 0. Calculate V_next by bootstrapping last value
         V_next = torch.zeros_like(V)
@@ -148,11 +150,11 @@ class Trajectory():
         V_next[batch_idx, last_valid_idx] = V[batch_idx, last_valid_idx]
 
         # 1. Compute delta_t (TD Error)
-        TD_error = r + gamma * V_next - V
+        TD_error = r_expanded + gamma * V_next - V
         TD_error.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
 
         # 2. Get discounts 
-        discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
+        discounts_rev = torch.ones(r_expanded.size(), device=self.device) * lam * gamma
         discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 1)        
         discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
         discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
@@ -161,13 +163,6 @@ class Trajectory():
         TD_rev = TD_error.flip(dims=[time_dim]) 
         A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
         self._A = torch.flip(A_rev, dims=[time_dim])
-
-        pdb.set_trace()
-        # Should advantages be calculated on V and r at every step?
-        # Do we require the behavior of negative reward / value prediction at almost every location except eos?
-        # The final step behavior may actually matter, as there is a lam discount of 0.95
-        # --> This discount is what makes advantages monitonically decrease, since the reward difference isn't huge
-
 
         return self.A
     
@@ -196,12 +191,17 @@ class Trajectory():
 
         kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=-1)
         del pad_mask_3d
-        kl_div = torch.sum(kl_div, dim=-1)
-
-        kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
-        
-        self._kl = kl_div.masked_fill(~self._reward_mask, 0)
+        kl_div = torch.sum(kl_div, dim=-1) 
+        self._kl = kl_div
         return self.kl
+        # # (batch_size)
+
+        # kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
+
+        # # (batch_size, seq_len)
+        
+        # self._kl = kl_div.masked_fill(~self._reward_mask, 0)
+        # return self.kl
 
 
     
