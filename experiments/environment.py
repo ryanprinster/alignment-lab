@@ -238,9 +238,6 @@ class RLHFEnvironment(BaseEnvironment):
             policy_logits = policy_logits[:,-respose_length:,:] # don't mask yet
             sft_policy_logits = sft_policy_logits[:,-respose_length:,:] # don't mask yet
             
-            # rewards = rewards[:,-respose_length:]
-            pdb.set_trace()
-
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
             states = self.enforce_padding(states, tokenizer)
             pad_mask = self.construct_pad_mask(states, tokenizer)
