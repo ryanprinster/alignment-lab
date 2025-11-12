@@ -231,17 +231,29 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
 
 
 class Llama_3p2_1B_Value(Llama_3p2_1B):
-    def __init__(self, config, init_model_path=None):
+    def __init__(self, config, init_model_path=None, init_rm_model=None):
         self.init_model_path = init_model_path
         super().__init__(config)
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         self._init_model_weights()
+        self._init_head_weights(init_rm_model)
+
 
     def _set_model_class(self):
         return AutoModelForTokenClassification.from_pretrained(
             Llama_3p2_1B.HF_MODEL_NAME,
             num_labels=1
         )
+    
+    def _init_head_weights(self, init_rm_model):
+        # TODO: cleanup how this is called
+        if init_rm_model is None:
+            return 
+        # if not os.path.exists(self.init_model_path):
+        #     raise FileNotFoundError(f"Model not found: {self.init_model_path}")
+        
+        self.transformer.classifier.weight.data = init_rm_model.score.weight.data.clone()
+        self.transformer.classifier.bias.data = init_rm_model.score.bias.data.clone()
 
     @profile
     def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
