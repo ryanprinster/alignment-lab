@@ -25,7 +25,7 @@ from experiments.logger import Logger
 from experiments.environment import RLHFEnvironment
 from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
-from experiments.util import masked_mean, masked_var, masked_whiten, masked_log_softmax
+from experiments.util import masked_mean, masked_var, masked_whiten, masked_log_softmax, whiten
 
 from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
 from experiments.trajectory import Trajectory, TrajectorySet
@@ -207,14 +207,10 @@ class PPORLHFTrainer(BaseTrainer):
                                 # 1 - var(A) / var(A + V)
                                 "explained_var": 1 - masked_var(A, pad_mask).item() / masked_var(A + old_values, pad_mask).item(),
                                 "policy_entropy": entropy.item(),
-                                "total_raw_reward": masked_mean(rewards, reward_mask).item(),
-                                "total_whitened_reward": masked_mean(
-                                    masked_whiten(rewards, reward_mask, shift_mean=False),
-                                    reward_mask).item(),
-                                "total_maximized_reward": masked_mean(
-                                    masked_whiten(rewards, reward_mask, shift_mean=False) - self.config.beta * kl,
-                                    reward_mask).item(),
-                                "kl": masked_mean(kl, reward_mask).item(),
+                                "total_raw_reward": torch.mean(rewards).item(),
+                                "total_whitened_reward": torch.mean(whiten(rewards)).item(),
+                                "total_maximized_reward": torch.mean(whiten(rewards) - self.config.beta * kl,).item(),
+                                "kl": torch.mean(kl).item(),
                                 "R": masked_mean(R, pad_mask).item(),
                                 "batch_idx": batch_idx,
                                 "k": k,
