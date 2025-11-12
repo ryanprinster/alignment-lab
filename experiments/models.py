@@ -252,9 +252,8 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
         # if not os.path.exists(self.init_model_path):
         #     raise FileNotFoundError(f"Model not found: {self.init_model_path}")
         
-        pdb.set_trace()
         # TODO: Finish properly init the value model
-        # TODO: Then, load the better trained model
+        # NOTE: It seems the model does this by default, but 
         self.transformer.score.weight.data = init_rm_model.transformer.score.weight.data.clone()
         self.transformer.score.bias.data = init_rm_model.transformer.score.bias.data.clone()
 
