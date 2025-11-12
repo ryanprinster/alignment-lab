@@ -164,7 +164,7 @@ class RLHFEnvironment(BaseEnvironment):
     #     has_eos = (states == tokenizer.eos_token_id).any(dim=1)
     #     return ~has_eos
 
-    def set_reward_for_no_eos(self, states, rewards, tokenizer, penalty=-1.0):
+    def set_reward_for_no_eos(self, states, rewards, tokenizer, pad_mask, penalty=-1.0):
         """Penalizes sequences that don't contain an EOS token by setting the final reward to -1.
         Also marks the last position as EOS in the mask for sequences without EOS."""
 
@@ -173,7 +173,7 @@ class RLHFEnvironment(BaseEnvironment):
         
         # For sequences without EOS, set the last valid position to True in the mask
         if (~has_eos).any():
-            last_valid_idx = self._pad_mask.sum(dim=1) - 1  # Get last non-padded position
+            last_valid_idx = pad_mask.sum(dim=1) - 1  # Get last non-padded position
             batch_idx = torch.arange(states.size(0), device=states.device)
             reward_mask[batch_idx[~has_eos], last_valid_idx[~has_eos]] = True
         
@@ -249,7 +249,7 @@ class RLHFEnvironment(BaseEnvironment):
             # NOTE: this is done by the model already
 
             # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
-            rewards, reward_mask = self.set_reward_for_no_eos(states, rewards, tokenizer)
+            rewards, reward_mask = self.set_reward_for_no_eos(states, rewards, tokenizer, pad_mask)
             # NOTE: whitened before computing kl to follow https://arxiv.org/pdf/2403.17031
 
             tj = Trajectory(init_state=states.unsqueeze(-1), 
