@@ -189,7 +189,6 @@ class PPORLHFTrainer(BaseTrainer):
                             # NOTE: all tensors in function below are in fp32?
                             loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_log_probs, A, new_log_policies, pad_mask)
 
-                            pdb.set_trace()
                             del new_log_policies
 
                         # 2.3 Update models
