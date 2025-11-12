@@ -140,7 +140,6 @@ class Trajectory():
         r = self.rewards
         r_expanded = torch.zeros_like(V)
         r_expanded = r.unsqueeze(-1) * self.reward_mask.float()
-        pdb.set_trace()
 
         # 0. Calculate V_next by bootstrapping last value
         V_next = torch.zeros_like(V)
@@ -152,6 +151,8 @@ class Trajectory():
         # 1. Compute delta_t (TD Error)
         TD_error = r_expanded + gamma * V_next - V
         TD_error.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
+
+        pdb.set_trace()
 
         # 2. Get discounts 
         discounts_rev = torch.ones(r_expanded.size(), device=self.device) * lam * gamma
