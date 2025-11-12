@@ -393,7 +393,7 @@ class TrajectorySet(Dataset):
     def __getitem__(self, idx):
         return self._tjs.states[idx,:,:], \
             self._tjs.actions[idx,:], \
-            self._tjs.rewards[idx,:], \
+            self._tjs.rewards[idx], \
             self._tjs.values[idx,:], \
             self._tjs.log_probs[idx,:], \
             self._tjs.R[idx,:], \
