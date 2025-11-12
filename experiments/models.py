@@ -252,8 +252,9 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
         # if not os.path.exists(self.init_model_path):
         #     raise FileNotFoundError(f"Model not found: {self.init_model_path}")
         
-        self.transformer.classifier.weight.data = init_rm_model.score.weight.data.clone()
-        self.transformer.classifier.bias.data = init_rm_model.score.bias.data.clone()
+        pdb.set_trace()
+        self.transformer.classifier.weight.data = init_rm_model.transformer.score.weight.data.clone()
+        self.transformer.classifier.bias.data = init_rm_model.transformer.score.bias.data.clone()
 
     @profile
     def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
