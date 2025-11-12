@@ -143,6 +143,7 @@ class Trajectory():
         r = self.rewards
         r_expanded = torch.zeros_like(V)
         r_expanded = r.unsqueeze(-1) * self.reward_mask.float()
+        pdb.set_trace()
 
         # 0. Calculate V_next by bootstrapping last value
         V_next = torch.zeros_like(V)
