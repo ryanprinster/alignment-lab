@@ -398,7 +398,7 @@ class TrajectorySet(Dataset):
             self._tjs.log_probs[idx,:], \
             self._tjs.R[idx,:], \
             self._tjs.A[idx,:], \
-            self._tjs.kl[idx,:], \
+            self._tjs.kl[idx], \
             self._tjs.pad_mask[idx,:], \
             self._tjs.reward_mask[idx,:], \
             self._tjs.full_states[idx,:]
