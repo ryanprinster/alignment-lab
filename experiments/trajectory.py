@@ -111,14 +111,17 @@ class Trajectory():
 
         time_dim = Trajectory.TIME_DIM
 
+        r_expanded = torch.zeros_like(self.values)
+        r_expanded = r.unsqueeze(-1) * self.reward_mask.float()
+
         # Get discounts
-        discounts_rev = torch.ones_like(r, device=self.device) * gamma 
+        discounts_rev = torch.ones_like(r_expanded, device=self.device) * gamma 
         discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 1)
         discounts_rev = torch.cumprod(discounts_rev,dim=time_dim) / gamma
         discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
 
         # Calculate
-        r_rev = torch.flip(r, dims=[time_dim])
+        r_rev = torch.flip(r_expanded, dims=[time_dim])
         R_rev = torch.cumsum(discounts_rev * r_rev, dim=time_dim)
         self._R = torch.flip(R_rev, dims=[time_dim])
         return self.R
@@ -151,8 +154,6 @@ class Trajectory():
         # 1. Compute delta_t (TD Error)
         TD_error = r_expanded + gamma * V_next - V
         TD_error.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
-
-        pdb.set_trace()
 
         # 2. Get discounts 
         discounts_rev = torch.ones(r_expanded.size(), device=self.device) * lam * gamma
