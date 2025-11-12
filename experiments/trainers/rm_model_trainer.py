@@ -198,11 +198,11 @@ class RMTrainer(BaseTrainer):
         import json
         print("Starting Validation!")
 
-        self.model_full = Llama_3p2_1B_Value(self.config).to(self.device)
+        # self.model_full = Llama_3p2_1B_Value(self.config).to(self.device)
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
 
         self.model.eval()
-        self.model_full.eval()
+        # self.model_full.eval()
 
         total_correct = 0
         total_examples = 0
@@ -226,6 +226,11 @@ class RMTrainer(BaseTrainer):
                     total_correct += correct.sum().item()
                     total_examples += correct.size(0)
 
+                print(f"\n\nPreferred (reward: {r_preferred})\n ",
+                      self.model.tokenizer.decode(batch['preferred_input_ids'][0]), "\n\n")
+                
+                print(f"\n\nRejected: (reward: {r_rejected})\n ",
+                      self.model.tokenizer.decode(batch['preferred_input_ids'][0]), "\n\n")                
                 
                 print(f"step: {_batch_idx}, cumulative accuracy: {1.0 * total_correct / total_examples}")
             
@@ -233,3 +238,7 @@ class RMTrainer(BaseTrainer):
         log_data = {"step": _batch_idx, "cumulative_accuracy": 1.0 * total_correct / total_examples, "timestamp": now}
         with open(f"rm_validation_{now}.jsonl", "a") as f:
             f.write(json.dumps(log_data) + "\n")
+
+        
+    
+     
