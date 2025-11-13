@@ -8,7 +8,7 @@ import pdb
 
 from experiments.models import Llama_3p2_1B_RM, Llama_3p2_1B_Value
 from experiments.config import RMConfigBase
-from experiments.datasets import OpenAIPreferenceData
+from experiments.datasets import OpenAIPreferenceData, TLDRFilteredDataSFT
 from experiments.logger import Logger
 from experiments.checkpointer import Checkpointer
 from experiments.profiler import profile
@@ -41,6 +41,8 @@ class RMTrainer(BaseTrainer):
 
         self.model.eval()
         with torch.no_grad():
+
+            sft_data = TLDRFilteredDataSFT(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
             
             total_reward = torch.tensor(0.0, device=self.device)
             start = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -50,8 +52,8 @@ class RMTrainer(BaseTrainer):
                     batch = self._to_device(batch)
                     
                     # Logits are scalar rewards
-                    reward_logit = self.model.forward(input_ids=batch['preferred_input_ids'], 
-                                attention_mask=batch['preferred_attention_mask']) 
+                    reward_logit = self.model.forward(input_ids=batch['input_ids'], 
+                                attention_mask=batch['input_ids']) 
                     total_reward += reward_logit.mean()
                 
                     running_reward_bias = (total_reward / (_batch_idx + 1)).cpu().item()
@@ -65,7 +67,7 @@ class RMTrainer(BaseTrainer):
 
                     return total_reward
 
-                for _batch_idx, batch in enumerate(self.data.train_loader):
+                for _batch_idx, batch in enumerate(sft_data.train_loader):
                     total_reward = process_batch(total_reward, _batch_idx, batch)
                     
                     # test
@@ -198,11 +200,11 @@ class RMTrainer(BaseTrainer):
         import json
         print("Starting Validation!")
 
-        # self.model_full = Llama_3p2_1B_Value(self.config).to(self.device)
+        self.model_full = Llama_3p2_1B_Value(self.config).to(self.device)
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
 
         self.model.eval()
-        # self.model_full.eval()
+        self.model_full.eval()
 
         total_correct = 0
         total_examples = 0
@@ -214,6 +216,7 @@ class RMTrainer(BaseTrainer):
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
                     outputs = self._forward(batch)
+                    outputs_value = self.model_full.forward(batch['preferred_input_ids'])
                 
                     # Logits are scalar rewards
                     r_preferred = outputs[0]
@@ -226,11 +229,9 @@ class RMTrainer(BaseTrainer):
                     total_correct += correct.sum().item()
                     total_examples += correct.size(0)
 
-                print(f"\n\nPreferred (reward: {r_preferred})\n ",
-                      self.model.tokenizer.decode(batch['preferred_input_ids'][0]), "\n\n")
+                print(f"\n\nPreferred (reward: {r_preferred[0]})\n ", self.model.tokenizer.decode(batch['preferred_input_ids'][0]), "\n\n")
                 
-                print(f"\n\nRejected: (reward: {r_rejected})\n ",
-                      self.model.tokenizer.decode(batch['preferred_input_ids'][0]), "\n\n")                
+                print(f"\n\nRejected: (reward: {r_rejected[0]})\n ", self.model.tokenizer.decode(batch['rejected_input_ids'][0]), "\n\n")                
                 
                 print(f"step: {_batch_idx}, cumulative accuracy: {1.0 * total_correct / total_examples}")
             
