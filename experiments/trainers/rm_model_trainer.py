@@ -50,8 +50,8 @@ class RMTrainer(BaseTrainer):
                 @profile
                 def process_batch(total_reward, _batch_idx, batch):
                     pdb.set_trace()
-                    batch = batch['input_ids'].to(self.device)
-                    batch = batch['attention_mask'].to(self.device)
+                    batch['input_ids'] = batch['input_ids'].to(self.device)
+                    batch['attention_mask'] = batch['attention_mask'].to(self.device)
                     
                     # Logits are scalar rewards
                     reward_logit = self.model.forward(input_ids=batch['input_ids'], 
