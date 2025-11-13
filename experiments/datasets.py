@@ -47,7 +47,6 @@ class ScoredData(Dataset):
         d['rm_score'] = self.rm_scores[idx]
         d['idx'] = idx
         d.update(self.data[idx])
-        # pdb.set_trace()
         return d
     
     def set_rm_score(self, idx, score):
@@ -282,11 +281,11 @@ class OpenAIPreferenceData():
         test_query = self._format_query(subreddit, title, post)
         tokens = tokenizer(test_query, return_tensors="pt")
         
-        if tokens['input_ids'].shape[1] <= TLDRFilteredData.SFT_MAX_QUERY_LENGTH:
+        if tokens['input_ids'].shape[1] <= TLDRFilteredDataBase.SFT_MAX_QUERY_LENGTH:
             return post
         
         truncate_char = '\n'
-        while tokens['input_ids'].shape[1] > TLDRFilteredData.SFT_MAX_QUERY_LENGTH:
+        while tokens['input_ids'].shape[1] > TLDRFilteredDataBase.SFT_MAX_QUERY_LENGTH:
             last_newline = post.rfind(truncate_char)
             if last_newline == -1:
                 # In the rare case that a single paragraph has too many tokens, 
