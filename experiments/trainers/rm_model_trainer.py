@@ -49,6 +49,7 @@ class RMTrainer(BaseTrainer):
             with open(f"compute_rm_bias{start}.jsonl", "a") as f:
                 @profile
                 def process_batch(total_reward, _batch_idx, batch):
+                    pdb.set_trace()
                     batch = batch['input_ids'].to(self.device)
                     batch = batch['attention_mask'].to(self.device)
                     
