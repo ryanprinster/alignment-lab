@@ -49,16 +49,15 @@ class RMTrainer(BaseTrainer):
             with open(f"compute_rm_bias{start}.jsonl", "a") as f:
                 @profile
                 def process_batch(total_reward, _batch_idx, batch):
-                    pdb.set_trace()
                     batch['input_ids'] = batch['input_ids'].to(self.device)
                     batch['attention_mask'] = batch['attention_mask'].to(self.device)
                     
                     # Logits are scalar rewards
                     reward_logit = self.model.forward(input_ids=batch['input_ids'], 
-                                attention_mask=batch['input_ids']) 
-                    total_reward += reward_logit.mean()
+                                attention_mask=batch['attention_mask']) 
+                    total_reward += torch.sum(reward_logit)
                 
-                    running_reward_bias = (total_reward / (_batch_idx + 1)).cpu().item()
+                    running_reward_bias = (total_reward / ((_batch_idx + 1) * self.config.batch_size)).cpu().item()
                     
                     log_data = {"batch_idx": _batch_idx,
                                 "running_reward_bias": running_reward_bias,
