@@ -198,8 +198,8 @@ class RLHFEnvironment(BaseEnvironment):
             rewards=rewards,
             pad_mask=pad_mask,
             reward_mask=reward_mask,
-            full_states=full_states
         )
+        tj.full_states = full_states
         tj.actions=states
         return tj
 
