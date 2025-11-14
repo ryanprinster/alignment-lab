@@ -247,7 +247,7 @@ class Trajectory():
         new_rewards = torch.as_tensor(new_rewards, device=self._rewards.device, dtype=self._rewards.dtype)
         if new_rewards.shape != self._rewards.shape:
             raise ValueError(f"Rewards shape {new_rewards.shape} doesn't match expected {self._rewards.shape}")
-        self._rewards = new_rewards * self._pad_mask
+        self._rewards = new_rewards
 
     @property
     def policies(self):
