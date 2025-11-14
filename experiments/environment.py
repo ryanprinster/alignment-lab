@@ -162,6 +162,30 @@ class RLHFEnvironment(BaseEnvironment):
         
         return full_states, policy_logits, sft_policy_logits, values, rewards
 
+    def _truncate_to_response(self, states, values, policy_logits, sft_policy_logits, response_length):
+        """Truncate all tensors to the response portion only."""
+        states = states[:, -response_length:]
+        values = values[:, -response_length:]
+        policy_logits = policy_logits[:, -response_length:, :]
+        sft_policy_logits = sft_policy_logits[:, -response_length:, :]
+        
+        return states, values, policy_logits, sft_policy_logits
+
+    def _apply_eos_trick(self, states, rewards, tokenizer):
+        """
+        Apply EOS trick: truncate and pad after EOS, set -1 reward for missing EOS.
+        
+        Detail 23.2: Truncate and pad after EOS to ensure valid RM scores
+        Detail 23.3: Set -1 reward for sequences without EOS token
+        """
+        states = self.enforce_padding(states, tokenizer)
+        pad_mask = self.construct_pad_mask(states, tokenizer)
+        rewards, reward_mask = self.set_reward_for_no_eos(
+            states, rewards, tokenizer, pad_mask
+        )
+        
+        return states, pad_mask, rewards, reward_mask
+
 
     @profile
     def generate_trajectory(self, 
@@ -190,6 +214,10 @@ class RLHFEnvironment(BaseEnvironment):
                     full_states, values, policy_logits, sft_policy_logits, 
                     response_length
                 )
+            
+            # Apply EOS trick and masking
+            states, pad_mask, rewards, reward_mask = \
+                self._apply_eos_trick(states, rewards, tokenizer)
 
             # states, _ = policy_model.generate(
             #     batch,
@@ -214,20 +242,21 @@ class RLHFEnvironment(BaseEnvironment):
             # sft_policy_logits = sft_policy_logits[:,-respose_length:,:] # don't mask yet
             pdb.set_trace()
 
-            # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
-            states = self.enforce_padding(states, tokenizer)
-            pad_mask = self.construct_pad_mask(states, tokenizer)
+            # # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
+            # states = self.enforce_padding(states, tokenizer)
+            # pad_mask = self.construct_pad_mask(states, tokenizer)
         
-            # Detail 12 (RM Training -> Extract reward from the EOS token)
-            # NOTE: this is done by the model already
+            # # Detail 12 (RM Training -> Extract reward from the EOS token)
+            # # NOTE: this is done by the model already
 
-            # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
-            rewards, reward_mask = self.set_reward_for_no_eos(states, rewards, tokenizer, pad_mask)
+            # # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
+            # rewards, reward_mask = self.set_reward_for_no_eos(states, rewards, tokenizer, pad_mask)
+
             # NOTE: whitened before computing kl to follow https://arxiv.org/pdf/2403.17031
 
             tj = Trajectory(init_state=states.unsqueeze(-1), 
                     action_dim=self.action_dim,
-                    max_sequence_length=respose_length,
+                    max_sequence_length=response_length,
                     tokenizer=tokenizer,
                     values=values * pad_mask,
                     rewards=rewards,
