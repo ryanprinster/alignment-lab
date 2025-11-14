@@ -185,6 +185,24 @@ class RLHFEnvironment(BaseEnvironment):
         )
         
         return states, pad_mask, rewards, reward_mask
+    
+    def _create_trajectory(self, states, values, rewards, pad_mask, 
+                       reward_mask, full_states, response_length, tokenizer):
+        """Create a Trajectory object with base quantities."""
+        return Trajectory(
+            init_state=states.unsqueeze(-1), 
+            action_dim=self.action_dim,
+            max_sequence_length=response_length,
+            tokenizer=tokenizer,
+            values=values * pad_mask,
+            rewards=rewards,
+            pad_mask=pad_mask,
+            reward_mask=reward_mask,
+            actions=states,
+            full_states=full_states
+        )
+
+
 
 
     @profile
@@ -252,21 +270,16 @@ class RLHFEnvironment(BaseEnvironment):
             # # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
             # rewards, reward_mask = self.set_reward_for_no_eos(states, rewards, tokenizer, pad_mask)
 
-            # NOTE: whitened before computing kl to follow https://arxiv.org/pdf/2403.17031
 
-            tj = Trajectory(init_state=states.unsqueeze(-1), 
-                    action_dim=self.action_dim,
-                    max_sequence_length=response_length,
-                    tokenizer=tokenizer,
-                    values=values * pad_mask,
-                    rewards=rewards,
-                    pad_mask=pad_mask,
-                    reward_mask=reward_mask)
+            # Create trajectory and compute base quantities
+            tj = self._create_trajectory(
+                states, values, rewards, pad_mask, reward_mask, full_states,
+                response_length, tokenizer
+            )
         
             tj.compute_kl(policy_logits, sft_policy_logits)
             del sft_policy_logits
 
-            tj.actions = states
             tj.compute_log_probs(policy_logits)
             del policy_logits
 
@@ -290,8 +303,6 @@ class RLHFEnvironment(BaseEnvironment):
             
             # 4. Compute returns/rewards-to-go
             tj.compute_R(gamma=self.config.gamma, r=rewards)
-
-            tj.full_states = full_states
                          
         policy_model.train()
         value_model.train()
