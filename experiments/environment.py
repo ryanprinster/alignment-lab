@@ -202,11 +202,7 @@ class RLHFEnvironment(BaseEnvironment):
         tj.full_states = full_states
         tj.actions=states
         return tj
-
-
-
-
-
+    
     @profile
     def generate_trajectory(self, 
                             batch, 
@@ -239,46 +235,11 @@ class RLHFEnvironment(BaseEnvironment):
             states, pad_mask, rewards, reward_mask = \
                 self._apply_eos_trick(states, rewards, tokenizer)
 
-            # states, _ = policy_model.generate(
-            #     batch,
-            #     self.max_sequence_length,
-            #     temp,
-            #     max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
-            # )
-            # del _
-            
-            # policy_logits, _ = policy_model.forward(states)
-            # sft_policy_logits, _ = sft_model.forward(states)
-
-            # values = value_model.forward(states, batch['attention_mask'])
-            # rewards = reward_model.forward(states, batch['attention_mask'])
-
-            # respose_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
-
-            # full_states = states
-            # states = states[:,-respose_length:]
-            # values = values[:,-respose_length:]
-            # policy_logits = policy_logits[:,-respose_length:,:] # don't mask yet
-            # sft_policy_logits = sft_policy_logits[:,-respose_length:,:] # don't mask yet
-
-            # # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
-            # states = self.enforce_padding(states, tokenizer)
-            # pad_mask = self.construct_pad_mask(states, tokenizer)
-        
-            # # Detail 12 (RM Training -> Extract reward from the EOS token)
-            # # NOTE: this is done by the model already
-
-            # # Detail 23.3 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> set -1 reward for no eos token)
-            # rewards, reward_mask = self.set_reward_for_no_eos(states, rewards, tokenizer, pad_mask)
-
-
             # Create trajectory and compute base quantities
             tj = self._create_trajectory(
                 states, values, rewards, pad_mask, reward_mask, full_states,
                 response_length, tokenizer
             )
-
-            pdb.set_trace()
         
             tj.compute_kl(policy_logits, sft_policy_logits)
             del sft_policy_logits
