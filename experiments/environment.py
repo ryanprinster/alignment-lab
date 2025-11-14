@@ -184,7 +184,7 @@ class RLHFEnvironment(BaseEnvironment):
                     reward_model, temp
                 )
             
-            response_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
+            response_length = full_states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
             states, values, policy_logits, sft_policy_logits = \
                 self._truncate_to_response(
                     full_states, values, policy_logits, sft_policy_logits, 
