@@ -177,10 +177,18 @@ class RLHFEnvironment(BaseEnvironment):
 
             tokenizer = policy_model.tokenizer
 
+            # Raw model output: generate and forward passes
             full_states, policy_logits, sft_policy_logits, values, rewards = \
                 self._generate_and_compute_outputs(
                     batch, policy_model, value_model, sft_model, 
                     reward_model, temp
+                )
+            
+            response_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
+            states, values, policy_logits, sft_policy_logits = \
+                self._truncate_to_response(
+                    full_states, values, policy_logits, sft_policy_logits, 
+                    response_length
                 )
 
             # states, _ = policy_model.generate(
@@ -197,14 +205,15 @@ class RLHFEnvironment(BaseEnvironment):
             # values = value_model.forward(states, batch['attention_mask'])
             # rewards = reward_model.forward(states, batch['attention_mask'])
 
-            respose_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
+            # respose_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
-            full_states = states
-            states = states[:,-respose_length:]
-            values = values[:,-respose_length:]
-            policy_logits = policy_logits[:,-respose_length:,:] # don't mask yet
-            sft_policy_logits = sft_policy_logits[:,-respose_length:,:] # don't mask yet
-            
+            # full_states = states
+            # states = states[:,-respose_length:]
+            # values = values[:,-respose_length:]
+            # policy_logits = policy_logits[:,-respose_length:,:] # don't mask yet
+            # sft_policy_logits = sft_policy_logits[:,-respose_length:,:] # don't mask yet
+            pdb.set_trace()
+
             # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
             states = self.enforce_padding(states, tokenizer)
             pad_mask = self.construct_pad_mask(states, tokenizer)
