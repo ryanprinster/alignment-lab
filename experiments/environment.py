@@ -189,7 +189,7 @@ class RLHFEnvironment(BaseEnvironment):
     def _create_trajectory(self, states, values, rewards, pad_mask, 
                        reward_mask, full_states, response_length, tokenizer):
         """Create a Trajectory object with base quantities."""
-        return Trajectory(
+        tj = Trajectory(
             init_state=states.unsqueeze(-1), 
             action_dim=self.action_dim,
             max_sequence_length=response_length,
@@ -198,9 +198,11 @@ class RLHFEnvironment(BaseEnvironment):
             rewards=rewards,
             pad_mask=pad_mask,
             reward_mask=reward_mask,
-            actions=states,
             full_states=full_states
         )
+        tj.actions=states
+        return tj
+
 
 
 
@@ -258,7 +260,6 @@ class RLHFEnvironment(BaseEnvironment):
             # values = values[:,-respose_length:]
             # policy_logits = policy_logits[:,-respose_length:,:] # don't mask yet
             # sft_policy_logits = sft_policy_logits[:,-respose_length:,:] # don't mask yet
-            pdb.set_trace()
 
             # # Detail 23.2 (PPO Training -> “EOS trick” to ensure scores from the RM is valid ->  truncate and pad after eos)
             # states = self.enforce_padding(states, tokenizer)
@@ -276,6 +277,8 @@ class RLHFEnvironment(BaseEnvironment):
                 states, values, rewards, pad_mask, reward_mask, full_states,
                 response_length, tokenizer
             )
+
+            pdb.set_trace()
         
             tj.compute_kl(policy_logits, sft_policy_logits)
             del sft_policy_logits
