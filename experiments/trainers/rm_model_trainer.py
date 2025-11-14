@@ -226,6 +226,19 @@ class RMTrainer(BaseTrainer):
                     tokens = batch['preferred_input_ids']
                     eos_id = self.data.tokenizer.eos_token_id
 
+                    def test_value_model(prompt):
+                        import torch.nn.functional as F
+
+                        prompt += '<|end_of_text|>'
+                        x = self.data.tokenizer.encode(prompt)
+                        x = torch.tensor(x)
+                        x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
+                        attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
+                        y = self.model_full.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
+
+                        pdb.set_trace()
+                        return y
+
                     def test_reward_model(prompt):
                         import torch.nn.functional as F
 
