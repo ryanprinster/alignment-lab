@@ -84,7 +84,7 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.enable_mixed_precision_training = True
 
         # RM 
-        self.calculated_sft_bias = 0
+        self.calculated_sft_bias = 4.6745805740356
 
         # TODO: Could move optimizer, lr scheduler, data to config
 
