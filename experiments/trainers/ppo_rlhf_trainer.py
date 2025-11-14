@@ -57,8 +57,8 @@ class PPORLHFTrainer(BaseTrainer):
 
 
         # Optimizers
-        self.optimizer_policy = optim.AdamW(self.policy_model.parameters(), lr = self.config.alpha)
-        self.optimizer_value = optim.AdamW(self.value_model.parameters(), lr = self.config.alpha)
+        self.optimizer_policy = optim.AdamW(self.policy_model.parameters(), lr = self.config.alpha, eps=self.config.eps)
+        self.optimizer_value = optim.AdamW(self.value_model.parameters(), lr = self.config.alpha, eps=self.config.eps)
 
         self.lr_scheduler_policy = LinearLR(self.optimizer_policy, 
                                         total_iters=int(self.config.max_episodes / self.config.batch_size) * self.config.K,
@@ -181,6 +181,7 @@ class PPORLHFTrainer(BaseTrainer):
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
                             new_values, new_log_policies = self._forward(full_states, pad_mask)
+                            # TODO: check if there is dropout here
 
                             # 2.1 Compute mse loss for value model
                             loss_value = self.compute_value_loss_mse(R, new_values, reward_mask)
