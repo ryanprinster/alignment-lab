@@ -229,6 +229,8 @@ class RMTrainer(BaseTrainer):
                     def test_value_model(prompt):
                         import torch.nn.functional as F
 
+                        pdb.set_trace()
+
                         prompt += '<|end_of_text|>'
                         x = self.data.tokenizer.encode(prompt)
                         x = torch.tensor(x)
