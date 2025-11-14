@@ -85,51 +85,6 @@ class RLHFEnvironment(BaseEnvironment):
     def _close(self):
         self._closed = True
 
-
-
-    # @detect_nans
-    # @profile
-    # def rewards_with_kl_penalty(self, rewards, policy_logits, sft_policy_logits, pad_mask, reward_mask):
-    #     """
-    #     Averages kl over action_space = vocab_size space, and over sequence space.
-    #     """
-    #     # NOTE: KL could be computed in different ways. 
-    #     # - KL of the full distribution, on the top_p or top_k, or just actions taken.
-    #     # - KL could be averaged or summed across the sequence dimension. 
-    #     # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
-
-
-    #     log_P = masked_log_softmax(policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).masked_fill(~pad_mask.unsqueeze(2), 0)
-    #     P = torch.exp(log_P).masked_fill(~pad_mask.unsqueeze(2), 0)
-    #     log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1).masked_fill(~pad_mask.unsqueeze(2), 0)
-
-    #     kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask.unsqueeze(2), 0), dim=-1)
-    #     kl_div = masked_mean(kl_div, pad_mask, dim=-1)
-    #     # The math technically says to sum over both dims, but averaging over time makes sense for initial stability
-    #     # and is also tunable by beta.
-
-    #     kl_div = torch.ones_like(rewards) * kl_div.unsqueeze(1)
-
-    #     return rewards - self.config.beta * kl_div.masked_fill(~reward_mask, 0)
-
-    def construct_mask(self, states, tokenizer):
-        
-        pad_mask = (states == tokenizer.pad_token_id)
-
-        # In the unlikely case there are random pad tokens with other tokens proceeding it,
-        # set all following tokens to pad token. This will effectively end the sequence and
-        # penalize the model.
-        first_pad_pos = torch.where(
-            pad_mask.any(dim=1),
-            pad_mask.int().argmax(dim=1),
-            torch.full((states.size(0),), states.size(1), device=states.device)
-        )
-
-        pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
-        after_pad_mask = ~(pos >= first_pad_pos.unsqueeze(1))
-
-        return after_pad_mask
-
     def _find_first_token_position(self, states, token_id):
         """Find the position of the first occurrence of token_id in each sequence."""
         token_mask = (states == token_id)
@@ -159,10 +114,6 @@ class RLHFEnvironment(BaseEnvironment):
         first_pad_pos = self._find_first_token_position(states, tokenizer.pad_token_id)
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         return ~(pos >= first_pad_pos.unsqueeze(1))
-    
-    # def construct_reward_mask(self, states, tokenizer):
-    #     has_eos = (states == tokenizer.eos_token_id).any(dim=1)
-    #     return ~has_eos
 
     def set_reward_for_no_eos(self, states, rewards, tokenizer, pad_mask, penalty=-1.0):
         """Penalizes sequences that don't contain an EOS token by setting the final reward to -1.
@@ -183,20 +134,33 @@ class RLHFEnvironment(BaseEnvironment):
         
         return rewards, reward_mask
 
-        # has_no_eos = ~eos_mask.any(dim=1)
-        # rewards[has_no_eos, -1] = -1
-        # eos_mask[has_no_eos, -1] = True
-        # return rewards, eos_mask
+    def _set_models_to_eval(self, *models):
+        """Set all models to evaluation mode."""
+        for model in models:
+            model.eval()
 
-    # # Taken from https://arxiv.org/pdf/2403.17031 then modified to add masking
-    # @profile
-    # def whiten(self, values, mask, shift_mean=True):
-    #     mean, var = masked_mean(values, mask), masked_var(values, mask, unbiased=False)
-    #     whitened = (values - mean) * torch.rsqrt(var + 1e-8)
-    #     if not shift_mean:
-    #         whitened += mean
-    #     return whitened * mask
-    
+
+    def _set_models_to_train(self, *models):
+        """Set all models to training mode."""
+        for model in models:
+            model.train()
+
+    def _generate_and_compute_outputs(self, batch, policy_model, value_model, sft_model, reward_model, temp):
+        """Generate sequences and compute all model outputs."""
+        full_states, _ = policy_model.generate(
+            batch,
+            self.max_sequence_length,
+            temp,
+            max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
+        )
+        del _
+
+        policy_logits, _ = policy_model.forward(full_states)
+        sft_policy_logits, _ = sft_model.forward(full_states)
+        values = value_model.forward(full_states, batch['attention_mask'])
+        rewards = reward_model.forward(full_states, batch['attention_mask'])
+        
+        return full_states, policy_logits, sft_policy_logits, values, rewards
 
 
     @profile
@@ -209,26 +173,29 @@ class RLHFEnvironment(BaseEnvironment):
                             reward_model = None):
         with torch.no_grad():
 
-            policy_model.eval()
-            value_model.eval()
-            sft_model.eval()
+            self._set_models_to_eval(policy_model, value_model, sft_model)
 
             tokenizer = policy_model.tokenizer
 
+            full_states, policy_logits, sft_policy_logits, values, rewards = \
+                self._generate_and_compute_outputs(
+                    batch, policy_model, value_model, sft_model, 
+                    reward_model, temp
+                )
 
-            states, _ = policy_model.generate(
-                batch,
-                self.max_sequence_length,
-                temp,
-                max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
-            )
-            del _
+            # states, _ = policy_model.generate(
+            #     batch,
+            #     self.max_sequence_length,
+            #     temp,
+            #     max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
+            # )
+            # del _
             
-            policy_logits, _ = policy_model.forward(states)
-            sft_policy_logits, _ = sft_model.forward(states)
+            # policy_logits, _ = policy_model.forward(states)
+            # sft_policy_logits, _ = sft_model.forward(states)
 
-            values = value_model.forward(states, batch['attention_mask'])
-            rewards = reward_model.forward(states, batch['attention_mask'])
+            # values = value_model.forward(states, batch['attention_mask'])
+            # rewards = reward_model.forward(states, batch['attention_mask'])
 
             respose_length = states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
@@ -265,6 +232,17 @@ class RLHFEnvironment(BaseEnvironment):
             tj.compute_log_probs(policy_logits)
             del policy_logits
 
+            # NOTE: Ordering to reflect the following implementation
+            # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
+
+            # 1. Apply KL to rewards
+            tj.rewards -= self.config.beta * tj.kl
+
+            # 2. Whiten rewards
+            if self.config.whiten_rewards:
+                tj.rewards = whiten(rewards, shift_mean=False)
+
+            # 3. Compute advantages
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
             if self.config.whiten_A:
                 # NOTE: shift mean here to keep 
@@ -272,13 +250,7 @@ class RLHFEnvironment(BaseEnvironment):
                 # A < 0 to be "action worse than expected"
                 tj.A = masked_whiten(tj.A, pad_mask) 
             
-            if self.config.whiten_rewards:
-                # NOTE: we choose to whiten rewards with a reward_mask because only this 
-                # represents the only valid reward for the generated trajectory
-                rewards = whiten(rewards, shift_mean=False)
-            
-            # rewards = whiten(r) - beta * kl
-            rewards -= self.config.beta * tj.kl
+            # 4. Compute returns/rewards-to-go
             tj.compute_R(gamma=self.config.gamma, r=rewards)
 
             tj.full_states = full_states

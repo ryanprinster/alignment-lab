@@ -188,7 +188,7 @@ class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
     
 
 class Llama_3p2_1B_RM(Llama_3p2_1B):
-    def __init__(self, config, init_model_path=None):
+    def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
         self.init_model_path = init_model_path
         super().__init__(config)
         
@@ -196,13 +196,15 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         if self.transformer.score.bias is None:
             self.transformer.score.bias = nn.Parameter(torch.zeros(1))
 
-        if init_model_path is None:
-            self._init_head_weights(config.calculated_sft_bias)
+        if calculated_sft_bias is not None:
+            self.init_head_bias(calculated_sft_bias)
 
-        
+        if init_model_path is None:
+            self._init_head_weights()
+
         self._init_model_weights()
 
-    def _init_head_weights(self, calculated_sft_bias):
+    def _init_head_weights(self):
         # Detail 11 (Reward head initialization)
         print("Initializing Head Weights...")
 
@@ -210,8 +212,10 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         std = 1.0 / (d_model + 1) ** 0.5
         
         init.normal_(self.transformer.score.weight, mean=0, std=std)
+
+    def init_head_bias(self, calculated_sft_bias):
+        # Detail 15 (Reward normalization based on SFT demonstrations)
         self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
-        # Calculated from the cu         
 
     def _set_model_class(self):
         return AutoModelForSequenceClassification.from_pretrained(

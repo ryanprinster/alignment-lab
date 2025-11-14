@@ -101,8 +101,6 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
     def compile(self):
         self._virtual_batch_size = self.batch_size * self.accumulation_steps
 
-        
-
 class RLFHPPOConfig(PPOConfigBase):
     def __init__(self):
         # Detail 20 (PPO Training -> Setups) 
