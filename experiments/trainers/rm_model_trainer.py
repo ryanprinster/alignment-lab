@@ -219,13 +219,41 @@ class RMTrainer(BaseTrainer):
                 # FP32 --> FP16 for mixed precision training
                 with self.mixed_precision_context: 
                     outputs = self._forward(batch)
-                    outputs_value = self.model_full.forward(batch['preferred_input_ids'])
+                    outputs_value = self.model_full.forward(batch['preferred_input_ids'], attention_mask=batch['preferred_attention_mask'])
+                    
+                    rewards = outputs[0]
+                    values = outputs_value
+                    tokens = batch['preferred_input_ids']
+                    eos_id = self.data.tokenizer.eos_token_id
+
+                    def test_reward_model(prompt):
+                        import torch.nn.functional as F
+
+                        prompt += '<|end_of_text|>'
+                        x = self.data.tokenizer.encode(prompt)
+                        x = torch.tensor(x)
+                        x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
+                        attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
+                        y = self.model.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
+                        return y
+
+
+                    pdb.set_trace()
+
+                    # import pprint; pprint.pp(list(zip(values[i].tolist(), tokens[i].tolist())))
+                    # import torch.nn.functional as F
+                    # self.data.tokenizer.decode(tokens[i])
+                    # x = torch.tensor(x)
+                    # x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
+                    # attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
+                    # y = self.model.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
+
+
                 
                     # Logits are scalar rewards
                     r_preferred = outputs[0]
                     r_rejected = outputs[1]
 
-                    pdb.set_trace()
 
                     correct = (r_preferred > r_rejected).float()
                     
