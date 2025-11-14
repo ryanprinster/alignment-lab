@@ -18,9 +18,9 @@ python -m experiments SFTTrainer evaluate --config RLFHCaseStudyConfig
 
 
 # RM Trainer
-python -m experiments RMTrainer compute_model_bias --config RLFHCaseStudyConfig --batch_size 8 --load_checkpoint_path "./checkpoints/final_checkpoint.pt"
-python -m experiments RMTrainer train --config RLFHCaseStudyConfig --load_checkpoint_path checkpoints/sft_final_checkpoint.pt --calculated_sft_bias -8.703847885131836 --save_freq_steps 9999999 --batch_size 32 --accumulation_steps 2
-
+python -m experiments RMTrainer compute_model_bias --config RLFHCaseStudyConfig --batch_size 128 --load_checkpoint_path "./checkpoints/rm_final_checkpoint_v2.pt"
+python -m experiments RMTrainer train --config RLFHCaseStudyConfig --load_checkpoint_path checkpoints/sft_final_checkpoint.pt --calculated_sft_bias 0 --save_freq_steps 9999999 --batch_size 32 --accumulation_steps 2
+python -m experiments RMTrainer validation --config RLFHCaseStudyConfig --load_checkpoint_path checkpoints/rm_final_checkpoint_v2.pt  --batch_size 64 --accumulation_steps 1
 # PPORLHFTrainer
 python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128 --mini_batch_accumulation_steps 1
 
@@ -29,9 +29,9 @@ python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 
 ### WORKING ###
 # From YOUR LOCAL MACHINE:
 # Step 1: Copy SSH key to source pod
-scp -P 28353 -i ~/.ssh/id_ed25519 ~/.ssh/id_ed25519 root@103.196.86.188:~/.ssh/
+scp -P 38559 -i ~/.ssh/id_ed25519 ~/.ssh/id_ed25519 root@103.196.86.188:~/.ssh/
 # Step 2: SSH into source pod
-ssh root@103.196.86.188 -p 28353 -i ~/.ssh/id_ed25519
+ssh root@103.196.86.188 -p 38559 -i ~/.ssh/id_ed25519
 
 # From INSIDE THE SOURCE POD:
 # (After Step 2 connects you to the source pod, run everything below)
@@ -43,14 +43,15 @@ which rsync
 # If needed:
 apt-get update && apt-get install -y rsync
 # Step 5: Start the transfer
-nohup rsync -avzP -e "ssh -p 13751 -i ~/.ssh/id_ed25519" \
-  /workspace/alignment-lab/checkpoints/ \
+nohup rsync -avzP -e "ssh -p 17013 -i ~/.ssh/id_ed25519" \
+  /workspace/alignment-lab/checkpoints/rm_final_checkpoint_v2.pt \
   root@198.145.108.61:/workspace/checkpoints/ \
   > rsync.log 2>&1 &
 # Step 6: Monitor progress
 tail -f rsync.log
 
 
+ssh root@198.145.108.61 -p 17013 -i ~/.ssh/id_ed25519
 
 
 

@@ -215,7 +215,7 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
 
     def init_head_bias(self, calculated_sft_bias):
         # Detail 15 (Reward normalization based on SFT demonstrations)
-        print("Initializing Head Bias...")
+        print("Initializing Head Bias to {calculated_sft_bias}...")
         self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
 
     def _set_model_class(self):
