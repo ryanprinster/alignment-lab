@@ -234,10 +234,11 @@ class RMTrainer(BaseTrainer):
                         x = torch.tensor(x)
                         x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
                         attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
-                        y = self.model_full.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
+                        rewards = self.model_full.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
 
-                        pdb.set_trace()
-                        return y
+                        eos_reward = rewards[(x == self.data.tokenizer.eos_token_id).nonzero(as_tuple=True)[0]]
+
+                        return eos_reward
 
                     def test_reward_model(prompt):
                         import torch.nn.functional as F
@@ -249,6 +250,7 @@ class RMTrainer(BaseTrainer):
                         attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
                         y = self.model.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
                         return y
+                    
 
 
                     pdb.set_trace()
