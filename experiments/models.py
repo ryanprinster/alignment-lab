@@ -226,7 +226,6 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         # Detail 12 (Extract reward from the EOS token) Done by default
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
-
     def forward(self, input_ids, attention_mask):
         outputs = self.transformer(
             input_ids=input_ids,
@@ -249,6 +248,11 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
             Llama_3p2_1B.HF_MODEL_NAME,
             num_labels=1
         )
+    
+    def init_head_bias(self, calculated_sft_bias):
+        # Detail 15 (Reward normalization based on SFT demonstrations)
+        print(f"Initializing Head Bias to {calculated_sft_bias}...")
+        self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
     
     def _init_head_weights(self, init_rm_model):
         # TODO: cleanup how this is called

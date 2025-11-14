@@ -205,6 +205,7 @@ class RMTrainer(BaseTrainer):
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
         
         self.model.init_head_bias(self.config.calculated_sft_bias)
+        self.model_full.init_head_bias(self.config.calculated_sft_bias)
         self.model.eval()
         self.model_full.eval()
 
