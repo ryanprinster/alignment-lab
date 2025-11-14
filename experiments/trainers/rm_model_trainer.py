@@ -203,7 +203,8 @@ class RMTrainer(BaseTrainer):
 
         self.model_full = Llama_3p2_1B_Value(self.config).to(self.device)
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
-
+        
+        self.model.init_head_bias(self.config.calculated_sft_bias)
         self.model.eval()
         self.model_full.eval()
 
