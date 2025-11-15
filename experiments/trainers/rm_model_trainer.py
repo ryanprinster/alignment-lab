@@ -203,7 +203,7 @@ class RMTrainer(BaseTrainer):
         print("Starting Validation!")
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
 
-        self.model_full = Llama_3p2_1B_Value(self.config, init_rm_model=self.model).to(self.device)
+        self.model_full = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path,).to(self.device)
         
         self.model.init_head_bias(self.config.calculated_sft_bias)
         # self.model_full.init_head_bias(self.config.calculated_sft_bias)
