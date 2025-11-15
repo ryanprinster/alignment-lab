@@ -256,6 +256,9 @@ class RMTrainer(BaseTrainer):
 
 
                     pdb.set_trace()
+                    test = ''
+
+                    test_value_model(test)
 
                     # import pprint; pprint.pp(list(zip(values[i].tolist(), tokens[i].tolist())))
                     # import torch.nn.functional as F
