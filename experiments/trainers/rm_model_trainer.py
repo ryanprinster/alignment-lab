@@ -201,6 +201,7 @@ class RMTrainer(BaseTrainer):
         from datetime import datetime
         import json
         print("Starting Validation!")
+        self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
 
         self.model_full = Llama_3p2_1B_Value(self.config, init_rm_model=self.model).to(self.device)
         
