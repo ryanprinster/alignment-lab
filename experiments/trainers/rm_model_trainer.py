@@ -1,6 +1,7 @@
 import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
+import torch.nn.functional as F
 from torch.amp import GradScaler, autocast
 from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
@@ -201,11 +202,11 @@ class RMTrainer(BaseTrainer):
         import json
         print("Starting Validation!")
 
-        self.model_full = Llama_3p2_1B_Value(self.config).to(self.device)
-        self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
+        self.model_full = Llama_3p2_1B_Value(self.config, init_rm_model=self.model).to(self.device)
         
         self.model.init_head_bias(self.config.calculated_sft_bias)
-        self.model_full.init_head_bias(self.config.calculated_sft_bias)
+        # self.model_full.init_head_bias(self.config.calculated_sft_bias)
+
         self.model.eval()
         self.model_full.eval()
 
@@ -227,7 +228,6 @@ class RMTrainer(BaseTrainer):
                     eos_id = self.data.tokenizer.eos_token_id
 
                     def test_value_model(prompt):
-                        import torch.nn.functional as F
 
                         pdb.set_trace()
 
@@ -243,7 +243,6 @@ class RMTrainer(BaseTrainer):
                         return eos_reward
 
                     def test_reward_model(prompt):
-                        import torch.nn.functional as F
 
                         prompt += '<|end_of_text|>'
                         x = self.data.tokenizer.encode(prompt)
