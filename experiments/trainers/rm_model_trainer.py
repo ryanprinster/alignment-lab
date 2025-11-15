@@ -255,8 +255,8 @@ class RMTrainer(BaseTrainer):
                     
 
 
-                    pdb.set_trace()
                     test = ''
+                    pdb.set_trace()
 
                     test_value_model(test)
 
