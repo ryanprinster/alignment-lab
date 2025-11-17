@@ -206,7 +206,7 @@ class RMTrainer(BaseTrainer):
         self.model_full = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
         
         self.model.init_head_bias(self.config.calculated_sft_bias)
-        # self.model_full.init_head_bias(self.config.calculated_sft_bias)
+        self.model_full.init_head_bias(self.config.calculated_sft_bias)
 
         self.model.eval()
         self.model_full.eval()
