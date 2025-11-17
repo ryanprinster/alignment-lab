@@ -241,7 +241,7 @@ class RMTrainer(BaseTrainer):
                         x_padded_gpu = x_padded.unsqueeze(0).to(self.device)
                         attn_mask_gpu = attn_mask.unsqueeze(0).to(self.device)
                         
-                        rewards = self.model_full.forward(input_ids=x_padded_gpu, attention_mask=attn_mask_gpu)
+                        values = self.model_full.forward(input_ids=x_padded_gpu, attention_mask=attn_mask_gpu)
 
                         pdb.set_trace()
 
@@ -249,7 +249,7 @@ class RMTrainer(BaseTrainer):
                         eos_positions = (x_padded_gpu[0] == self.data.tokenizer.eos_token_id).nonzero(as_tuple=True)[0]
                         
                         # Index correctly with batch dimension
-                        eos_reward = rewards[0, eos_positions]  # [batch=0, position]
+                        eos_reward = values[0, eos_positions]  # [batch=0, position]
 
                         return eos_reward
 
