@@ -243,8 +243,6 @@ class RMTrainer(BaseTrainer):
                         
                         values = self.model_full.forward(input_ids=x_padded_gpu, attention_mask=attn_mask_gpu)
 
-                        pdb.set_trace()
-
                         # Find EOS in the PADDED sequence (on GPU)
                         eos_positions = (x_padded_gpu[0] == self.data.tokenizer.eos_token_id).nonzero(as_tuple=True)[0]
                         
