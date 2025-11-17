@@ -233,7 +233,6 @@ class RLHFEnvironment(BaseEnvironment):
                     response_length
                 )
             
-            pdb.set_trace()
             # masked_mean(values, ((torch.ones_like(states) * (states == tokenizer.eos_token_id))).bool())
             # masked_mean(values, (~((states == tokenizer.eos_token_id) | (states == tokenizer.pad_token_id))).bool())
             
