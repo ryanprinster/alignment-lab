@@ -153,6 +153,7 @@ class RLFHPPOConfig(PPOConfigBase):
         # self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
         self.sft_model_path = "checkpoints/sft_final_checkpoint.pt"
         self.rm_model_path = "checkpoints/rm_final_checkpoint_v2.pt"
+        self.calculated_sft_bias = 4.6745805740356
 
 
         # Logging

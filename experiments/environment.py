@@ -231,6 +231,8 @@ class RLHFEnvironment(BaseEnvironment):
                     response_length
                 )
             
+            pdb.set_trace()
+            
             # Apply EOS trick and masking
             states, pad_mask, rewards, reward_mask = \
                 self._apply_eos_trick(states, rewards, tokenizer)
