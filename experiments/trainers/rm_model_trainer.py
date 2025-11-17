@@ -239,6 +239,7 @@ class RMTrainer(BaseTrainer):
                         attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
                         rewards = self.model_full.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
 
+                        pdb.set_trace()
                         eos_reward = rewards[(x == self.data.tokenizer.eos_token_id).nonzero(as_tuple=True)[0]]
 
                         return eos_reward
