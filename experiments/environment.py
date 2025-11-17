@@ -234,6 +234,8 @@ class RLHFEnvironment(BaseEnvironment):
                 )
             
             pdb.set_trace()
+            # masked_mean(values, ((torch.ones_like(states) * (states == tokenizer.eos_token_id))).bool())
+            # masked_mean(values, (~((states == tokenizer.eos_token_id) | (states == tokenizer.pad_token_id))).bool())
             
             # Apply EOS trick and masking
             states, pad_mask, rewards, reward_mask = \

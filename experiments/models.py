@@ -230,7 +230,6 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
 
-        pdb.set_trace()
         outputs = self.transformer(
             input_ids=input_ids,
             attention_mask=attention_mask
@@ -277,8 +276,6 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
         # Mask pad tokens
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
-
-        pdb.set_trace()
 
         outputs = self.transformer(
             input_ids=input_ids.squeeze(-1),
