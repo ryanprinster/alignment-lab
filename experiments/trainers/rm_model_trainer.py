@@ -228,10 +228,10 @@ class RMTrainer(BaseTrainer):
                     # tokens = batch['preferred_input_ids']
                     # eos_id = self.data.tokenizer.eos_token_id
 
-                    def test_value_model(prompt):
+                    def test_value_model(prompt, with_eos=True):
 
-
-                        # prompt += '<|end_of_text|>'
+                        if with_eos:
+                            prompt += '<|end_of_text|>'
                         x = self.data.tokenizer.encode(prompt)
                         x = torch.tensor(x)
                         x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
@@ -261,9 +261,10 @@ class RMTrainer(BaseTrainer):
 
                         return eos_reward
 
-                    def test_reward_model(prompt):
+                    def test_reward_model(prompt, with_eos=True):
 
-                        # prompt += '<|end_of_text|>'
+                        if with_eos:
+                            prompt += '<|end_of_text|>'
                         x = self.data.tokenizer.encode(prompt)
                         x = torch.tensor(x)
                         x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
