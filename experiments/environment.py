@@ -147,7 +147,6 @@ class RLHFEnvironment(BaseEnvironment):
 
     def _generate_and_compute_outputs(self, batch, policy_model, value_model, sft_model, reward_model, temp):
         """Generate sequences and compute all model outputs."""
-        pdb.set_trace()
         full_states, _ = policy_model.generate(
             batch,
             self.max_sequence_length,
@@ -156,10 +155,12 @@ class RLHFEnvironment(BaseEnvironment):
         )
         del _
 
+        # NOTE: The attention masks here are critically wrong
+
         policy_logits, _ = policy_model.forward(full_states)
         sft_policy_logits, _ = sft_model.forward(full_states)
-        values = value_model.forward(full_states, batch['attention_mask'])
-        rewards = reward_model.forward(full_states, batch['attention_mask'])
+        values = value_model.forward(full_states)
+        rewards = reward_model.forward(full_states)
         
         return full_states, policy_logits, sft_policy_logits, values, rewards
 
@@ -224,7 +225,7 @@ class RLHFEnvironment(BaseEnvironment):
                     batch, policy_model, value_model, sft_model, 
                     reward_model, temp
                 )
-            
+                        
             response_length = full_states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
             states, values, policy_logits, sft_policy_logits = \
                 self._truncate_to_response(

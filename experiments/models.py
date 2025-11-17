@@ -227,6 +227,9 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
     def forward(self, input_ids, attention_mask):
+        if attention_mask is None:
+            attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
+
         outputs = self.transformer(
             input_ids=input_ids,
             attention_mask=attention_mask
