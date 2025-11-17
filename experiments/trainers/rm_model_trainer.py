@@ -231,7 +231,7 @@ class RMTrainer(BaseTrainer):
                     def test_value_model(prompt):
 
 
-                        prompt += '<|end_of_text|>'
+                        # prompt += '<|end_of_text|>'
                         x = self.data.tokenizer.encode(prompt)
                         x = torch.tensor(x)
                         x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
@@ -248,14 +248,22 @@ class RMTrainer(BaseTrainer):
                         # Find EOS in the PADDED sequence (on GPU)
                         eos_positions = (x_padded_gpu[0] == self.data.tokenizer.eos_token_id).nonzero(as_tuple=True)[0]
                         
+                        if len(eos_positions) > 0:
+                            # Use the first EOS token position
+                            position = eos_positions[0]
+                        else:
+                            # No EOS found, use the last non-pad position
+                            non_pad_positions = (x_padded_gpu[0] != self.data.tokenizer.pad_token_id).nonzero(as_tuple=True)[0]
+                            position = non_pad_positions[-1]  # Last non-pad token
+                        
                         # Index correctly with batch dimension
-                        eos_reward = values[0, eos_positions]  # [batch=0, position]
+                        eos_reward = values[0, position]
 
                         return eos_reward
 
                     def test_reward_model(prompt):
 
-                        prompt += '<|end_of_text|>'
+                        # prompt += '<|end_of_text|>'
                         x = self.data.tokenizer.encode(prompt)
                         x = torch.tensor(x)
                         x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
