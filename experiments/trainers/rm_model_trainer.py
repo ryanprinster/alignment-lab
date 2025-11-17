@@ -230,17 +230,26 @@ class RMTrainer(BaseTrainer):
 
                     def test_value_model(prompt):
 
-                        pdb.set_trace()
 
                         prompt += '<|end_of_text|>'
                         x = self.data.tokenizer.encode(prompt)
                         x = torch.tensor(x)
                         x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
                         attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
-                        rewards = self.model_full.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
+                        
+                        # Move to device
+                        x_padded_gpu = x_padded.unsqueeze(0).to(self.device)
+                        attn_mask_gpu = attn_mask.unsqueeze(0).to(self.device)
+                        
+                        rewards = self.model_full.forward(input_ids=x_padded_gpu, attention_mask=attn_mask_gpu)
 
                         pdb.set_trace()
-                        eos_reward = rewards[(x == self.data.tokenizer.eos_token_id).nonzero(as_tuple=True)[0]]
+
+                        # Find EOS in the PADDED sequence (on GPU)
+                        eos_positions = (x_padded_gpu[0] == self.data.tokenizer.eos_token_id).nonzero(as_tuple=True)[0]
+                        
+                        # Index correctly with batch dimension
+                        eos_reward = rewards[0, eos_positions]  # [batch=0, position]
 
                         return eos_reward
 
