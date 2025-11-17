@@ -147,6 +147,7 @@ class RLHFEnvironment(BaseEnvironment):
 
     def _generate_and_compute_outputs(self, batch, policy_model, value_model, sft_model, reward_model, temp):
         """Generate sequences and compute all model outputs."""
+        pdb.set_trace()
         full_states, _ = policy_model.generate(
             batch,
             self.max_sequence_length,
