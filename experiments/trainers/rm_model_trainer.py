@@ -223,10 +223,10 @@ class RMTrainer(BaseTrainer):
                     outputs = self._forward(batch)
                     outputs_value = self.model_full.forward(batch['preferred_input_ids'], attention_mask=batch['preferred_attention_mask'])
                     
-                    rewards = outputs[0]
-                    values = outputs_value
-                    tokens = batch['preferred_input_ids']
-                    eos_id = self.data.tokenizer.eos_token_id
+                    # rewards = outputs[0]
+                    # values = outputs_value
+                    # tokens = batch['preferred_input_ids']
+                    # eos_id = self.data.tokenizer.eos_token_id
 
                     def test_value_model(prompt):
 
