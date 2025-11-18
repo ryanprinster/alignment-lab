@@ -260,7 +260,7 @@ class RLHFEnvironment(BaseEnvironment):
 
             # 2. Whiten rewards
             if self.config.whiten_rewards:
-                tj.rewards = whiten(rewards, shift_mean=False)
+                tj.rewards = whiten(tj.rewards, shift_mean=False)
 
             # 3. Compute advantages
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
@@ -271,9 +271,7 @@ class RLHFEnvironment(BaseEnvironment):
                 tj.A = masked_whiten(tj.A, pad_mask) 
             
             # 4. Compute returns/rewards-to-go
-            tj.compute_R(gamma=self.config.gamma, r=rewards)
-
-            pdb.set_trace() # look at rewards vs 
+            tj.compute_R(gamma=self.config.gamma, r=tj.rewards)
                          
         policy_model.train()
         value_model.train()
