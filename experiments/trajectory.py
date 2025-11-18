@@ -151,6 +151,8 @@ class Trajectory():
         # V_next[batch_idx, last_valid_idx] = V[batch_idx, last_valid_idx]
         V_next[batch_idx, last_valid_idx] = 0
 
+        pdb.set_trace()
+
         # 1. Compute delta_t (TD Error)
         TD_error = r + gamma * V_next - V
         TD_error.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)

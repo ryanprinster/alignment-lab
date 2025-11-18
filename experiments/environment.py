@@ -271,8 +271,6 @@ class RLHFEnvironment(BaseEnvironment):
                 # A > 0 to be "action better than expected", 
                 # A < 0 to be "action worse than expected"
                 tj.A = masked_whiten(tj.A, pad_mask) 
-
-            pdb.set_trace()
             
             # 4. Compute returns/rewards-to-go
             tj.compute_R(gamma=self.config.gamma, r=rewards_2d)
