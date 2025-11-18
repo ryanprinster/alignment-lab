@@ -142,15 +142,14 @@ class Trajectory():
         V = self.values.detach()
         if r is None:
             r = self.rewards
-        # r_expanded = torch.zeros_like(V)
-        # r_expanded = r.unsqueeze(-1) * self.reward_mask.float()
 
         # 0. Calculate V_next by bootstrapping last value
         V_next = torch.zeros_like(V)
         V_next[:, :-1] = V[:, 1:]  # normal shift
         last_valid_idx = self._pad_mask.sum(dim=time_dim) - 1  # shape: [B]
         batch_idx = torch.arange(V.size(0), device=V.device)        
-        V_next[batch_idx, last_valid_idx] = V[batch_idx, last_valid_idx]
+        # V_next[batch_idx, last_valid_idx] = V[batch_idx, last_valid_idx]
+        V_next[batch_idx, last_valid_idx] = 0
 
         # 1. Compute delta_t (TD Error)
         TD_error = r + gamma * V_next - V
