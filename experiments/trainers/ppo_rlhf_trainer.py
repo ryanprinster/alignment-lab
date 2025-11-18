@@ -91,6 +91,7 @@ class PPORLHFTrainer(BaseTrainer):
 
     # @detect_nans
     def compute_value_loss_mse(self, R, new_values, mask):
+        pdb.set_trace()
         loss_value = masked_mean((new_values - R) ** 2, mask)
         return loss_value
 
