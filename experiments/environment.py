@@ -257,14 +257,14 @@ class RLHFEnvironment(BaseEnvironment):
 
             # 1. Apply KL to rewards
             rewards_2d = tj.rewards.unsqueeze(1) * tj.reward_mask
-            tj.rewards = (rewards_2d - (self.config.beta * kl_per_token)).masked_fill(~pad_mask, 0)
+            rewards_2d = (rewards_2d - (self.config.beta * kl_per_token)).masked_fill(~pad_mask, 0)
 
             # 2. Whiten rewards
             if self.config.whiten_rewards:
                 tj.rewards = masked_whiten(tj.rewards, pad_mask, shift_mean=False)
 
             # 3. Compute advantages
-            tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
+            tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam, r=rewards_2d)
             if self.config.whiten_A:
                 # NOTE: shift mean here to keep 
                 # A > 0 to be "action better than expected", 
@@ -272,7 +272,7 @@ class RLHFEnvironment(BaseEnvironment):
                 tj.A = masked_whiten(tj.A, pad_mask) 
             
             # 4. Compute returns/rewards-to-go
-            tj.compute_R(gamma=self.config.gamma, r=tj.rewards)
+            tj.compute_R(gamma=self.config.gamma, r=rewards_2d)
                          
         policy_model.train()
         value_model.train()

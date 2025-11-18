@@ -127,7 +127,7 @@ class Trajectory():
         return self.R
     
     @profile
-    def compute_gae(self, gamma, lam):
+    def compute_gae(self, gamma, lam, r=None):
         
         if torch.all(self.rewards == 0).item():
             raise ValueError("rewards is not set, set non-zero rewards attribute first")
@@ -140,7 +140,8 @@ class Trajectory():
         # len(V) = T+1
         # len(r) = T
         V = self.values.detach()
-        r = self.rewards
+        if r is None:
+            r = self.rewards
         # r_expanded = torch.zeros_like(V)
         # r_expanded = r.unsqueeze(-1) * self.reward_mask.float()
 
