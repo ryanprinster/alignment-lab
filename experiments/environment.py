@@ -259,6 +259,8 @@ class RLHFEnvironment(BaseEnvironment):
             rewards_2d = tj.rewards.unsqueeze(1) * tj.reward_mask
             rewards_2d = (rewards_2d - (self.config.beta * kl_per_token)).masked_fill(~pad_mask, 0)
 
+            pdb.set_trace()
+
             # 2. Whiten rewards
             if self.config.whiten_rewards:
                 rewards_2d = masked_whiten(rewards_2d, pad_mask, shift_mean=False)
