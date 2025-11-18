@@ -256,13 +256,12 @@ class RLHFEnvironment(BaseEnvironment):
             # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
 
             # 1. Apply KL to rewards
-            pdb.set_trace()
-            rewards_2d = rewards.unsqueeze(1) * reward_mask
-            tj.rewards = rewards_2d - (self.config.beta * kl_per_token)
+            rewards_2d = tj.rewards.unsqueeze(1) * tj.reward_mask
+            tj.rewards = (rewards_2d - (self.config.beta * kl_per_token)).masked_fill(~pad_mask, 0)
 
             # 2. Whiten rewards
             if self.config.whiten_rewards:
-                tj.rewards = whiten(tj.rewards, shift_mean=False)
+                tj.rewards = masked_whiten(tj.rewards, pad_mask, shift_mean=False)
 
             # 3. Compute advantages
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam)
