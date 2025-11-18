@@ -247,11 +247,9 @@ class RLHFEnvironment(BaseEnvironment):
             )
         
             total_kl, kl_per_token = tj.compute_kl(policy_logits, sft_policy_logits)
-            pdb.set_trace()
             del sft_policy_logits
 
             tj.compute_log_probs(policy_logits)
-            pdb.set_trace()
             del policy_logits
 
             # NOTE: Ordering to reflect the following implementation
@@ -273,6 +271,8 @@ class RLHFEnvironment(BaseEnvironment):
                 # A > 0 to be "action better than expected", 
                 # A < 0 to be "action worse than expected"
                 tj.A = masked_whiten(tj.A, pad_mask) 
+
+            pdb.set_trace()
             
             # 4. Compute returns/rewards-to-go
             tj.compute_R(gamma=self.config.gamma, r=rewards_2d)
