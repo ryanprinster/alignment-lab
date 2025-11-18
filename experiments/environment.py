@@ -247,9 +247,11 @@ class RLHFEnvironment(BaseEnvironment):
             )
         
             total_kl, kl_per_token = tj.compute_kl(policy_logits, sft_policy_logits)
+            pdb.set_trace()
             del sft_policy_logits
 
             tj.compute_log_probs(policy_logits)
+            pdb.set_trace()
             del policy_logits
 
             # NOTE: Ordering to reflect the following implementation
@@ -259,7 +261,6 @@ class RLHFEnvironment(BaseEnvironment):
             rewards_2d = tj.rewards.unsqueeze(1) * tj.reward_mask
             rewards_2d = (rewards_2d - (self.config.beta * kl_per_token)).masked_fill(~pad_mask, 0)
 
-            pdb.set_trace()
 
             # 2. Whiten rewards
             if self.config.whiten_rewards:
