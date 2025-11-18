@@ -272,6 +272,8 @@ class RLHFEnvironment(BaseEnvironment):
             
             # 4. Compute returns/rewards-to-go
             tj.compute_R(gamma=self.config.gamma, r=rewards)
+
+            pdb.set_trace() # look at rewards vs 
                          
         policy_model.train()
         value_model.train()
