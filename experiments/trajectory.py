@@ -197,13 +197,13 @@ class Trajectory():
         log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
 
         # Sum over policy dim
-        kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=-1)
+        kl_div_per_token = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=-1)
         del pad_mask_3d
 
         # Sum over sequence dim
-        kl_div = torch.sum(kl_div, dim=-1) 
+        kl_div = torch.sum(kl_div_per_token, dim=-1) 
         self._kl = kl_div
-        return self.kl
+        return self.kl, kl_div_per_token
 
     
     # def __len__(self):
