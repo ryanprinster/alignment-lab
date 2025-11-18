@@ -256,9 +256,9 @@ class RLHFEnvironment(BaseEnvironment):
             # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
 
             # 1. Apply KL to rewards
+            pdb.set_trace()
             rewards_2d = rewards * reward_mask
             tj.rewards = rewards_2d - (self.config.beta * tj.kl)
-            pdb.set_trace()
 
             # 2. Whiten rewards
             if self.config.whiten_rewards:
