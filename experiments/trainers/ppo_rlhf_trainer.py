@@ -214,6 +214,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 "total_whitened_reward": torch.mean(whiten(rewards, shift_mean=False)).item(),
                                 "total_maximized_reward": torch.mean(whiten(rewards, shift_mean=False) - self.config.beta * kl,).item(),
                                 "kl": torch.mean(kl).item(),
+                                "kl_beta": torch.mean(kl).item() * self.config.beta,
                                 "R": masked_mean(R, pad_mask).item(),
                                 "batch_idx": batch_idx,
                                 "k": k,

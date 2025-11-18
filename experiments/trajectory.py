@@ -184,27 +184,26 @@ class Trajectory():
         # NOTE: KL could be computed in different ways. 
         # - KL of the full distribution, KL of the top_p or top_k, or KL on just the actions taken.
         # - KL could be averaged or summed across the sequence dimension. 
-        # This implementation currently takes KL over top_p=0.9, and summed across the policy dim but averaged across the sequence dim.
+        # This implementation currently:
+        #  - takes KL over top_p=0.9
+
+        #  - Sums across the policy dim and sums across the sequence dim
+        #    -> This is done to reflect https://arxiv.org/pdf/2403.17031 (Figure 10)
+        #       Code pointer here: https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L798C1
 
         pad_mask_3d = self._pad_mask.unsqueeze(2)
         log_P = masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
         P = torch.exp(log_P).masked_fill(~pad_mask_3d, 0)
         log_Q = sft = masked_log_softmax(sft_policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(~pad_mask_3d, 0)
 
+        # Sum over policy dim
         kl_div = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=-1)
         del pad_mask_3d
+
+        # Sum over sequence dim
         kl_div = torch.sum(kl_div, dim=-1) 
         self._kl = kl_div
         return self.kl
-        # # (batch_size)
-
-        # kl_div = torch.ones_like(self._rewards) * kl_div.unsqueeze(1)
-
-        # # (batch_size, seq_len)
-        
-        # self._kl = kl_div.masked_fill(~self._reward_mask, 0)
-        # return self.kl
-
 
     
     # def __len__(self):
