@@ -151,7 +151,7 @@ class Trajectory():
         # V_next[batch_idx, last_valid_idx] = V[batch_idx, last_valid_idx]
         V_next[batch_idx, last_valid_idx] = 0
 
-        pdb.set_trace()
+        # pdb.set_trace()
 
         # 1. Compute delta_t (TD Error)
         TD_error = r + gamma * V_next - V
@@ -165,19 +165,20 @@ class Trajectory():
             lastgaelam = TD_error[:, t] + gamma * lam * lastgaelam
             A[:, t] = lastgaelam
         
+        self._A = A
 
-        # 2. Get discounts 
-        discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
-        discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 1)        
-        discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
-        discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
+        # # 2. Get discounts 
+        # discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
+        # discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 1)        
+        # discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
+        # discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
         
-        # 3. Calculate GAE via cumulative sum in reverse
-        TD_rev = TD_error.flip(dims=[time_dim]) 
-        A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
-        self._A = torch.flip(A_rev, dims=[time_dim])
+        # # 3. Calculate GAE via cumulative sum in reverse
+        # TD_rev = TD_error.flip(dims=[time_dim]) 
+        # A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
+        # self._A = torch.flip(A_rev, dims=[time_dim])
 
-        pdb.set_trace()
+        # pdb.set_trace()
 
 
         # PAPERS GAE FORMULATION
