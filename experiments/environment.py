@@ -115,7 +115,7 @@ class RLHFEnvironment(BaseEnvironment):
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         return ~(pos >= first_pad_pos.unsqueeze(1))
 
-    def set_reward_for_no_eos(self, states, rewards, tokenizer, pad_mask, penalty=-10.0):
+    def set_reward_for_no_eos(self, states, rewards, tokenizer, pad_mask, penalty=-1.0):
         """Penalizes sequences that don't contain an EOS token by setting the final reward to -1.
         Also marks the last position as EOS in the mask for sequences without EOS."""
 
