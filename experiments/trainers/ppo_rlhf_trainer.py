@@ -207,6 +207,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 self.reward_model.train()
                                 return new_full_states, new_rewards
                             new_full_states, new_rewards = re_generate()
+                            # (new_full_states == self.policy_model.tokenizer.eos_token_id).sum().item()
                             
                             pdb.set_trace()
 
