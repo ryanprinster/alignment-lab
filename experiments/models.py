@@ -117,6 +117,8 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             output_hidden_states=False,
         )
 
+        pdb.set_trace()
+
         sequences = generation_obj.sequences
         scores = generation_obj.scores
         del generation_obj
@@ -169,6 +171,8 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             output_attentions=False,
             use_cache=False 
         )
+
+        pdb.set_trace()
 
         if max_query_length_truncate is not None:
             return outputs.logits[:,max_query_length_truncate:,:], outputs.loss

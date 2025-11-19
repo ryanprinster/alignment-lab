@@ -184,35 +184,6 @@ class PPORLHFTrainer(BaseTrainer):
                         with self.mixed_precision_context:
                             new_values, new_log_policies = self._forward(full_states, pad_mask)
 
-                            #  <Temp/> 
-                            def re_generate():
-                                self.policy_model.eval()
-                                self.reward_model.eval()
-                                prompts = full_states[:, :self.data.__class__.SFT_MAX_QUERY_LENGTH]
-                                attention_mask = (prompts != self.policy_model.tokenizer.pad_token_id)
-                                new_full_states, _ = self.policy_model.generate(
-                                    {
-                                        'input_ids':prompts,
-                                        'attention_mask': attention_mask
-                                    },
-                                    self.data.__class__.SFT_MAX_INPUT_LENGTH,
-                                    self.config.generation_temperature,
-                                    max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
-                                )
-                                del _
-                                new_rewards = self.reward_model.forward(new_full_states)
-
-                                # new_responses = new_full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
-                                self.policy_model.train()
-                                self.reward_model.train()
-                                return new_full_states, new_rewards
-                            new_full_states, new_rewards = re_generate()
-                            # (new_full_states == self.policy_model.tokenizer.eos_token_id).sum().item()
-                            
-                            pdb.set_trace()
-
-                            #  </Temp>
-
                             # 2.1 Compute mse loss for value model
                             loss_value = self.compute_value_loss_mse(R, new_values, reward_mask)
 
