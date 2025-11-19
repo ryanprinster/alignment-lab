@@ -264,6 +264,8 @@ class RLHFEnvironment(BaseEnvironment):
             if self.config.whiten_rewards:
                 rewards_2d = masked_whiten(rewards_2d, pad_mask, shift_mean=False)
 
+            pdb.set_trace()
+
             # 3. Compute advantages
             tj.compute_gae(gamma=self.config.gamma, lam=self.config.lam, r=rewards_2d)
             if self.config.whiten_A:

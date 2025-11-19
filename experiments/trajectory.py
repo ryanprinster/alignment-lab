@@ -155,7 +155,16 @@ class Trajectory():
 
         # 1. Compute delta_t (TD Error)
         TD_error = r + gamma * V_next - V
-        TD_error.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
+        # TD_error.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
+
+        A = torch.zeros_like(TD_error)
+        lastgaelam = 0
+
+        # Process in reverse (easiest to just use a loop for variable-length sequences)
+        for t in reversed(range(TD_error.shape[1])):
+            lastgaelam = TD_error[:, t] + gamma * lam * lastgaelam
+            A[:, t] = lastgaelam
+        
 
         # 2. Get discounts 
         discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
@@ -167,6 +176,22 @@ class Trajectory():
         TD_rev = TD_error.flip(dims=[time_dim]) 
         A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
         self._A = torch.flip(A_rev, dims=[time_dim])
+
+        pdb.set_trace()
+
+
+        # PAPERS GAE FORMULATION
+        # lastgaelam = 0
+        # advantages_reversed = []
+        # for t in reversed(range(gen_length)):
+        #     nextvalues = values[:, t + 1] if t < gen_length - 1 else 0.0
+        #     delta = rewards[:, t] + gamma * nextvalues - values[:, t]
+        #     lastgaelam = delta + gamma * lam * lastgaelam  # ← Key line
+        #     advantages_reversed.append(lastgaelam)
+        # advantages = torch.stack(advantages_reversed[::-1], axis=1) 
+        
+        # A_t = δ_t + γλ * A_{t+1}
+
 
         return self.A
     
