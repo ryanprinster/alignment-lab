@@ -183,7 +183,29 @@ class PPORLHFTrainer(BaseTrainer):
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
                             new_values, new_log_policies = self._forward(full_states, pad_mask)
-                            # TODO: check if there is dropout here
+
+                            #  <Temp/> 
+                            def re_generate():
+                                prompts = full_states[:, :self.data.__class__.SFT_MAX_QUERY_LENGTH]
+                                attention_mask = (prompts != self.policy_model.tokenizer.pad_token_id)
+                                new_full_states, _ = self.policy_model.generate(
+                                    {
+                                        'input_ids':prompts,
+                                        'attention_mask': attention_mask
+                                    },
+                                    self.data.__class__.SFT_MAX_INPUT_LENGTH,
+                                    self.config.generation_temperature,
+                                    max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
+                                )
+                                del _
+                                new_rewards = self.reward_model.forward(new_full_states)
+                                new_responses = new_full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
+
+                                return new_responses, new_rewards
+                            
+                            pdb.set_trace()
+
+                            #  </Temp>
 
                             # 2.1 Compute mse loss for value model
                             loss_value = self.compute_value_loss_mse(R, new_values, reward_mask)
