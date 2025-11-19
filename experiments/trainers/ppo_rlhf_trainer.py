@@ -105,6 +105,8 @@ class PPORLHFTrainer(BaseTrainer):
         
         r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
 
+        pdb.set_trace()
+
         # Compute ppo loss
         loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
         loss_ppo = -masked_mean(loss_ppo, mask)
