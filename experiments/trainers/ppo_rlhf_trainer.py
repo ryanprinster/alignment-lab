@@ -199,9 +199,9 @@ class PPORLHFTrainer(BaseTrainer):
                                 )
                                 del _
                                 new_rewards = self.reward_model.forward(new_full_states)
-                                new_responses = new_full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
+                                # new_responses = new_full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
 
-                                return new_responses, new_rewards
+                                return new_full_states, new_rewards
                             
                             pdb.set_trace()
 

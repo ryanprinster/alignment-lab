@@ -256,6 +256,7 @@ class RLHFEnvironment(BaseEnvironment):
             # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
 
             # 1. Apply KL to rewards
+            print("rewards: ", tj.rewards)
             rewards_2d = tj.rewards.unsqueeze(1) * tj.reward_mask
             rewards_2d = (rewards_2d - (self.config.beta * kl_per_token)).masked_fill(~pad_mask, 0)
 
