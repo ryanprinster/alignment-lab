@@ -190,7 +190,6 @@ class PPORLHFTrainer(BaseTrainer):
                                 self.reward_model.eval()
                                 prompts = full_states[:, :self.data.__class__.SFT_MAX_QUERY_LENGTH]
                                 attention_mask = (prompts != self.policy_model.tokenizer.pad_token_id)
-                                pdb.set_trace()
                                 new_full_states, _ = self.policy_model.generate(
                                     {
                                         'input_ids':prompts,
@@ -207,6 +206,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 self.policy_model.train()
                                 self.reward_model.train()
                                 return new_full_states, new_rewards
+                            new_full_states, new_rewards = re_generate()
                             
                             pdb.set_trace()
 
@@ -223,7 +223,6 @@ class PPORLHFTrainer(BaseTrainer):
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
-                        pdb.set_trace()
                         self._step(self.optimizer_policy, self.optimizer_value)
 
                         # Logging
