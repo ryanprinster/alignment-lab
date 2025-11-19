@@ -108,7 +108,7 @@ class PPORLHFTrainer(BaseTrainer):
         pdb.set_trace()
 
         # Compute ppo loss
-        loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps , 1+self.config.eps ) * A)
+        loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
         loss_ppo = -masked_mean(loss_ppo, mask)
 
         # Entropy for tracking, but KL is doing regularization
