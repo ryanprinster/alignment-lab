@@ -90,9 +90,27 @@ class PPORLHFTrainer(BaseTrainer):
         return new_values, new_log_policies
 
     # @detect_nans
-    def compute_value_loss_mse(self, R, new_values, mask):
-        loss_value = masked_mean((new_values - R) ** 2, mask)
-        return loss_value
+    # def compute_value_loss_mse(self, R, new_values, mask):
+    #     loss_value = masked_mean((new_values - R) ** 2, mask)
+    #     return loss_value
+
+    def compute_value_loss_mse(self, R, new_values, old_values, mask):
+        # Clip the new values relative to old values
+        V_clipped = old_values + torch.clamp(
+            new_values - old_values, 
+            -self.config.eps_value_clipping, 
+            self.config.eps_value_clipping
+        )
+        
+        # Compute both losses
+        loss_value_unclipped = (new_values - R) ** 2
+        loss_value_clipped = (V_clipped - R) ** 2
+        
+        # Take max (more pessimistic loss)
+        loss_value = torch.max(loss_value_unclipped, loss_value_clipped)
+        
+        # Apply masking and return mean
+        return masked_mean(loss_value, mask)
 
     # @detect_nans
     def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_log_policies, mask):
@@ -187,7 +205,7 @@ class PPORLHFTrainer(BaseTrainer):
                             new_values, new_log_policies = self._forward(full_states, pad_mask)
 
                             # 2.1 Compute mse loss for value model
-                            loss_value = self.compute_value_loss_mse(R, new_values, reward_mask)
+                            loss_value = self.compute_value_loss_mse(R, new_values, old_values, pad_mask)
 
                             # 2.2 Compute ppo loss for policy model
                             # NOTE: all tensors in function below are in fp32?
