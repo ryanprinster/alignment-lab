@@ -118,7 +118,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.max_episodes = 1e7
 
         # Adam W Optimizer
-        self.eps = 1e-5
+        self.eps_adam = 1e-5
         self.lr = self.alpha = 3e-6
         self.lr_final_ratio = 0 # Paper does not state for PPO
 
