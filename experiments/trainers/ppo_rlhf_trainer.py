@@ -82,7 +82,7 @@ class PPORLHFTrainer(BaseTrainer):
         optimizer_value.zero_grad()
 
     @profile
-    def _forward(self, states, action_pad_mask):
+    def _forward(self, states):
         new_values = self.value_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH).squeeze(1) 
         new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH)
         new_policy_logits = new_policy_logits[:, :-1, :] # slice to action indexing
@@ -94,9 +94,11 @@ class PPORLHFTrainer(BaseTrainer):
     #     loss_value = masked_mean((new_values - R) ** 2, mask)
     #     return loss_value
 
-    def compute_value_loss_mse(self, R, new_values, old_values, action_pad_mask):
-        old_values = old_values[:, :-1]
-        new_values = new_values[:, :-1]
+    def compute_value_loss_mse(self, R, new_values, old_values, pad_mask):
+        pad_mask = pad_mask[:, :-1]
+        old_values = old_values[:, :-1].masked_fill(~pad_mask, 0)
+        new_values = new_values[:, :-1].masked_fill(~pad_mask, 0)
+        
         # Clip the new values relative to old values
         V_clipped = old_values + torch.clamp(
             new_values - old_values, 
@@ -112,11 +114,12 @@ class PPORLHFTrainer(BaseTrainer):
         loss_value = torch.max(loss_value_unclipped, loss_value_clipped)
         
         # Apply masking and return mean
-        return masked_mean(loss_value, action_pad_mask)
+        return masked_mean(loss_value, pad_mask)
 
     # @detect_nans
     def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):
 
+        # TODO: double check these pad masks, and all the ones with action_pad_masks, especially with values
         old_log_probs = old_log_probs.detach()
         A = A.detach()
 
