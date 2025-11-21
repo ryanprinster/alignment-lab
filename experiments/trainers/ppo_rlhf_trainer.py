@@ -87,7 +87,6 @@ class PPORLHFTrainer(BaseTrainer):
             states, 
             max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH - 1).squeeze(1) 
         new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH-1)
-        pdb.set_trace()
         new_policy_logits = new_policy_logits[:, :-1, :] # slice to action indexing
         return new_values, new_policy_logits
 
@@ -97,7 +96,6 @@ class PPORLHFTrainer(BaseTrainer):
     #     return loss_value
 
     def compute_value_loss_mse(self, R, new_values, old_values, pad_mask):
-        pdb.set_trace()
         pad_mask = pad_mask[:, :-1] # align to values
         old_values = old_values[:, :-1].masked_fill(~pad_mask, 0)
         new_values = new_values[:, :-1].masked_fill(~pad_mask, 0)
@@ -234,7 +232,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 "A_max": old_data['A'].max().item(),
                                 "A_min": old_data['A'].min().item(),
                                 # 1 - var(A) / var(A + V)
-                                "explained_var": 1 - masked_var(old_data['A'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'], old_data['action_pad_mask']).item(),
+                                "explained_var": 1 - masked_var(old_data['A'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'][:,:-1], old_data['action_pad_mask']).item(),
                                 "policy_entropy": entropy.item(),
                                 # TODO: needs to be masked mean
                                 "total_raw_reward": torch.mean(old_data['rewards']).item(),
