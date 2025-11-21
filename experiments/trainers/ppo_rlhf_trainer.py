@@ -190,7 +190,9 @@ class PPORLHFTrainer(BaseTrainer):
                         self.config.generation_temperature,
                         self.reward_model)
                 
-                tj_loader = DataLoader(TrajectorySet(tjs), batch_size=self.config._mini_batch_size, shuffle=False, num_workers=0)
+                tj_loader = DataLoader(
+                    TrajectorySet(tjs, batch_size=self.config._mini_batch_size), 
+                    batch_size=self.config._mini_batch_size, shuffle=False, num_workers=0)
 
                 # 2. Optimize loss, for K epochs
                 for k in range(self.config.K):

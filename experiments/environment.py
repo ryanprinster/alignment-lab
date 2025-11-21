@@ -246,7 +246,7 @@ class RLHFEnvironment(BaseEnvironment):
         #     pad_mask=pad_mask,
         #     reward_mask=reward_mask,
         # )
-        tj = Trajectory()
+        tj = Trajectory(batch_size=states.size(0))
 
         tj.states = states
         tj.full_states = full_states
@@ -257,7 +257,7 @@ class RLHFEnvironment(BaseEnvironment):
         tj.log_probs = log_probs
         tj.rewards = rewards
         tj.reward_mask = reward_mask
-        tj.kl_per_action = kl_per_action
+        tj.kl = kl_per_action
         tj.A = A
         tj.R = R
 

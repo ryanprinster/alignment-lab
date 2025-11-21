@@ -15,6 +15,7 @@ class Trajectory():
 
     @profile
     def __init__(self, 
+                 batch_size
                 #  init_state, 
                 #  action_dim, 
                 #  max_sequence_length, 
@@ -25,6 +26,8 @@ class Trajectory():
                 #  pad_mask=None,
                 #  reward_mask=None,
                  ):
+        
+        self.batch_size = batch_size
         """
         init_state - tensor of shape (batch_size, max_sequence_length, obs_dim)
             --> Assume for now that tensors are padded to be of max_sequence_length
