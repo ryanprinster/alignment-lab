@@ -82,19 +82,21 @@ class PPORLHFTrainer(BaseTrainer):
         optimizer_value.zero_grad()
 
     @profile
-    def _forward(self, states, pad_mask):
-        # passing in pad mask?
+    def _forward(self, states, action_pad_mask):
         new_values = self.value_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH).squeeze(1) 
         new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH)
-        new_log_policies = masked_log_softmax(new_policy_logits, pad_mask.unsqueeze(2), mask_value=0, dim=-1)
-        return new_values, new_log_policies
+        new_policy_logits = new_policy_logits[:, :-1, :] # slice to action indexing
+        
+        return new_values, new_policy_logits
 
     # @detect_nans
     # def compute_value_loss_mse(self, R, new_values, mask):
     #     loss_value = masked_mean((new_values - R) ** 2, mask)
     #     return loss_value
 
-    def compute_value_loss_mse(self, R, new_values, old_values, mask):
+    def compute_value_loss_mse(self, R, new_values, old_values, action_pad_mask):
+        old_values = old_values[:, :-1]
+        new_values = new_values[:, :-1]
         # Clip the new values relative to old values
         V_clipped = old_values + torch.clamp(
             new_values - old_values, 
@@ -110,28 +112,26 @@ class PPORLHFTrainer(BaseTrainer):
         loss_value = torch.max(loss_value_unclipped, loss_value_clipped)
         
         # Apply masking and return mean
-        return masked_mean(loss_value, mask)
+        return masked_mean(loss_value, action_pad_mask)
 
     # @detect_nans
-    def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_log_policies, mask):
-        # Assumption that A is calculated with the old, static values
+    def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):
 
         old_log_probs = old_log_probs.detach()
         A = A.detach()
 
+        new_log_policies = masked_log_softmax(new_policy_logits, action_pad_mask.unsqueeze(2), mask_value=0, dim=-1)
         new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
         
-        r = torch.exp((new_log_probs - old_log_probs).masked_fill(~mask, 0))
-
-        # pdb.set_trace()
+        r = torch.exp((new_log_probs - old_log_probs).masked_fill(~action_pad_mask, 0))
 
         # Compute ppo loss
         loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
-        loss_ppo = -masked_mean(loss_ppo, mask)
+        loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
 
         # Entropy for tracking, but KL is doing regularization
         entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
-        entropy = -masked_mean(entropy, mask)
+        entropy = -masked_mean(entropy, action_pad_mask)
 
         return loss_ppo, entropy
     
@@ -196,22 +196,23 @@ class PPORLHFTrainer(BaseTrainer):
                 for k in range(self.config.K):
                     # Update new policy for each minibatch
 
-                    for _, (states, old_actions, rewards, old_values, old_log_probs, R, A, kl, pad_mask, reward_mask, full_states) in enumerate(tj_loader):
+                    for _, old_data in enumerate(tj_loader):
+
 
                         self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
-                            new_values, new_log_policies = self._forward(full_states, pad_mask)
+                            new_values, new_policy_logits = self._forward(old_data['full_states'], ) # TODO: which pad mask
 
                             # 2.1 Compute mse loss for value model
-                            loss_value = self.compute_value_loss_mse(R, new_values, old_values, pad_mask)
+                            loss_value = self.compute_value_loss_mse(old_data['R'], new_values, old_data['values'], old_data['action_pad_mask'])
 
                             # 2.2 Compute ppo loss for policy model
                             # NOTE: all tensors in function below are in fp32?
-                            loss_ppo, entropy = self.compute_policy_loss_ppo(old_actions, old_log_probs, A, new_log_policies, pad_mask)
+                            loss_ppo, entropy = self.compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
 
-                            del new_log_policies
+                            del new_policy_logits
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
@@ -224,17 +225,18 @@ class PPORLHFTrainer(BaseTrainer):
                                 "loss_ppo": loss_ppo.item(),
                                 "train_iter": epoch,
                                 "global_step": self.global_step,
-                                "A_max": A.max().item(),
-                                "A_min": A.min().item(),
+                                "A_max": old_data['A'].max().item(),
+                                "A_min": old_data['A'].min().item(),
                                 # 1 - var(A) / var(A + V)
-                                "explained_var": 1 - masked_var(A, pad_mask).item() / masked_var(A + old_values, pad_mask).item(),
+                                "explained_var": 1 - masked_var(old_data['A'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'], old_data['action_pad_mask']).item(),
                                 "policy_entropy": entropy.item(),
-                                "total_raw_reward": torch.mean(rewards).item(),
-                                "total_whitened_reward": torch.mean(whiten(rewards, shift_mean=False)).item(),
-                                "total_maximized_reward": torch.mean(whiten(rewards, shift_mean=False) - self.config.beta * kl,).item(),
-                                "kl": torch.mean(kl).item(),
-                                "kl_beta": torch.mean(kl).item() * self.config.beta,
-                                "R": masked_mean(R, pad_mask).item(),
+                                "total_raw_reward": torch.mean(old_data['rewards']).item(),
+                                "total_whitened_reward": torch.mean(whiten(old_data['rewards'], shift_mean=False)).item(),
+                                # This is not exactly right technically 
+                                "total_maximized_reward": torch.mean(whiten(old_data['rewards'], shift_mean=False) - self.config.beta * torch.mean(old_data['kl']),).item(),
+                                "kl": torch.mean(old_data['kl']).item(),
+                                "kl_beta": torch.mean(old_data['kl']).item() * self.config.beta,
+                                "R": masked_mean(old_data['R'], old_data['action_pad_mask']).item(),
                                 "batch_idx": batch_idx,
                                 "k": k,
                                 "global_step": self.global_step,
