@@ -138,6 +138,8 @@ class Trajectory():
         V = V.detach()
         r = r.detach()
 
+        pdb.set_trace()
+
         # 0. Calculate V_next by bootstrapping last value
         V = V[:, :-1]           # seq_len - 1: value before taking action[t]
         V_next = V[:, 1:]       # seq_len - 1: value after taking action[t]

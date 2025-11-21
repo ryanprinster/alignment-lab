@@ -308,8 +308,6 @@ class RLHFEnvironment(BaseEnvironment):
             # TODO: Should I maintain other states for tracking? (rewards before kl, after whitening, etc)
 
 
-            pdb.set_trace()
-
             # 1. Apply KL to rewards
             rewards_2d = (rewards_2d - (self.config.beta * kl_per_action)).masked_fill(~action_pad_mask, 0)
 
@@ -318,7 +316,7 @@ class RLHFEnvironment(BaseEnvironment):
                 rewards_2d = masked_whiten(rewards_2d, action_pad_mask, shift_mean=False)
 
             # 3. Compute advantages
-            A = Trajectory.compute_gae(values, rewards, action_pad_mask, self.config.gamma, self.config.lam)
+            A = Trajectory.compute_gae(values, rewards_2d, action_pad_mask, self.config.gamma, self.config.lam)
             if self.config.whiten_A:
                 # NOTE: shift mean here to keep 
                 # A > 0 to be "action better than expected", 
