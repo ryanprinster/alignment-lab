@@ -126,17 +126,22 @@ class PPORLHFTrainer(BaseTrainer):
         new_log_policies = masked_log_softmax(new_policy_logits, action_pad_mask.unsqueeze(2), mask_value=0, dim=-1)
         new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
         
-        r = torch.exp((new_log_probs - old_log_probs).masked_fill(~action_pad_mask, 0))
+        ratios = torch.exp((new_log_probs - old_log_probs).masked_fill(~action_pad_mask, 0))
 
         # Compute ppo loss
-        loss_ppo = torch.min(r * A, torch.clamp(r, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
+        loss_ppo = torch.min(ratios * A, torch.clamp(ratios, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
         loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
+
+        ### For tracking ###
 
         # Entropy for tracking, but KL is doing regularization
         entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
         entropy = -masked_mean(entropy, action_pad_mask)
 
-        return loss_ppo, entropy
+        clipped = (ratios > 1 + self.config.eps_policy_clipping) | (ratios < 1 - self.config.eps_policy_clipping)
+        percent_clipped = clipped.float().mean()
+
+        return loss_ppo, entropy, percent_clipped
     
     @profile
     def _backward(self, loss_value, loss_ppo):
@@ -213,7 +218,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                             # 2.2 Compute ppo loss for policy model
                             # NOTE: all tensors in function below are in fp32?
-                            loss_ppo, entropy = self.compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
+                            loss_ppo, entropy, pct_clipped = self.compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
 
                             del new_policy_logits
 
@@ -230,9 +235,11 @@ class PPORLHFTrainer(BaseTrainer):
                                 "global_step": self.global_step,
                                 "A_max": old_data['A'].max().item(),
                                 "A_min": old_data['A'].min().item(),
+                                "A_std": old_data['A'].std().item(),
                                 # 1 - var(A) / var(A + V)
                                 "explained_var": 1 - masked_var(old_data['A'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'][:,:-1], old_data['action_pad_mask']).item(),
                                 "policy_entropy": entropy.item(),
+                                "pct_clipped": pct_clipped.item(),
                                 # TODO: needs to be masked mean
                                 "total_raw_reward": torch.mean(old_data['rewards']).item(),
                                 "total_whitened_reward": torch.mean(whiten(old_data['rewards'], shift_mean=False)).item(),
