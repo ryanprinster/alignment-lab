@@ -22,7 +22,17 @@ python -m experiments RMTrainer compute_model_bias --config RLFHCaseStudyConfig 
 python -m experiments RMTrainer train --config RLFHCaseStudyConfig --load_checkpoint_path checkpoints/sft_final_checkpoint.pt --calculated_sft_bias 0 --save_freq_steps 9999999 --batch_size 32 --accumulation_steps 2
 python -m experiments RMTrainer validation --config RLFHCaseStudyConfig --load_checkpoint_path checkpoints/rm_final_checkpoint_v2.pt  --batch_size 64 --accumulation_steps 1
 # PPORLHFTrainer
-python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128 --mini_batch_accumulation_steps 1
+python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128
+
+
+### Tensorboard
+# From runpod
+tensorboard --logdir=./runs --bind_all --port=6006
+# leave that open. then from a new local terminal:
+ssh -L 6006:localhost:6006 root@198.145.108.61 -p 11227 -i ~/.ssh/id_ed25519
+# then open in browser:
+http://localhost:6006
+
 
 
 
