@@ -168,20 +168,20 @@ class RLHFEnvironment(BaseEnvironment):
         Create the following alignment
 
         ----State Indexing---- (len = seq_len)
-        Position:       0       1       2      3    4
-        states:      [prompt, token1, token2, EOS, PAD]
-        pad_mask:    [  1,      1,      1,     1,   0 ]
-        values:      [ V0,     V1,     V2,    V3,  V4 ]
+        Position:            0         1         2        3        4
+        states:          [prompt,   token1,   token2,    EOS,     PAD]
+        pad_mask:        [   1,        1,        1,       1,       0 ]
+        values:          [  V0,       V1,       V2,      V3,      V4 ]
 
         ----Action Indexing---- (len = seq_len-1)
-        Position:           0       1      2    3
-        actions:         [token1, token2, EOS, PAD]
-        logits:          [  L0,     L1,   L2,  L3 ]
-        log_probs:       [ lp0,    lp1,  lp2, lp3 ]
-        rewards:         [  0,      0,    +1,   0 ]
-        reward_mask:     [  0,      0,     1,   0 ]
-        advantages:      [ A0,     A1,    A2,  A3 ]
-        action_pad_mask: [  1,      1,     1,   0 ]
+        Position:            0         1         2        3
+        actions:         [token1,   token2,    EOS,     PAD]
+        logits:          [   L0,       L1,      L2,      L3 ]
+        log_probs:       [  lp0,      lp1,     lp2,     lp3 ]
+        rewards:         [    0,        0,      +1,       0 ]
+        reward_mask:     [    0,        0,       1,       0 ]
+        advantages:      [   A0,       A1,      A2,      A3 ]
+        action_pad_mask: [    1,        1,       1,       0 ]
         """
 
         ### State Indexing ###
@@ -220,7 +220,21 @@ class RLHFEnvironment(BaseEnvironment):
         
         return rewards, reward_mask
     
-    def _create_trajectory(self, states, full_states, values, pad_mask, actions, action_pad_mask, rewards, reward_mask):
+    def _create_trajectory(
+            self,
+            states, 
+            full_states,
+            values, 
+            pad_mask,
+            actions,
+            action_pad_mask,
+            log_probs, 
+            rewards, 
+            reward_mask, 
+            kl_per_action,
+            A,
+            R
+        ):
         """Create a Trajectory object with base quantities."""
         # tj = Trajectory(
         #     init_state=states.unsqueeze(-1), 
@@ -233,15 +247,19 @@ class RLHFEnvironment(BaseEnvironment):
         #     reward_mask=reward_mask,
         # )
         tj = Trajectory()
-        tj.states = states 
+
+        tj.states = states
         tj.full_states = full_states
-        tj.values = values 
+        tj.values = values
         tj.pad_mask = pad_mask
         tj.actions = actions
         tj.action_pad_mask = action_pad_mask
-        # log_probs, 
+        tj.log_probs = log_probs
         tj.rewards = rewards
-        tj.reward_mask = reward_mask 
+        tj.reward_mask = reward_mask
+        tj.kl_per_action = kl_per_action
+        tj.A = A
+        tj.R = R
 
         return tj
     
