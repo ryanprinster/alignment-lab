@@ -326,7 +326,7 @@ class Trajectory():
             if new_values.shape != self._values.shape:
                 raise ValueError(f"Values shape {new_values.shape} doesn't match expected {self._values.shape}")
             new_values = new_values.to(device=self._values.device, dtype=self._values.dtype)
-        self._values = new_values * self._pad_mask
+        self._values = new_values
 
     # === Prediction-indexed tensors (seq_len - 1) ===
 
@@ -346,7 +346,7 @@ class Trajectory():
             if new_actions.shape != self._actions.shape:
                 raise ValueError(f"Actions shape {new_actions.shape} doesn't match expected {self._actions.shape}")
             new_actions = new_actions.to(device=self._actions.device, dtype=self._actions.dtype)
-        self._actions = new_actions * self._action_pad_mask
+        self._actions = new_actions
 
     @log_probs.setter
     def log_probs(self, new_log_probs):
@@ -355,7 +355,7 @@ class Trajectory():
             if new_log_probs.shape != self._log_probs.shape:
                 raise ValueError(f"Log probs shape {new_log_probs.shape} doesn't match expected {self._log_probs.shape}")
             new_log_probs = new_log_probs.to(device=self._log_probs.device, dtype=self._log_probs.dtype)
-        self._log_probs = new_log_probs * self._action_pad_mask
+        self._log_probs = new_log_probs
 
     @rewards.setter
     def rewards(self, new_rewards):
@@ -364,7 +364,7 @@ class Trajectory():
             if new_rewards.shape != self._rewards.shape:
                 raise ValueError(f"Rewards shape {new_rewards.shape} doesn't match expected {self._rewards.shape}")
             new_rewards = new_rewards.to(device=self._rewards.device, dtype=self._rewards.dtype)
-        self._rewards = new_rewards * self._action_pad_mask
+        self._rewards = new_rewards
 
     @reward_mask.setter
     def reward_mask(self, new_reward_mask):
@@ -382,7 +382,7 @@ class Trajectory():
             if new_kl.shape != self._kl.shape:
                 raise ValueError(f"KL shape {new_kl.shape} doesn't match expected {self._kl.shape}")
             new_kl = new_kl.to(device=self._kl.device, dtype=self._kl.dtype)
-        self._kl = new_kl * self._action_pad_mask
+        self._kl = new_kl
 
     @A.setter
     def A(self, new_A):
@@ -391,7 +391,7 @@ class Trajectory():
             if new_A.shape != self._A.shape:
                 raise ValueError(f"A shape {new_A.shape} doesn't match expected {self._A.shape}")
             new_A = new_A.to(device=self._A.device, dtype=self._A.dtype)
-        self._A = new_A * self._action_pad_mask
+        self._A = new_A
 
     @R.setter
     def R(self, new_R):
@@ -400,7 +400,7 @@ class Trajectory():
             if new_R.shape != self._R.shape:
                 raise ValueError(f"R shape {new_R.shape} doesn't match expected {self._R.shape}")
             new_R = new_R.to(device=self._R.device, dtype=self._R.dtype)
-        self._R = new_R * self._action_pad_mask
+        self._R = new_R
 
 
     # def add_step(self, state, action, reward, policy, value, prob):
