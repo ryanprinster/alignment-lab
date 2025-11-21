@@ -95,8 +95,7 @@ class PPORLHFTrainer(BaseTrainer):
     #     return loss_value
 
     def compute_value_loss_mse(self, R, new_values, old_values, pad_mask):
-        pdb.set_trace()
-        pad_mask = pad_mask[:, :-1]
+        pad_mask = pad_mask[:, :-1] # align to values
         old_values = old_values[:, :-1].masked_fill(~pad_mask, 0)
         new_values = new_values[:, :-1].masked_fill(~pad_mask, 0)
         
@@ -210,7 +209,7 @@ class PPORLHFTrainer(BaseTrainer):
                             new_values, new_policy_logits = self._forward(old_data['full_states'], ) # TODO: which pad mask
 
                             # 2.1 Compute mse loss for value model
-                            loss_value = self.compute_value_loss_mse(old_data['R'], new_values, old_data['values'], old_data['action_pad_mask'])
+                            loss_value = self.compute_value_loss_mse(old_data['R'], new_values, old_data['values'], old_data['pad_mask'])
 
                             # 2.2 Compute ppo loss for policy model
                             # NOTE: all tensors in function below are in fp32?
