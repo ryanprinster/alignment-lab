@@ -123,7 +123,7 @@ class Trajectory():
         return R
     
     @profile
-    def compute_gae(V, r, action_pad_mask, gamma, lam):
+    def compute_gae(V, r, pad_mask, gamma, lam):
         
         # if torch.all(self.rewards == 0).item():
         #     raise ValueError("rewards is not set, set non-zero rewards attribute first")
@@ -143,7 +143,7 @@ class Trajectory():
         # 0. Calculate V_next by bootstrapping last value
         V = V[:, :-1]           # seq_len - 1: value before taking action[t]
         V_next = V[:, 1:]       # seq_len - 1: value after taking action[t]
-        last_valid_idx = action_pad_mask.sum(dim=time_dim) - 1
+        last_valid_idx = pad_mask.sum(dim=time_dim) - 1
         batch_idx = torch.arange(V.size(0), device=V.device)
         V_next[batch_idx, last_valid_idx] = 0
 
