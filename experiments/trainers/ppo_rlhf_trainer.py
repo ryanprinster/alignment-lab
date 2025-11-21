@@ -83,10 +83,12 @@ class PPORLHFTrainer(BaseTrainer):
 
     @profile
     def _forward(self, states):
-        new_values = self.value_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH).squeeze(1) 
-        new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH)
+        new_values = self.value_model.forward(
+            states, 
+            max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH - 1).squeeze(1) 
+        new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH-1)
+        pdb.set_trace()
         new_policy_logits = new_policy_logits[:, :-1, :] # slice to action indexing
-        
         return new_values, new_policy_logits
 
     # @detect_nans
