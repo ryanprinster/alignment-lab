@@ -344,20 +344,19 @@ class RLHFEnvironment(BaseEnvironment):
             # 4. Compute returns/rewards-to-go
             R = Trajectory.compute_R(gamma=self.config.gamma, r=rewards_2d, action_pad_mask=action_pad_mask)
 
-            pdb.set_trace()
             tj = self._create_trajectory(
-                states, 
+                states,
                 full_states,
-                values * pad_mask, 
+                values.masked_fill(~pad_mask, 0),
                 pad_mask,
-                actions * action_pad_mask,
-                action_pad_mask * action_pad_mask,
-                log_probs * action_pad_mask, 
-                rewards * action_pad_mask, 
-                reward_mask, 
-                kl_per_action * action_pad_mask,
-                A * action_pad_mask,
-                R * action_pad_mask
+                actions.masked_fill(~action_pad_mask, 0),
+                action_pad_mask.masked_fill(~action_pad_mask, 0),
+                log_probs.masked_fill(~action_pad_mask, 0),
+                rewards.masked_fill(~action_pad_mask, 0),
+                reward_mask,
+                kl_per_action.masked_fill(~action_pad_mask, 0),
+                A.masked_fill(~action_pad_mask, 0),
+                R.masked_fill(~action_pad_mask, 0)
             )
 
                          
