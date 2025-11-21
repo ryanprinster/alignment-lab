@@ -95,6 +95,7 @@ class PPORLHFTrainer(BaseTrainer):
     #     return loss_value
 
     def compute_value_loss_mse(self, R, new_values, old_values, pad_mask):
+        pdb.set_trace()
         pad_mask = pad_mask[:, :-1] # align to values
         old_values = old_values[:, :-1].masked_fill(~pad_mask, 0)
         new_values = new_values[:, :-1].masked_fill(~pad_mask, 0)
