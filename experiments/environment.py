@@ -327,7 +327,7 @@ class RLHFEnvironment(BaseEnvironment):
                 rewards_2d = masked_whiten(rewards_2d, action_pad_mask, shift_mean=False)
 
             # 3. Compute advantages
-            A = Trajectory.compute_gae(values, rewards_2d, value_pad_, self.config.gamma, self.config.lam)
+            A = Trajectory.compute_gae(values, rewards_2d, value_pad_mask, self.config.gamma, self.config.lam)
             if self.config.whiten_A:
                 # NOTE: shift mean here to keep 
                 # A > 0 to be "action better than expected", 
