@@ -194,7 +194,7 @@ class RLHFEnvironment(BaseEnvironment):
         policy_logits = policy_logits[:, :-1, :] 
         sft_policy_logits = sft_policy_logits[:, :-1, :]
         reward_mask = reward_mask[:, 1:]
-        rewards_2d = rewards * reward_mask
+        rewards_2d = rewards.unsqueeze(1) * reward_mask
         action_pad_mask = pad_mask[:, 1:]
 
         return actions, policy_logits, sft_policy_logits, rewards_2d, reward_mask, action_pad_mask
