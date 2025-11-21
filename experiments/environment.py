@@ -188,6 +188,7 @@ class RLHFEnvironment(BaseEnvironment):
         # states = states
         # pad_mask = pad_mask
         # values = values
+        value_pad_mask = pad_mask[:, :-1]
 
         ### Action Indexing ###
         actions = states[:, 1:]
@@ -197,7 +198,7 @@ class RLHFEnvironment(BaseEnvironment):
         rewards_2d = rewards.unsqueeze(1) * reward_mask
         action_pad_mask = pad_mask[:, 1:]
 
-        return actions, policy_logits, sft_policy_logits, rewards_2d, reward_mask, action_pad_mask
+        return actions, policy_logits, sft_policy_logits, rewards_2d, reward_mask, action_pad_mask, value_pad_mask
 
     def _set_reward_for_no_eos(self, rewards, reward_mask, action_pad_mask, penalty=-1.0):
         """
@@ -287,7 +288,7 @@ class RLHFEnvironment(BaseEnvironment):
             states = self._enforce_padding(states)
             pad_mask, reward_mask = self._create_masks(states)
                         
-            actions, policy_logits, sft_policy_logits, rewards_2d, reward_mask, action_pad_mask = \
+            actions, policy_logits, sft_policy_logits, rewards_2d, reward_mask, action_pad_mask, value_pad_mask = \
                 self._align_to_action_space(
                     states, 
                     policy_logits, 
