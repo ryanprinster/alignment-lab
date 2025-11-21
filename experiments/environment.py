@@ -352,7 +352,7 @@ class RLHFEnvironment(BaseEnvironment):
                 actions.masked_fill(~action_pad_mask, 0),
                 action_pad_mask.masked_fill(~action_pad_mask, 0),
                 log_probs.masked_fill(~action_pad_mask, 0),
-                rewards.masked_fill(~action_pad_mask, 0),
+                rewards, # 1D
                 reward_mask,
                 kl_per_action.masked_fill(~action_pad_mask, 0),
                 A.masked_fill(~action_pad_mask, 0),
