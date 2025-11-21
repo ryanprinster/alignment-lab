@@ -330,6 +330,7 @@ class RLHFEnvironment(BaseEnvironment):
                 # NOTE: shift mean here to keep 
                 # A > 0 to be "action better than expected", 
                 # A < 0 to be "action worse than expected"
+                pdb.set_trace()
                 A = masked_whiten(A, value_pad_mask) # TODO: double check
             
             # 4. Compute returns/rewards-to-go
