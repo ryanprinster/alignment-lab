@@ -96,32 +96,32 @@ class RLHFEnvironment(BaseEnvironment):
         )
         return first_token_pos
 
-    def _enforce_padding(self, states, tokenizer):
+    def _enforce_padding(self, states):
         """
         Applies EOS trick (pt 1)
         Sets all tokens after the first EOS or PAD token to PAD token.
         Detail 23.2: Truncate and pad after EOS to ensure valid RM scores
         """
-        first_eos_pos = self._find_first_token_position(states, tokenizer.eos_token_id)
-        first_pad_pos = self._find_first_token_position(states, tokenizer.pad_token_id)
+        first_eos_pos = self._find_first_token_position(states, self.tokenizer.eos_token_id)
+        first_pad_pos = self._find_first_token_position(states, self.tokenizer.pad_token_id)
         
         first_termination_pos = torch.min(first_eos_pos, first_pad_pos)
         
         # Set everything after to pad
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         after_termination_mask = pos > first_termination_pos.unsqueeze(1)
-        states[after_termination_mask] = tokenizer.pad_token_id
+        states[after_termination_mask] = self.tokenizer.pad_token_id
         
         return states
 
-    def construct_pad_mask(self, states, tokenizer):
+    def construct_pad_mask(self, states):
         """Constructs a boolean mask where True indicates valid tokens before the first padding token."""
-        first_pad_pos = self._find_first_token_position(states, tokenizer.pad_token_id)
+        first_pad_pos = self._find_first_token_position(states, self.tokenizer.pad_token_id)
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         return ~(pos >= first_pad_pos.unsqueeze(1))
     
-    def construct_reward_mask(self, states, tokenizer):
-        return (states == tokenizer.eos_token_id)
+    def construct_reward_mask(self, states):
+        return (states == self.tokenizer.eos_token_id)
          
     def _set_models_to_eval(self, *models):
         """Set all models to evaluation mode."""
