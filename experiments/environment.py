@@ -236,18 +236,8 @@ class RLHFEnvironment(BaseEnvironment):
             R
         ):
         """Create a Trajectory object with base quantities."""
-        # tj = Trajectory(
-        #     init_state=states.unsqueeze(-1), 
-        #     action_dim=self.action_dim,
-        #     max_sequence_length=response_length,
-        #     tokenizer=self.tokenizer,
-        #     values=values * pad_mask,
-        #     rewards=rewards,
-        #     pad_mask=pad_mask,
-        #     reward_mask=reward_mask,
-        # )
-        tj = Trajectory(batch_size=states.size(0))
 
+        tj = Trajectory(batch_size=states.size(0))
         tj.states = states
         tj.full_states = full_states
         tj.values = values
@@ -350,12 +340,12 @@ class RLHFEnvironment(BaseEnvironment):
                 values.masked_fill(~pad_mask, 0),
                 pad_mask,
                 actions.masked_fill(~action_pad_mask, 0),
-                action_pad_mask.masked_fill(~action_pad_mask, 0),
+                action_pad_mask,
                 log_probs.masked_fill(~action_pad_mask, 0),
-                rewards_2d, # 1D
+                rewards_2d.masked_fill(~action_pad_mask, 0),
                 reward_mask,
                 kl_per_action.masked_fill(~action_pad_mask, 0),
-                A.masked_fill(~action_pad_mask, 0),
+                A.masked_fill(~pad_mask[:, :-1], 0),
                 R.masked_fill(~action_pad_mask, 0)
             )
 
