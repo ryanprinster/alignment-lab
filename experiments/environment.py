@@ -295,10 +295,6 @@ class RLHFEnvironment(BaseEnvironment):
             
             
             # TODO: check all tensors are on the right devices
-
-            pdb.set_trace()
-
-
         
             kl_per_action = Trajectory.compute_kl(policy_logits, sft_policy_logits, action_pad_mask)
             del sft_policy_logits
@@ -311,8 +307,11 @@ class RLHFEnvironment(BaseEnvironment):
 
             # TODO: Should I maintain other states for tracking? (rewards before kl, after whitening, etc)
 
+
+            pdb.set_trace()
+
             # 1. Apply KL to rewards
-            rewards_2d = (rewards_2d - (self.config.beta * kl_per_action)).masked_fill(~pad_mask, 0)
+            rewards_2d = (rewards_2d - (self.config.beta * kl_per_action)).masked_fill(~action_pad_mask, 0)
 
             # 2. Whiten rewards
             if self.config.whiten_rewards:
