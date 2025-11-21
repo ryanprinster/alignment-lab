@@ -95,10 +95,9 @@ class PPORLHFTrainer(BaseTrainer):
     #     loss_value = masked_mean((new_values - R) ** 2, mask)
     #     return loss_value
 
-    def compute_value_loss_mse(self, R, new_values, old_values, pad_mask):
-        pad_mask = pad_mask[:, :-1] # align to values
-        old_values = old_values[:, :-1].masked_fill(~pad_mask, 0)
-        new_values = new_values[:, :-1].masked_fill(~pad_mask, 0)
+    def compute_value_loss_mse(self, R, new_values, old_values, value_pad_mask):
+        old_values = old_values[:, :-1].masked_fill(~value_pad_mask, 0)
+        new_values = new_values[:, :-1].masked_fill(~value_pad_mask, 0)
         
         # Clip the new values relative to old values
         V_clipped = old_values + torch.clamp(
@@ -115,7 +114,7 @@ class PPORLHFTrainer(BaseTrainer):
         loss_value = torch.max(loss_value_unclipped, loss_value_clipped)
         
         # Apply masking and return mean
-        return masked_mean(loss_value, pad_mask)
+        return masked_mean(loss_value, value_pad_mask)
 
     # @detect_nans
     def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):

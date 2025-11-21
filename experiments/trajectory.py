@@ -126,7 +126,7 @@ class Trajectory():
         return R
     
     @profile
-    def compute_gae(V, r, pad_mask, gamma, lam):
+    def compute_gae(V, r, value_pad_mask, gamma, lam):
         
         # if torch.all(self.rewards == 0).item():
         #     raise ValueError("rewards is not set, set non-zero rewards attribute first")
@@ -144,9 +144,9 @@ class Trajectory():
         # 0. Calculate V_next by bootstrapping last value
         V_next = V[:, 1:]       # seq_len - 1: value after taking action[t]
         V = V[:, :-1]           # seq_len - 1: value before taking action[t]
-        pad_mask = pad_mask[:, :-1] # align to V, not to actions
+        # pad_mask = pad_mask[:, :-1] # align to V, not to actions
 
-        last_valid_idx = pad_mask.sum(dim=time_dim) - 1
+        last_valid_idx = value_pad_mask.sum(dim=time_dim) - 1
         batch_idx = torch.arange(V.size(0), device=V.device)
         V_next[batch_idx, last_valid_idx] = 0
 
@@ -157,11 +157,11 @@ class Trajectory():
         # 2. Compute recursion in reverse
         # A_t = δ_t + γλ * A_{t+1}
         A = torch.zeros_like(TD_error)
-        lastgaelam = 0
+        a = 0
         # Process in reverse (cannot/ hard to be done in a vectorized fashion)
         for t in reversed(range(TD_error.shape[1])):
-            lastgaelam = TD_error[:, t] + gamma * lam * lastgaelam
-            A[:, t] = lastgaelam
+            a = TD_error[:, t] + gamma * lam * a
+            A[:, t] = a
         
         return A
         
@@ -281,6 +281,10 @@ class Trajectory():
     @property
     def action_pad_mask(self):
         return self._action_pad_mask
+    
+    @property
+    def value_pad_mask(self):
+        return self._value_pad_mask
 
     @property
     def reward_mask(self):
@@ -328,6 +332,15 @@ class Trajectory():
                 raise ValueError(f"Values shape {new_values.shape} doesn't match expected {self._values.shape}")
             new_values = new_values.to(device=self._values.device, dtype=self._values.dtype)
         self._values = new_values
+
+    @value_pad_mask.setter
+    def value_pad_mask(self, new_value_pad_mask):
+        new_value_pad_mask = torch.as_tensor(new_value_pad_mask)
+        if hasattr(self, '_value_pad_mask') and self._value_pad_mask is not None:
+            if new_value_pad_mask.shape != self._value_pad_mask.shape:
+                raise ValueError(f"Value pad mask shape {new_value_pad_mask.shape} doesn't match expected {self._value_pad_mask.shape}")
+            new_value_pad_mask = new_value_pad_mask.to(device=self._value_pad_mask.device, dtype=self._value_pad_mask.dtype)
+        self._value_pad_mask = new_value_pad_mask
 
     # === Prediction-indexed tensors (seq_len - 1) ===
 
@@ -497,6 +510,7 @@ class TrajectorySet(Dataset):
             'kl': self._tjs.kl[idx, :],
             'pad_mask': self._tjs.pad_mask[idx, :],
             'action_pad_mask': self._tjs.action_pad_mask[idx, :],
+            'value_pad_mask': self._tjs.value_pad_mask[idx, :],
             'reward_mask': self._tjs.reward_mask[idx, :],
             'full_states': self._tjs.full_states[idx, :],
         }
