@@ -230,6 +230,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 # 1 - var(A) / var(A + V)
                                 "explained_var": 1 - masked_var(old_data['A'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'], old_data['action_pad_mask']).item(),
                                 "policy_entropy": entropy.item(),
+                                # TODO: needs to be masked mean
                                 "total_raw_reward": torch.mean(old_data['rewards']).item(),
                                 "total_whitened_reward": torch.mean(whiten(old_data['rewards'], shift_mean=False)).item(),
                                 # This is not exactly right technically 
