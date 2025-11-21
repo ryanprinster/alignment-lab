@@ -143,7 +143,7 @@ class Trajectory():
         # 0. Calculate V_next by bootstrapping last value
         V_next = V[:, 1:]       # seq_len - 1: value after taking action[t]
         V = V[:, :-1]           # seq_len - 1: value before taking action[t]
-        pad_mask = pad_mask[:, :-1] # align to V
+        pad_mask = pad_mask[:, :-1] # align to V, not to actions
 
         last_valid_idx = pad_mask.sum(dim=time_dim) - 1
         batch_idx = torch.arange(V.size(0), device=V.device)
