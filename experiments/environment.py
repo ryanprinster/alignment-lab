@@ -220,43 +220,7 @@ class RLHFEnvironment(BaseEnvironment):
         rewards[~has_eos] = penalty
         
         return rewards, reward_mask
-    
-    def _create_trajectory(
-            self,
-            states, 
-            full_states,
-            values,
-            value_pad_mask, 
-            pad_mask,
-            actions,
-            action_pad_mask,
-            log_probs, 
-            rewards, 
-            raw_rewards,
-            reward_mask, 
-            kl_per_action,
-            A,
-            R
-        ):
-        """Create a Trajectory object with base quantities."""
 
-        tj = Trajectory(batch_size=states.size(0))
-        tj.states = states
-        tj.full_states = full_states
-        tj.values = values
-        tj.value_pad_mask = value_pad_mask
-        tj.pad_mask = pad_mask
-        tj.actions = actions
-        tj.action_pad_mask = action_pad_mask
-        tj.log_probs = log_probs
-        tj.rewards = rewards
-        tj.raw_rewards = raw_rewards
-        tj.reward_mask = reward_mask
-        tj.kl = kl_per_action
-        tj.A = A
-        tj.R = R
-
-        return tj
     
     @profile
     def generate_trajectory(self, 
@@ -340,22 +304,40 @@ class RLHFEnvironment(BaseEnvironment):
             # 4. Compute returns/rewards-to-go
             R = Trajectory.compute_R(gamma=self.config.gamma, r=rewards_2d, action_pad_mask=action_pad_mask)
 
-            tj = self._create_trajectory(
-                states,
-                full_states,
-                values.masked_fill(~pad_mask, 0),
-                value_pad_mask,
-                pad_mask,
-                actions.masked_fill(~action_pad_mask, 0),
-                action_pad_mask,
-                log_probs.masked_fill(~action_pad_mask, 0),
-                raw_rewards.masked_fill(~action_pad_mask, 0),
-                rewards_2d.masked_fill(~action_pad_mask, 0),
-                reward_mask,
-                kl_per_action.masked_fill(~action_pad_mask, 0),
-                A.masked_fill(~pad_mask[:, :-1], 0),
-                R.masked_fill(~action_pad_mask, 0)
-            )
+            # 5. Create trajectory and set data
+            tj = Trajectory(batch_size=states.size(0))
+            tj.states = states
+            tj.full_states = full_states
+            tj.values = values.masked_fill(~pad_mask, 0)
+            tj.value_pad_mask = value_pad_mask
+            tj.pad_mask = pad_mask
+            tj.actions = actions.masked_fill(~action_pad_mask, 0)
+            tj.action_pad_mask = action_pad_mask
+            tj.log_probs = log_probs.masked_fill(~action_pad_mask, 0)
+            tj.rewards = rewards.masked_fill(~action_pad_mask, 0)
+            tj.raw_rewards = raw_rewards.masked_fill(~action_pad_mask, 0)
+            tj.reward_mask = reward_mask
+            tj.kl = kl_per_action.masked_fill(~action_pad_mask, 0)
+            tj.A = A
+            tj.R = R
+
+
+            # tj = self._create_trajectory(
+            #     states,
+            #     full_states,
+            #     values.masked_fill(~pad_mask, 0),
+            #     value_pad_mask,
+            #     pad_mask,
+            #     actions.masked_fill(~action_pad_mask, 0),
+            #     action_pad_mask,
+            #     log_probs.masked_fill(~action_pad_mask, 0),
+            #     raw_rewards.masked_fill(~action_pad_mask, 0),
+            #     rewards_2d.masked_fill(~action_pad_mask, 0),
+            #     reward_mask,
+            #     kl_per_action.masked_fill(~action_pad_mask, 0),
+            #     A.masked_fill(~pad_mask[:, :-1], 0),
+            #     R.masked_fill(~action_pad_mask, 0)
+            # )
 
                          
         policy_model.train()
