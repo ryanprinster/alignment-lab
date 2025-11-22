@@ -232,6 +232,7 @@ class RLHFEnvironment(BaseEnvironment):
             action_pad_mask,
             log_probs, 
             rewards, 
+            raw_rewards,
             reward_mask, 
             kl_per_action,
             A,
@@ -249,6 +250,7 @@ class RLHFEnvironment(BaseEnvironment):
         tj.action_pad_mask = action_pad_mask
         tj.log_probs = log_probs
         tj.rewards = rewards
+        tj.raw_rewards = raw_rewards
         tj.reward_mask = reward_mask
         tj.kl = kl_per_action
         tj.A = A
@@ -320,6 +322,7 @@ class RLHFEnvironment(BaseEnvironment):
 
 
             # 1. Apply KL to rewards
+            raw_rewards = rewards_2d
             rewards_2d = (rewards_2d - (self.config.beta * kl_per_action)).masked_fill(~action_pad_mask, 0)
 
             # 2. Whiten rewards
@@ -346,6 +349,7 @@ class RLHFEnvironment(BaseEnvironment):
                 actions.masked_fill(~action_pad_mask, 0),
                 action_pad_mask,
                 log_probs.masked_fill(~action_pad_mask, 0),
+                raw_rewards.masked_fill(~action_pad_mask, 0),
                 rewards_2d.masked_fill(~action_pad_mask, 0),
                 reward_mask,
                 kl_per_action.masked_fill(~action_pad_mask, 0),

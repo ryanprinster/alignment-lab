@@ -95,6 +95,7 @@ class Trajectory():
             'full_states': self.full_states,
             'actions': self.actions,
             'rewards': self.rewards,
+            'raw_rewards': self.raw_rewards,
             'values': self.values,
             'log_probs': self.log_probs,
             'R': self.R,
@@ -253,6 +254,10 @@ class Trajectory():
     @property
     def rewards(self):
         return self._rewards
+    
+    @property
+    def raw_rewards(self):
+        return self._raw_rewards
 
     @property
     def values(self):
@@ -293,6 +298,7 @@ class Trajectory():
     @property
     def full_states(self):
         return self._full_states
+    
 
 
     # === State-indexed tensors (seq_len) ===
@@ -379,6 +385,15 @@ class Trajectory():
                 raise ValueError(f"Rewards shape {new_rewards.shape} doesn't match expected {self._rewards.shape}")
             new_rewards = new_rewards.to(device=self._rewards.device, dtype=self._rewards.dtype)
         self._rewards = new_rewards
+
+    @raw_rewards.setter
+    def raw_rewards(self, new_raw_rewards):
+        new_raw_rewards = torch.as_tensor(new_raw_rewards)
+        if hasattr(self, '_raw_rewards') and self._raw_rewards is not None:
+            if new_raw_rewards.shape != self._raw_rewards.shape:
+                raise ValueError(f"raw_rewards shape {new_raw_rewards.shape} doesn't match expected {self._raw_rewards.shape}")
+            new_raw_rewards = new_raw_rewards.to(device=self._raw_rewards.device, dtype=self._raw_rewards.dtype)
+        self._raw_rewards = new_raw_rewards
 
     @reward_mask.setter
     def reward_mask(self, new_reward_mask):
@@ -503,6 +518,7 @@ class TrajectorySet(Dataset):
             'states': self._tjs.states[idx, :],
             'actions': self._tjs.actions[idx, :],
             'rewards': self._tjs.rewards[idx, :],
+            'raw_rewards': self._tjs.raw_rewards[idx, :],
             'values': self._tjs.values[idx, :],
             'log_probs': self._tjs.log_probs[idx, :],
             'R': self._tjs.R[idx, :],

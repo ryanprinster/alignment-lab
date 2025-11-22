@@ -242,9 +242,13 @@ class PPORLHFTrainer(BaseTrainer):
                                 "pct_clipped": pct_clipped.item(),
                                 # TODO: needs to be masked mean
                                 "mean_raw_reward": masked_mean(
+                                    old_data['raw_rewards'], 
+                                    old_data['reward_mask']
+                                ).item(),   
+                                "mean_rlhf_reward": masked_mean(
                                     old_data['rewards'], 
                                     old_data['reward_mask']
-                                ).item(),                                
+                                ).item(),                               
                                 # "mean_kl_eos_reward": masked_mean(
                                 #     old_data['rewards'] - self.config.beta * old_data['kl'], 
                                 #     old_data['reward_mask']
