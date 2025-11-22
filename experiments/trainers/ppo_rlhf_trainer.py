@@ -245,10 +245,10 @@ class PPORLHFTrainer(BaseTrainer):
                                     old_data['rewards'], 
                                     old_data['reward_mask']
                                 ).item(),                                
-                                "mean_kl_eos_reward": masked_mean(
-                                    old_data['rewards'] - self.config.beta * old_data['kl'], 
-                                    old_data['reward_mask']
-                                ).item(),
+                                # "mean_kl_eos_reward": masked_mean(
+                                #     old_data['rewards'] - self.config.beta * old_data['kl'], 
+                                #     old_data['reward_mask']
+                                # ).item(),
                                 # "mean_kl_non_eos_reward": masked_mean((old_data['rewards'] - (self.config.beta * old_data['kl'])).masked_fill(~old_data['action_pad_mask'], 0), old_data['reward_mask'])
                                 # "total_whitened_reward": torch.mean(whiten(old_data['rewards'], shift_mean=False)).item(),
                                 # This is not exactly right technically 
