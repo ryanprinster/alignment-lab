@@ -224,6 +224,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
+                        pdb.set_trace()
                         self._step(self.optimizer_policy, self.optimizer_value)
 
                         # Logging
@@ -245,7 +246,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 "total_whitened_reward": torch.mean(whiten(old_data['rewards'], shift_mean=False)).item(),
                                 # This is not exactly right technically 
                                 "total_maximized_reward": torch.mean(whiten(old_data['rewards'], shift_mean=False) - self.config.beta * torch.mean(old_data['kl']),).item(),
-                                "kl": torch.mean(old_data['kl']).item(),
+                                "kl": masked_mean(old_data['kl'], old_data['action_pad_mask']).item(),
                                 "kl_beta": torch.mean(old_data['kl']).item() * self.config.beta,
                                 "R": masked_mean(old_data['R'], old_data['action_pad_mask']).item(),
                                 "batch_idx": batch_idx,
