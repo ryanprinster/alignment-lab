@@ -241,7 +241,9 @@ class PPORLHFTrainer(BaseTrainer):
                                 "policy_entropy": entropy.item(),
                                 "pct_clipped": pct_clipped.item(),
                                 # TODO: needs to be masked mean
-                                "total_raw_reward": masked_mean(old_data['rewards'], old_data['reward_mask']).item(),
+                                "mean_raw_reward": masked_mean(old_data['rewards'], old_data['reward_mask']).item(),
+                                "mean_kl_eos_reward": masked_mean((old_data['rewards'] - (self.config.beta * old_data['kl'])).masked_fill(~old_data['reward_mask'], 0), old_data['reward_mask']),
+                                # "mean_kl_non_eos_reward": masked_mean((old_data['rewards'] - (self.config.beta * old_data['kl'])).masked_fill(~old_data['action_pad_mask'], 0), old_data['reward_mask'])
                                 # "total_whitened_reward": torch.mean(whiten(old_data['rewards'], shift_mean=False)).item(),
                                 # This is not exactly right technically 
                                 # "total_maximized_reward": torch.mean(whiten(old_data['rewards'], shift_mean=False) - self.config.beta * torch.mean(old_data['kl']),).item(),
