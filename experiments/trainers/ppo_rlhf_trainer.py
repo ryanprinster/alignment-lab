@@ -140,7 +140,6 @@ class PPORLHFTrainer(BaseTrainer):
 
         clipped = (ratios > 1 + self.config.eps_policy_clipping) | (ratios < 1 - self.config.eps_policy_clipping)
         percent_clipped = clipped.float().mean()
-        pdb.set_trace()
 
         return loss_ppo, entropy, percent_clipped
     
