@@ -246,7 +246,7 @@ class PPORLHFTrainer(BaseTrainer):
                                     old_data['reward_mask']
                                 ).item(),   
                                 "mean_rlhf_reward": masked_mean(
-                                    old_data['rewards'], 
+                                    (old_data['raw_rewards'] - (self.config.beta * old_data['kl'])), 
                                     old_data['reward_mask']
                                 ).item(),                               
                                 # "mean_kl_eos_reward": masked_mean(
