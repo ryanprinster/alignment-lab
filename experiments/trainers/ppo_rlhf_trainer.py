@@ -270,7 +270,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 # Returns stats
                                 "R": masked_mean(old_data['R'], old_data['action_pad_mask']).item(),
                                 # Other stats
-                                "lr_policy": self.lr_scheduler_policy.get_last_lr()[0]
+                                "lr_policy": self.lr_scheduler_policy.get_last_lr()[0],
+                                "mean_sequence_length": old_data['action_pad_mask'].float().sum(1).mean().item(),
                             },
                             models=[self.policy_model, self.value_model],
                             samples=
