@@ -139,6 +139,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.c1 = 0.1 # value func coeff
         self.clip_value_func_loss = True
         self.generation_temperature = 0.7 # Sampling temp
+        self.temperature_scale_logits = True
 
         self.whiten_A = True
         self.whiten_rewards = True
