@@ -137,6 +137,7 @@ class Logger():
     def log_to_file(self, scalars, log_file_name=None):
         log_data = {}
         for key in scalars.keys():
+            print(f"Type pre-json:{type(scalars[key])}")
             log_data[key] = scalars[key]
             log_data["timestamp"]= datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         
