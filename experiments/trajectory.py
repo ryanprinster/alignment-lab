@@ -429,7 +429,7 @@ class Trajectory():
 
     @A_raw.setter
     def A_raw(self, new_A_raw):
-        new_A_raw = torch.A_raws_tensor(new_A_raw)
+        new_A_raw = torch.as_tensor(new_A_raw)
         if hasattr(self, '_A_raw') and self._A_raw is not None:
             if new_A_raw.shape != self._A_raw.shape:
                 raise ValueError(f"A_raw shape {new_A_raw.shape} doesn't match expected {self._A_raw.shape}")
