@@ -241,8 +241,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 "A_max": old_data['A_raw'].max().item(),
                                 "A_min": old_data['A_raw'].min().item(),
                                 "A_std": old_data['A_raw'].std().item(),
-                                "A_abs_eos": masked_mean(old_data['A_raw'].abs(), eos_mask),
-                                "A_abs_non_eos": masked_mean(old_data['A_raw'].abs(), non_eos_mask),
+                                "A_abs_eos": masked_mean(old_data['A_raw'].abs(), eos_mask).item(),
+                                "A_abs_non_eos": masked_mean(old_data['A_raw'].abs(), non_eos_mask).item(),
                                 # 1 - var(A) / var(A + V)
                                 "explained_var": 1 - masked_var(old_data['A_raw'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'][:,:-1], old_data['action_pad_mask']).item(),
                                 # State stats
