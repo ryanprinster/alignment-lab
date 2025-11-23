@@ -100,6 +100,7 @@ class Trajectory():
             'log_probs': self.log_probs,
             'R': self.R,
             'A': self.A,
+            'A_raw': self.A_raw,
             'kl': self.kl,
             'pad_mask': self.pad_mask,
             'action_pad_mask': self.action_pad_mask,
@@ -276,6 +277,10 @@ class Trajectory():
         return self._A
     
     @property
+    def A_raw(self):
+        return self._A_raw
+    
+    @property
     def kl(self):
         return self._kl
     
@@ -422,6 +427,15 @@ class Trajectory():
             new_A = new_A.to(device=self._A.device, dtype=self._A.dtype)
         self._A = new_A
 
+    @A_raw.setter
+    def A_raw(self, new_A_raw):
+        new_A_raw = torch.A_raws_tensor(new_A_raw)
+        if hasattr(self, '_A_raw') and self._A_raw is not None:
+            if new_A_raw.shape != self._A_raw.shape:
+                raise ValueError(f"A_raw shape {new_A_raw.shape} doesn't match expected {self._A_raw.shape}")
+            new_A_raw = new_A_raw.to(device=self._A_raw.device, dtype=self._A_raw.dtype)
+        self._A_raw = new_A_raw
+
     @R.setter
     def R(self, new_R):
         new_R = torch.as_tensor(new_R)
@@ -523,6 +537,7 @@ class TrajectorySet(Dataset):
             'log_probs': self._tjs.log_probs[idx, :],
             'R': self._tjs.R[idx, :],
             'A': self._tjs.A[idx, :],
+            'A_raw': self._tjs.A_raw[idx, :],
             'kl': self._tjs.kl[idx, :],
             'pad_mask': self._tjs.pad_mask[idx, :],
             'action_pad_mask': self._tjs.action_pad_mask[idx, :],

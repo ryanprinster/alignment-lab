@@ -158,6 +158,7 @@ class RLFHPPOConfig(PPOConfigBase):
 
         # Logging
         # self.log_weights_freq=None
+        self.log_samples_freq=50
         self.log_scalars_freq=self.mini_batch_accumulation_steps
         self.log_file_name="sft_training_log"
 

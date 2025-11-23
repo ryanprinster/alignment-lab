@@ -42,15 +42,16 @@ class Logger():
     
     ### Logging Entrypoint    
     
-    def log(self, scalars, models, log_file_name=None):
+    def log(self, scalars, models, samples, log_file_name=None):
         if not self._closed:
             self.log_to_tensorboard(models, scalars)
-            self.log_to_terminal(scalars)
+            self.log_to_terminal(scalars, samples)
             self.log_to_file(scalars, log_file_name)
      
     ### Console/Terminal Logging
 
-    def log_to_terminal(self, scalars):
+    def log_to_terminal(self, scalars, samples):
+        # Log scalars
         log_str = "\n\n\n"
         for key in scalars.keys():
             log_str += f"{key}: {scalars[key]}, "
@@ -58,6 +59,13 @@ class Logger():
         mem_info_str = self._get_memory_usage_info()
         log_str += f"{mem_info_str}\n\n\n"
         print(log_str)
+
+        # Log samples
+        if hasattr(self.config, 'log_samples_freq'):
+            if scalars['global_step'] % self.config.log_samples_freq == 0 and scalars['k']==0: 
+                print(f"SAMPLES AT {scalars['global_step']} STEPS")
+                for k, v in samples.items():
+                    print(f"\n{k}: {v}\n")
         
     def _get_memory_usage_info(self):
         mem_usage_info_str = ""
