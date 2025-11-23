@@ -264,6 +264,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 ).item(),
                                 # KL stats 
                                 "kl": masked_mean(old_data['kl'], old_data['action_pad_mask']).item(),
+                                "kl_mean": old_data['kl'].masked_fill(~old_data['action_pad_mask'],0).sum(1).mean().item(),
                                 "kl_beta": torch.mean(old_data['kl']).item() * self.config.beta,
                                 "approx_kl": approx_kl.item(),
                                 # Returns stats
