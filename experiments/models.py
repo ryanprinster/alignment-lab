@@ -173,7 +173,6 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         if max_query_length_truncate is not None:
             return outputs.logits[:,max_query_length_truncate:,:], outputs.loss
         
-        pdb.set_trace()
         if self.config.temperature_scale_logits:
             return outputs.logits / (self.config.generation_temperature + 1e-7 ), outputs.loss
         return outputs.logits, outputs.loss
