@@ -322,6 +322,8 @@ class RLHFEnvironment(BaseEnvironment):
             tj.A_raw = A_raw
             tj.R = R
 
+            pdb.set_trace()
+
 
             # tj = self._create_trajectory(
             #     states,
