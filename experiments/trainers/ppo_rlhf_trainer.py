@@ -226,7 +226,9 @@ class PPORLHFTrainer(BaseTrainer):
                         self._backward(loss_value, loss_ppo)
                         self._step(self.optimizer_policy, self.optimizer_value)
 
-                        
+                        if self.global_step % 10 == 0:
+                            pdb.set_trace()
+
                         # Logging
                         eos_mask = old_data['states'][:,1:] == self.data.tokenizer.eos_token_id
                         non_eos_mask = (old_data['states'][:,1:] != self.data.tokenizer.eos_token_id) & (old_data['states'][:,1:] != self.data.tokenizer.pad_token_id)
