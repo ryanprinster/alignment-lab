@@ -318,8 +318,8 @@ class RLHFEnvironment(BaseEnvironment):
             tj.raw_rewards = raw_rewards.masked_fill(~action_pad_mask, 0)
             tj.reward_mask = reward_mask
             tj.kl = kl_per_action.masked_fill(~action_pad_mask, 0)
-            tj.A = A
-            tj.A_raw = A_raw
+            tj.A = A.masked_fill(~value_pad_mask, 0)
+            tj.A_raw = A_raw.masked_fill(~value_pad_mask, 0)
             tj.R = R
 
             pdb.set_trace()
