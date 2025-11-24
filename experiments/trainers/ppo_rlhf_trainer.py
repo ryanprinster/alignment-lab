@@ -271,6 +271,9 @@ class PPORLHFTrainer(BaseTrainer):
                                 "approx_kl": approx_kl.item(),
                                 # Returns stats
                                 "R": masked_mean(old_data['R'], old_data['action_pad_mask']).item(),
+                                # Gradient stats
+                                "policy_gradient_norm": torch.nn.utils.clip_grad_norm_(self.policy_model.parameters(), float('inf')),
+                                
                                 # Other stats
                                 "lr_policy": self.lr_scheduler_policy.get_last_lr()[0],
                                 "mean_sequence_length": old_data['action_pad_mask'].float().sum(1).mean().item(),
