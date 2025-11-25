@@ -119,7 +119,6 @@ class PPORLHFTrainer(BaseTrainer):
     # @detect_nans
     def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):
 
-        # TODO: double check these pad masks, and all the ones with action_pad_masks, especially with values
         old_log_probs = old_log_probs.detach()
         A = A.detach()
 
@@ -141,7 +140,17 @@ class PPORLHFTrainer(BaseTrainer):
 
             approx_kl = masked_mean(0.5 * diff_log_probs**2, action_pad_mask)
 
-        return loss_ppo, entropy, ratios, approx_kl
+            # replicating the papers metrics
+            new_log_policies_unmasked = torch.log_softmax(new_policy_logits, dim=-1)
+            entropy_paper = -torch.sum(new_log_policies_unmasked * torch.exp(new_log_policies_unmasked), dim=-1).mean()
+
+            approx_kl_paper = (0.5 * diff_log_probs**2, action_pad_mask).mean()
+
+            if entropy.item() < 1.0:
+                pdb.set_trace()
+
+
+        return loss_ppo, entropy, ratios, approx_kl, entropy_paper, approx_kl_paper
     
     @profile
     def _backward(self, loss_value, loss_ppo):
@@ -218,7 +227,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                             # 2.2 Compute ppo loss for policy model
                             # NOTE: all tensors in function below are in fp32?
-                            loss_ppo, entropy, ratios, approx_kl = self.compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
+                            loss_ppo, entropy, ratios, approx_kl, entropy_paper, approx_kl_paper = self.compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
 
                             del new_policy_logits
 
@@ -258,6 +267,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 "ratio_eos": masked_mean((ratios - 1.0).abs(), eos_mask).item(),
                                 "ratio_non_eos": masked_mean((ratios - 1.0).abs(), non_eos_mask).item(),
                                 "policy_entropy": entropy.item(),
+                                "policy_entropy_paper": entropy_paper.item(),
                                 # Reward stats
                                 "mean_raw_reward": masked_mean(
                                     old_data['raw_rewards'], 
@@ -272,6 +282,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 "kl_mean": old_data['kl'].masked_fill(~old_data['action_pad_mask'],0).sum(1).mean().item(),
                                 "kl_beta": torch.mean(old_data['kl']).item() * self.config.beta,
                                 "approx_kl": approx_kl.item(),
+                                "approx_kl_paper": approx_kl_paper.item(),
                                 # Returns stats
                                 "R": masked_mean(old_data['R'], old_data['action_pad_mask']).item(),
                                 # Gradient stats
