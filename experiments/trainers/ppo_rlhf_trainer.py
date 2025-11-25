@@ -114,7 +114,7 @@ class PPORLHFTrainer(BaseTrainer):
         loss_value = torch.max(loss_value_unclipped, loss_value_clipped)
         
         # Apply masking and return mean
-        return masked_mean(loss_value, value_pad_mask)
+        return masked_mean(loss_value * self.config.c1, value_pad_mask)
 
     # @detect_nans
     def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):
