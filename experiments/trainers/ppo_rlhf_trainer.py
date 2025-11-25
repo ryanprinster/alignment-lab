@@ -288,22 +288,26 @@ class PPORLHFTrainer(BaseTrainer):
                                 # Other stats
                                 "lr_policy": self.lr_scheduler_policy.get_last_lr()[0],
                                 "mean_sequence_length": old_data['action_pad_mask'].float().sum(1).mean().item(),
+                                "length_reward_correlation": torch.corrcoef(torch.stack([
+                                    old_data['action_pad_mask'].float().sum(1),
+                                    old_data['raw_rewards'].sum(1)
+                                ]))[0, 1].item(),
                             },
                             models=[self.policy_model, self.value_model],
                             samples=
                                 {
                                     "max_reward": self.data.tokenizer.decode(
-                                        old_data['states'][
+                                        old_data['full_states'][
                                             old_data['raw_rewards'].sum(dim=1).argmax().item()
                                         ]
                                     ),
                                     "min_reward": self.data.tokenizer.decode(
-                                        old_data['states'][
+                                        old_data['full_states'][
                                             old_data['raw_rewards'].sum(dim=1).argmin().item()
                                         ]
                                     ),
                                     "random": self.data.tokenizer.decode(
-                                        old_data['states'][
+                                        old_data['full_states'][
                                             torch.randint(0, old_data['states'].size(0), ())
                                         ]
                                     ),
