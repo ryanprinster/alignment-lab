@@ -146,7 +146,6 @@ class Trajectory():
         # 0. Calculate V_next by bootstrapping last value
         V_next = V[:, 1:]       # seq_len - 1: value after taking action[t]
         V = V[:, :-1]           # seq_len - 1: value before taking action[t]
-        # pad_mask = pad_mask[:, :-1] # align to V, not to actions
 
         last_valid_idx = value_pad_mask.sum(dim=time_dim) - 1
         batch_idx = torch.arange(V.size(0), device=V.device)
@@ -166,32 +165,6 @@ class Trajectory():
             A[:, t] = a
         
         return A
-        
-
-        # # 2. Get discounts 
-        # discounts_rev = torch.ones(r.size(), device=self.device) * lam * gamma
-        # discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 1)        
-        # discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / (lam * gamma)
-        # discounts_rev = discounts_rev.masked_fill(~self._pad_mask.flip(dims=[time_dim]), 0)
-        
-        # # 3. Calculate GAE via cumulative sum in reverse
-        # TD_rev = TD_error.flip(dims=[time_dim]) 
-        # A_rev = torch.cumsum(discounts_rev * TD_rev, dim=time_dim)
-        # self._A = torch.flip(A_rev, dims=[time_dim])
-
-        # pdb.set_trace()
-
-
-        # PAPERS GAE FORMULATION
-        # lastgaelam = 0
-        # advantages_reversed = []
-        # for t in reversed(range(gen_length)):
-        #     nextvalues = values[:, t + 1] if t < gen_length - 1 else 0.0
-        #     delta = rewards[:, t] + gamma * nextvalues - values[:, t]
-        #     lastgaelam = delta + gamma * lam * lastgaelam  # ← Key line
-        #     advantages_reversed.append(lastgaelam)
-        # advantages = torch.stack(advantages_reversed[::-1], axis=1) 
-        
 
     def compute_log_probs(actions, policy_logits, action_pad_mask):
         

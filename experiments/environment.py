@@ -320,10 +320,8 @@ class RLHFEnvironment(BaseEnvironment):
             tj.kl = kl_per_action.masked_fill(~action_pad_mask, 0)
             tj.A = A.masked_fill(~value_pad_mask, 0)
             tj.A_raw = A_raw.masked_fill(~value_pad_mask, 0)
-            tj.R = R
-
-            pdb.set_trace()
-
+            # tj.R = R
+            tj.R = (A_raw + values[:,:-1]).masked_fill(~value_pad_mask, 0)
 
             # tj = self._create_trajectory(
             #     states,
