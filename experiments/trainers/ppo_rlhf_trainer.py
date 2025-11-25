@@ -233,6 +233,9 @@ class PPORLHFTrainer(BaseTrainer):
                         eos_mask = old_data['states'][:,1:] == self.data.tokenizer.eos_token_id
                         non_eos_mask = (old_data['states'][:,1:] != self.data.tokenizer.eos_token_id) & (old_data['states'][:,1:] != self.data.tokenizer.pad_token_id)
                         clipped_mask = (ratios > 1 + self.config.eps_policy_clipping) | (ratios < 1 - self.config.eps_policy_clipping)
+                        policy_grads = [p.grad for p in self.policy_model.parameters() if p.grad is not None]
+                        value_grads = [p.grad for p in self.value_model.parameters() if p.grad is not None]
+
                         self.logger.log(
                             scalars={
                                 "loss_value": loss_value.item(),
@@ -272,8 +275,16 @@ class PPORLHFTrainer(BaseTrainer):
                                 # Returns stats
                                 "R": masked_mean(old_data['R'], old_data['action_pad_mask']).item(),
                                 # Gradient stats
-                                "policy_gradient_norm": torch.nn.utils.clip_grad_norm_(self.policy_model.parameters(), float('inf')),
-                                
+                                "policy_gradient_norm": torch.nn.utils.clip_grad_norm_(self.policy_model.parameters(), float('inf')).item(),
+                                "policy_max_grad": max([g.abs().max().item() for g in policy_grads]) if policy_grads else 0.0,
+                                "policy_min_grad": min([g.abs().min().item() for g in policy_grads]) if policy_grads else 0.0,
+                                "policy_nan_grads": sum([torch.isnan(g).sum().item() for g in policy_grads]),
+                                "policy_inf_grads": sum([torch.isinf(g).sum().item() for g in policy_grads]),
+                                "value_gradient_norm": torch.nn.utils.clip_grad_norm_(self.value_model.parameters(), float('inf')).item(),
+                                "value_max_grad": max([g.abs().max().item() for g in value_grads]) if value_grads else 0.0,
+                                "value_min_grad": min([g.abs().min().item() for g in value_grads]) if value_grads else 0.0,
+                                "value_nan_grads": sum([torch.isnan(g).sum().item() for g in value_grads]),
+                                "value_inf_grads": sum([torch.isinf(g).sum().item() for g in value_grads]),
                                 # Other stats
                                 "lr_policy": self.lr_scheduler_policy.get_last_lr()[0],
                                 "mean_sequence_length": old_data['action_pad_mask'].float().sum(1).mean().item(),
