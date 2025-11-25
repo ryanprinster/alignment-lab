@@ -140,7 +140,7 @@ class PPORLHFTrainer(BaseTrainer):
 
             approx_kl = masked_mean(0.5 * diff_log_probs**2, action_pad_mask)
 
-            # replicating the papers metrics
+            # NOTE: The paper computes some of these metrics differently
             new_log_policies_unmasked = torch.log_softmax(new_policy_logits, dim=-1)
             entropy_paper = -torch.sum(new_log_policies_unmasked * torch.exp(new_log_policies_unmasked), dim=-1).mean()
 
