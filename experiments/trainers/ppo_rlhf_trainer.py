@@ -293,7 +293,7 @@ class PPORLHFTrainer(BaseTrainer):
                                     old_data['raw_rewards'].sum(1)
                                 ]))[0, 1].item(),
                                 "unique_tokens_per_response": torch.tensor([len(torch.unique(resp)) for resp in old_data['states']]).float().mean().item(),
-                                "token_diversity_ratio": (torch.tensor([len(torch.unique(resp[old_data['pad_mask'][i]])) for i, resp in enumerate(old_data['states'])]).float() / old_data['action_pad_mask'].float().sum(1)).mean().item(),
+                                # "token_diversity_ratio": (torch.tensor([len(torch.unique(resp[old_data['pad_mask'][i]])) for i, resp in enumerate(old_data['states'])]).float() / old_data['action_pad_mask'].float().sum(1)).mean().item(),
                                 
                             },
                             models=[self.policy_model, self.value_model],
