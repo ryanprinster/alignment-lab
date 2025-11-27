@@ -132,11 +132,13 @@ class PPORLHFTrainer(BaseTrainer):
         loss_ppo = torch.min(ratios * A, torch.clamp(ratios, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
         loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
 
+        entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
+        entropy = -masked_mean(entropy, action_pad_mask)
+        
         ### For tracking ###
         with torch.no_grad():
             # Entropy for tracking, but KL is doing regularization
-            entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
-            entropy = -masked_mean(entropy, action_pad_mask)
+
 
             approx_kl = masked_mean(0.5 * diff_log_probs**2, action_pad_mask)
 
