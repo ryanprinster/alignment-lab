@@ -152,6 +152,7 @@ class PPORLHFTrainer(BaseTrainer):
             #     pdb.set_trace()
 
             log_data = {
+                'ratios': ratios,
                 'entropy': entropy,
                 'approx_kl': approx_kl,
                 'entropy_paper': entropy_paper,
