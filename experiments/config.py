@@ -144,7 +144,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.whiten_A = True
         self.whiten_rewards = True
 
-        # self.mse_loss_clip_val = 
+        self.entropy_bonus_coeff = 0
 
         
         

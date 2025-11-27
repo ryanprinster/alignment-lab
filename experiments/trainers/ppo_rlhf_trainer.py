@@ -161,6 +161,9 @@ class PPORLHFTrainer(BaseTrainer):
 
             }
 
+        if self.config.entropy_bonus_coeff > 0:
+            loss_ppo -= self.config.entropy_bonus_coeff * entropy
+
 
         return loss_ppo, log_data
     
