@@ -142,15 +142,26 @@ class PPORLHFTrainer(BaseTrainer):
 
             # NOTE: The paper computes some of these metrics differently
             new_log_policies_unmasked = torch.log_softmax(new_policy_logits, dim=-1)
-            entropy_paper = -torch.sum(new_log_policies_unmasked * torch.exp(new_log_policies_unmasked), dim=-1).mean()
+            entropy_per_token = -torch.sum(new_log_policies_unmasked * torch.exp(new_log_policies_unmasked), dim=-1)  # [batch, seq]
+            entropy_paper = entropy_per_token.mean()
+            entropy_per_sequence = entropy_per_token.sum(dim=-1)  # [batch] - total entropy per sample
 
             approx_kl_paper = (0.5 * diff_log_probs**2).mean()
 
             # if entropy.item() < 1.0:
             #     pdb.set_trace()
 
+            log_data = {
+                'entropy': entropy,
+                'approx_kl': approx_kl,
+                'entropy_paper': entropy_paper,
+                'entropy_per_sequence': entropy_per_sequence,
+                'approx_kl_paper': approx_kl_paper
 
-        return loss_ppo, entropy, ratios, approx_kl, entropy_paper, approx_kl_paper
+            }
+
+
+        return loss_ppo, log_data
     
     @profile
     def _backward(self, loss_value, loss_ppo):
@@ -227,7 +238,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                             # 2.2 Compute ppo loss for policy model
                             # NOTE: all tensors in function below are in fp32?
-                            loss_ppo, entropy, ratios, approx_kl, entropy_paper, approx_kl_paper = self.compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
+                            loss_ppo, ppo_log_data = self.compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
 
                             del new_policy_logits
 
@@ -238,10 +249,12 @@ class PPORLHFTrainer(BaseTrainer):
                         # if self.global_step % 10 == 0:
                         #     pdb.set_trace()
 
-                        # Logging
+                        
+                        ### Logging ###
+                        
                         eos_mask = old_data['states'][:,1:] == self.data.tokenizer.eos_token_id
                         non_eos_mask = (old_data['states'][:,1:] != self.data.tokenizer.eos_token_id) & (old_data['states'][:,1:] != self.data.tokenizer.pad_token_id)
-                        clipped_mask = (ratios > 1 + self.config.eps_policy_clipping) | (ratios < 1 - self.config.eps_policy_clipping)
+                        clipped_mask = (ppo_log_data['ratios'] > 1 + self.config.eps_policy_clipping) | (ppo_log_data['ratios'] < 1 - self.config.eps_policy_clipping)
                         policy_grads = [p.grad for p in self.policy_model.parameters() if p.grad is not None]
                         value_grads = [p.grad for p in self.value_model.parameters() if p.grad is not None]
 
@@ -264,10 +277,10 @@ class PPORLHFTrainer(BaseTrainer):
                                 "eos_pct": (eos_mask.float().sum() / float(eos_mask.size(0))).item(),
                                 # Policy stats
                                 "pct_clipped": masked_mean(clipped_mask.float(), old_data['action_pad_mask']).item(),
-                                "ratio_eos": masked_mean((ratios - 1.0).abs(), eos_mask).item(),
-                                "ratio_non_eos": masked_mean((ratios - 1.0).abs(), non_eos_mask).item(),
-                                "policy_entropy": entropy.item(),
-                                "policy_entropy_paper": entropy_paper.item(),
+                                "ratio_eos": masked_mean((ppo_log_data['ratios'] - 1.0).abs(), eos_mask).item(),
+                                "ratio_non_eos": masked_mean((ppo_log_data['ratios'] - 1.0).abs(), non_eos_mask).item(),
+                                "policy_entropy": ppo_log_data['entropy'].item(),
+                                "policy_entropy_paper": ppo_log_data['entropy_paper'].item(),
                                 # Reward stats
                                 "mean_raw_reward": masked_mean(
                                     old_data['raw_rewards'], 
@@ -281,8 +294,8 @@ class PPORLHFTrainer(BaseTrainer):
                                 "kl": masked_mean(old_data['kl'], old_data['action_pad_mask']).item(),
                                 "kl_mean": old_data['kl'].masked_fill(~old_data['action_pad_mask'],0).sum(1).mean().item(),
                                 "kl_beta": torch.mean(old_data['kl']).item() * self.config.beta,
-                                "approx_kl": approx_kl.item(),
-                                "approx_kl_paper": approx_kl_paper.item(),
+                                "approx_kl": ppo_log_data['approx_kl'].item(),
+                                "approx_kl_paper": ppo_log_data['approx_kl_paper'].item(),
                                 # Returns stats
                                 "R": masked_mean(old_data['R'], old_data['action_pad_mask']).item(),
                                 # Gradient stats
@@ -318,6 +331,18 @@ class PPORLHFTrainer(BaseTrainer):
                                     "min_reward": self.data.tokenizer.decode(
                                         old_data['full_states'][
                                             old_data['raw_rewards'].sum(dim=1).argmin().item()
+                                        ]
+                                    ),
+                                    "max_entropy":
+                                    self.data.tokenizer.decode(
+                                        old_data['full_states'][
+                                            ppo_log_data['entropy_per_sequence'].argmax().item()
+                                        ]
+                                    ),
+                                    "min_entropy":
+                                    self.data.tokenizer.decode(
+                                        old_data['full_states'][
+                                            ppo_log_data['entropy_per_sequence'].argmin().item()
                                         ]
                                     ),
                                     "random": self.data.tokenizer.decode(
