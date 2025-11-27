@@ -59,7 +59,7 @@ class Llama_3p2_1B(nn.Module, ABC):
             self.transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
-        self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.config.hf_model_name, self.config.hf_model_revision)
         
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
@@ -167,7 +167,7 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
             labels=labels,
             output_hidden_states=False,
             output_attentions=False,
-            use_cache=False 
+            use_cache=False
         )
 
         if max_query_length_truncate is not None:
