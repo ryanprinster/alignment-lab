@@ -146,8 +146,8 @@ class PPORLHFTrainer(BaseTrainer):
 
             approx_kl_paper = (0.5 * diff_log_probs**2).mean()
 
-            if entropy.item() < 1.0:
-                pdb.set_trace()
+            # if entropy.item() < 1.0:
+            #     pdb.set_trace()
 
 
         return loss_ppo, entropy, ratios, approx_kl, entropy_paper, approx_kl_paper
