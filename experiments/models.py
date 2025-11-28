@@ -91,8 +91,14 @@ class Llama_3p2_1B(nn.Module, ABC):
         if not os.path.exists(self.init_model_path):
             raise FileNotFoundError(f"Model not found: {self.init_model_path}")
 
-        self.load_state_dict(
-            torch.load(self.init_model_path, map_location='cpu')['model_state_dict'])
+        checkpoint = torch.load(self.init_model_path, map_location='cpu')
+        
+        if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+            state_dict = checkpoint['model_state_dict']
+        else:
+            state_dict = checkpoint
+
+        self.load_state_dict(state_dict)
 
 class Llama_3p2_1B_Causal(Llama_3p2_1B):
     def __init__(self, config, init_model_path=None):
