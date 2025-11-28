@@ -47,25 +47,24 @@ class MLPSimple(nn.Module):
             x = x.squeeze(dim=0)
         return x
 
-class Llama_3p2_1B(nn.Module, ABC):
+class HFModel(nn.Module, ABC):
     HF_MODEL_NAME = "meta-llama/Llama-3.2-1B"
     
-    def __init__(self, config):
+    def __init__(self, config, hf_model_name, hf_model_revision=None):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.config = config
+        self.hf_model_name = hf_model_name
+        self.hf_model_revision = hf_model_revision
         self.transformer = self._set_model_class()
         if config.enable_gradient_checkpointing:
             self.transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
 
-        # self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME, self.config.hf_model_revision)
-
         # Temp
-        self.tokenizer = AutoTokenizer.from_pretrained("vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr", revision="reward__44413__1708628552")
-        
-        
+        self.tokenizer = AutoTokenizer.from_pretrained(hf_model_name, revision=hf_model_revision)
+    
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
@@ -113,7 +112,7 @@ class Llama_3p2_1B(nn.Module, ABC):
         # self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         # self.transformer.resize_token_embeddings(len(self.tokenizer))
 
-class Llama_3p2_1B_Causal(Llama_3p2_1B):
+class HFModel_Causal(HFModel):
     def __init__(self, config, init_model_path=None):
         self.init_model_path = init_model_path
         super().__init__(config)
@@ -197,17 +196,17 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         return outputs.logits, outputs.loss
 
     def _set_model_class(self):
-        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+        return AutoModelForCausalLM.from_pretrained(self.hf_model_name, revision=self.hf_model_revision)
 
 
-class Llama_3p2_1B_SFT(Llama_3p2_1B_Causal):
+class HFModel_SFT(HFModel_Causal):
     pass
 
-class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
+class HFModel_Policy(HFModel_Causal):
     pass   
     
 
-class Llama_3p2_1B_RM(Llama_3p2_1B):
+class HFModel_SequenceClassification(HFModel):
     def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
         self.init_model_path = init_model_path
         super().__init__(config)
@@ -240,7 +239,8 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
 
     def _set_model_class(self):
         return AutoModelForSequenceClassification.from_pretrained(
-            Llama_3p2_1B.HF_MODEL_NAME, 
+            self.hf_model_name,
+            revision=self.hf_model_revision,
             num_labels=1
         )
         # Detail 12 (Extract reward from the EOS token) Done by default
@@ -257,7 +257,7 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         return outputs.logits.squeeze(-1)  # -> (batch, )
 
 
-class Llama_3p2_1B_Value(Llama_3p2_1B):
+class HFModel_TokenClassification(HFModel):
     def __init__(self, config, init_model_path=None, init_model_revision_path=None,init_rm_model=None):
         self.init_model_path = init_model_path
         self.init_model_revision_path = init_model_revision_path
@@ -269,7 +269,8 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
 
     def _set_model_class(self):
         return AutoModelForTokenClassification.from_pretrained(
-            Llama_3p2_1B.HF_MODEL_NAME,
+            self.hf_model_name,
+            revision=self.hf_model_revision,
             num_labels=1
         )
     

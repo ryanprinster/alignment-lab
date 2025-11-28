@@ -6,7 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
 
 
-from experiments.models import Llama_3p2_1B_SFT
+from experiments.models import HFModel_SFT
 from experiments.config import SFTConfigBase
 from experiments.datasets import TLDRFilteredDataSFT
 from experiments.logger import Logger
@@ -21,7 +21,7 @@ class SFTTrainer(BaseTrainer):
     def __init__(self, config: SFTConfigBase):
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model = Llama_3p2_1B_SFT(self.config).to(self.device)
+        self.model = HFModel_SFT(self.config).to(self.device)
         self.data = TLDRFilteredDataSFT(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         self.optimizer = optim.AdamW(self.model.parameters(), 
                                     lr = self.config.lr)

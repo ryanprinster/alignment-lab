@@ -44,12 +44,28 @@ class PPORLHFTrainer(BaseTrainer):
 
         # Models
 
-        self.sft_model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
-        self.reward_model = Llama_3p2_1B_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
+        self.sft_model = Llama_3p2_1B_SFT(self.config, 
+                                          init_model_path=self.config.sft_model_path,
+                                          hf_model_name=self.config.hf_model_name,
+                                          hf_model_revision=self.config.hf_model_sft_revision,
+                                          ).to(self.device).requires_grad_(False)
+        self.reward_model = Llama_3p2_1B_RM(self.config, 
+                                            init_model_path=self.config.rm_model_path,
+                                            hf_model_name=self.config.hf_model_name,
+                                            hf_model_revision=self.config.hf_model_rm_revision,
+                                            ).to(self.device).requires_grad_(False)
         self.reward_model.init_head_bias(self.config.calculated_sft_bias)
 
-        self.policy_model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.sft_model_path).to(self.device)
-        self.value_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
+        self.policy_model = Llama_3p2_1B_Policy(self.config, 
+                                                init_model_path=self.config.sft_model_path,
+                                                hf_model_name=self.config.hf_model_name,
+                                                hf_model_revision=self.config.hf_model_sft_revision,
+                                                ).to(self.device)
+        self.value_model = Llama_3p2_1B_Value(self.config, 
+                                              init_model_path=self.config.rm_model_path,
+                                              hf_model_name=self.config.hf_model_name,
+                                              hf_model_revision=self.config.hf_model_rm_revision,
+                                              ).to(self.device)
         self.value_model.init_head_bias(self.config.calculated_sft_bias)
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
@@ -134,7 +150,7 @@ class PPORLHFTrainer(BaseTrainer):
 
         entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
         entropy = -masked_mean(entropy, action_pad_mask)
-        
+
         ### For tracking ###
         with torch.no_grad():
             # Entropy for tracking, but KL is doing regularization
