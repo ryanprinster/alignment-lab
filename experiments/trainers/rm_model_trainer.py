@@ -22,8 +22,8 @@ class RMTrainer(BaseTrainer):
         self.checkpointer = Checkpointer(self.config)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = HFModel_SequenceClassification(self.config,
-                                                    hf_model_name=self.config.hf_model_name,
-                                                    hf_model_revision=self.config.hf_model_rm_revision).to(self.device)
+                                                    hf_model_name=self.config.hf_rm_model_name,
+                                                    hf_model_revision=self.config.hf_rm_model_revision).to(self.device)
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
         self.data = OpenAIPreferenceData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         self.optimizer = optim.AdamW(self.model.parameters(), 

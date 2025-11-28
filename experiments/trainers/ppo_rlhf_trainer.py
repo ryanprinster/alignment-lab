@@ -46,25 +46,25 @@ class PPORLHFTrainer(BaseTrainer):
 
         self.sft_model = Llama_3p2_1B_SFT(self.config, 
                                           init_model_path=self.config.sft_model_path,
-                                          hf_model_name=self.config.hf_model_name,
-                                          hf_model_revision=self.config.hf_model_sft_revision,
+                                          hf_model_name=self.config.hf_sft_model_name,
+                                          hf_model_revision=self.config.hf_sft_model_revision,
                                           ).to(self.device).requires_grad_(False)
         self.reward_model = Llama_3p2_1B_RM(self.config, 
                                             init_model_path=self.config.rm_model_path,
-                                            hf_model_name=self.config.hf_model_name,
-                                            hf_model_revision=self.config.hf_model_rm_revision,
+                                            hf_model_name=self.config.hf_rm_model_name,
+                                            hf_model_revision=self.config.hf_rm_model_revision,
                                             ).to(self.device).requires_grad_(False)
         self.reward_model.init_head_bias(self.config.calculated_sft_bias)
 
         self.policy_model = Llama_3p2_1B_Policy(self.config, 
                                                 init_model_path=self.config.sft_model_path,
-                                                hf_model_name=self.config.hf_model_name,
-                                                hf_model_revision=self.config.hf_model_sft_revision,
+                                                hf_model_name=self.config.hf_sft_model_name,
+                                                hf_model_revision=self.config.hf_sft_model_revision,
                                                 ).to(self.device)
         self.value_model = Llama_3p2_1B_Value(self.config, 
                                               init_model_path=self.config.rm_model_path,
-                                              hf_model_name=self.config.hf_model_name,
-                                              hf_model_revision=self.config.hf_model_rm_revision,
+                                              hf_model_name=self.config.hf_rm_model_name,
+                                              hf_model_revision=self.config.hf_rm_model_revision,
                                               ).to(self.device)
         self.value_model.init_head_bias(self.config.calculated_sft_bias)
         self.old_policy_state_dict = self.policy_model.state_dict()
