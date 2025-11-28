@@ -113,9 +113,9 @@ class HFModel(nn.Module, ABC):
         # self.transformer.resize_token_embeddings(len(self.tokenizer))
 
 class HFModel_Causal(HFModel):
-    def __init__(self, config, init_model_path=None):
+    def __init__(self, config, hf_model_name, hf_model_revision=None, init_model_path=None):
         self.init_model_path = init_model_path
-        super().__init__(config)
+        super().__init__(config, hf_model_name, hf_model_revision)
         self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
 
         self._init_model_weights()
