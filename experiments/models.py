@@ -208,9 +208,9 @@ class HFModel_Policy(HFModel_Causal):
     
 
 class HFModel_SequenceClassification(HFModel):
-    def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
+    def __init__(self, config, hf_model_name, hf_model_revision=None,init_model_path=None, calculated_sft_bias=None):
         self.init_model_path = init_model_path
-        super().__init__(config)
+        super().__init__(config, hf_model_name, hf_model_revision=None)
         
         # score layer doesn't come with a bias
         if self.transformer.score.bias is None:
@@ -259,10 +259,9 @@ class HFModel_SequenceClassification(HFModel):
 
 
 class HFModel_TokenClassification(HFModel):
-    def __init__(self, config, init_model_path=None, init_model_revision_path=None,init_rm_model=None):
-        self.init_model_path = init_model_path
-        self.init_model_revision_path = init_model_revision_path
-        super().__init__(config)
+    def __init__(self, config, hf_model_name, hf_model_revision=None, init_model_path=None, init_rm_model=None):
+
+        super().__init__(config, hf_model_name, hf_model_revision)
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         self._init_model_weights()
         self._init_head_weights(init_rm_model)
