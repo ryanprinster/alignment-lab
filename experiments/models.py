@@ -126,6 +126,7 @@ class HFModel_Causal(HFModel):
         generation_obj = self.transformer.generate(
             input_ids=inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
+            top_p=self.config.top_p_generation,
             max_length=max_length,
             temperature=temp,
             do_sample=do_sample,

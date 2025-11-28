@@ -150,6 +150,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.whiten_rewards = True
 
         self.entropy_bonus_coeff = 0.0
+        self.top_p_generation = 0.9
 
         self.hf_rm_model_name = "meta-llama/Llama-3.2-1B"
         self.hf_sft_model_name = "meta-llama/Llama-3.2-1B"

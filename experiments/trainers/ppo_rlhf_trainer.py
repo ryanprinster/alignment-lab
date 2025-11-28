@@ -43,7 +43,7 @@ class PPORLHFTrainer(BaseTrainer):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Models
-
+        # TODO: reconcile init_model_path and hf_model_revision
         self.sft_model = HFModel_SFT(self.config, 
                                           init_model_path=self.config.sft_model_path,
                                           hf_model_name=self.config.hf_sft_model_name,
