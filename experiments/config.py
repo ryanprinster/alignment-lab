@@ -75,9 +75,10 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
         self.rm_model_path = "checkpoints/rm_final_checkpoint_v2.pt"
         
-        self.hf_model_name = "meta-llama/Llama-3.2-1B"
-        self.hf_model_sft_revision = "main"
-        self.hf_model_rm_revision = "main"
+        self.hf_rm_model_name = "meta-llama/Llama-3.2-1B"
+        self.hf_sft_model_name = "meta-llama/Llama-3.2-1B"
+        self.hf_sft_model_revision = "main"
+        self.hf_rm_model_revision = "main"
 
         # Logging
         # self.log_weights_freq=None
@@ -150,9 +151,10 @@ class RLFHPPOConfig(PPOConfigBase):
 
         self.entropy_bonus_coeff = 0.0
 
-        self.hf_model_name = "meta-llama/Llama-3.2-1B"
-        self.hf_model_sft_revision = "main"
-        self.hf_model_rm_revision = "main"
+        self.hf_rm_model_name = "meta-llama/Llama-3.2-1B"
+        self.hf_sft_model_name = "meta-llama/Llama-3.2-1B"
+        self.hf_sft_model_revision = "main"
+        self.hf_rm_model_revision = "main"
 
 
         # Checkpointing
