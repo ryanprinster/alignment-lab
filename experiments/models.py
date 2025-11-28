@@ -60,7 +60,11 @@ class Llama_3p2_1B(nn.Module, ABC):
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME, self.config.hf_model_revision)
+        # self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME, self.config.hf_model_revision)
+
+        # Temp
+        self.tokenizer = AutoTokenizer.from_pretrained("vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr", revision="reward__44413__1708628552")
+        
         
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
@@ -102,12 +106,12 @@ class Llama_3p2_1B(nn.Module, ABC):
         self.load_state_dict(state_dict)
 
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.init_model_path, self.init_model_revision_path)
+        # self.tokenizer = AutoTokenizer.from_pretrained(self.init_model_path, self.init_model_revision_path)
         
-        # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
-        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
-        self.transformer.resize_token_embeddings(len(self.tokenizer))
+        # # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
+        # self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        # self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+        # self.transformer.resize_token_embeddings(len(self.tokenizer))
 
 class Llama_3p2_1B_Causal(Llama_3p2_1B):
     def __init__(self, config, init_model_path=None):
