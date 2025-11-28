@@ -27,7 +27,7 @@ from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
 from experiments.util import masked_mean, masked_var, masked_whiten, masked_log_softmax, whiten
 
-from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
+from experiments.models import HFModel_Policy, HFModel_TokenClassification, HFModel_SFT, HFModel_SequenceClassification
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
@@ -44,24 +44,24 @@ class PPORLHFTrainer(BaseTrainer):
 
         # Models
 
-        self.sft_model = Llama_3p2_1B_SFT(self.config, 
+        self.sft_model = HFModel_SFT(self.config, 
                                           init_model_path=self.config.sft_model_path,
                                           hf_model_name=self.config.hf_sft_model_name,
                                           hf_model_revision=self.config.hf_sft_model_revision,
                                           ).to(self.device).requires_grad_(False)
-        self.reward_model = Llama_3p2_1B_RM(self.config, 
+        self.reward_model = HFModel_SequenceClassification(self.config, 
                                             init_model_path=self.config.rm_model_path,
                                             hf_model_name=self.config.hf_rm_model_name,
                                             hf_model_revision=self.config.hf_rm_model_revision,
                                             ).to(self.device).requires_grad_(False)
         self.reward_model.init_head_bias(self.config.calculated_sft_bias)
 
-        self.policy_model = Llama_3p2_1B_Policy(self.config, 
+        self.policy_model = HFModel_Policy(self.config, 
                                                 init_model_path=self.config.sft_model_path,
                                                 hf_model_name=self.config.hf_sft_model_name,
                                                 hf_model_revision=self.config.hf_sft_model_revision,
                                                 ).to(self.device)
-        self.value_model = Llama_3p2_1B_Value(self.config, 
+        self.value_model = HFModel_TokenClassification(self.config, 
                                               init_model_path=self.config.rm_model_path,
                                               hf_model_name=self.config.hf_rm_model_name,
                                               hf_model_revision=self.config.hf_rm_model_revision,
