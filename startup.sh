@@ -24,12 +24,14 @@ python -m experiments RMTrainer validation --config RLFHCaseStudyConfig --load_c
 # PPORLHFTrainer
 python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128
 
+python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128 --hf_sft_model_name "vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr" --hf_sft_revision_name "sft__44413__1708611267" --hf_rm_model_name "vwxyzjn/EleutherAI_pythia-1b-deduped__reward__tldr" --hf_rm_revision_name "reward__44413__1708628552"
+
 
 ### Tensorboard
 # From runpod
 tensorboard --logdir=./runs --bind_all --port=6006
 # leave that open. then from a new local terminal:
-ssh -L 6006:localhost:6006 root@198.145.108.61 -p 11227 -i ~/.ssh/id_ed25519
+ssh -L 6006:localhost:6006 root@198.145.108.61 -p 18353 -i ~/.ssh/id_ed25519
 # then open in browser:
 http://localhost:6006
 
@@ -53,13 +55,14 @@ which rsync
 # If needed:
 apt-get update && apt-get install -y rsync
 # Step 5: Start the transfer
-nohup rsync -avzP -e "ssh -p 17013 -i ~/.ssh/id_ed25519" \
+nohup rsync -avzP -e "ssh -p 18353 -i ~/.ssh/id_ed25519" \
   /workspace/alignment-lab/checkpoints/rm_final_checkpoint_v2.pt \
-  root@198.145.108.61:/workspace/checkpoints/ \
+  root@198.145.108.49:/workspace/checkpoints/ \
   > rsync.log 2>&1 &
 # Step 6: Monitor progress
 tail -f rsync.log
 
+ssh root@198.145.108.49 -p 18353 -i ~/.ssh/id_ed25519
 
 ssh root@198.145.108.61 -p 17013 -i ~/.ssh/id_ed25519
 

@@ -244,7 +244,7 @@ class HFModel_SequenceClassification(HFModel):
             revision=self.hf_model_revision,
             num_labels=1
         )
-        # Detail 12 (Extract reward from the EOS token) Done by default
+        # Detail 12 (Extract reward from the EOS token) Done by default for Llama models
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
     def forward(self, input_ids, attention_mask=None):
@@ -260,10 +260,9 @@ class HFModel_SequenceClassification(HFModel):
 
 class HFModel_TokenClassification(HFModel):
     def __init__(self, config, hf_model_name, hf_model_revision=None, init_model_path=None, init_rm_model=None):
-        # TODO: double check in diffs that init_model_path was here before
         self.init_model_path = init_model_path
         super().__init__(config, hf_model_name, hf_model_revision)
-        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+        # self.transformer.config.pad_token_id = self.tokenizer.pad_token_id # should be done in superclass
         self._init_model_weights()
         self._init_head_weights(init_rm_model)
 
@@ -308,12 +307,3 @@ class HFModel_TokenClassification(HFModel):
             return outputs.logits[:,max_query_length_truncate:,:].squeeze(-1)
         
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
-
-
-#  For some reason, forward in Llama_3p2_1B_Value does not give the same or even close values to forward in Llama_3p2_1B_RM
-# Hypotheses include: 
-# off by one errors in indexing, 
-# some sort of randomness is added, 
-# the models are actually not equivalent for some sort of intialization issue 
-# This could be messing with ppo rlhf training
-# The RM one is not actually returning the reward at EOS token
