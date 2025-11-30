@@ -103,6 +103,14 @@ class HFModel(nn.Module, ABC):
                 for key, value in state_dict.items()
             }
 
+        # Remove classification head keys if loading into a non-classification model
+        if not any('score' in str(model.__class__) or 'Classification' in str(model.__class__) for _ in [1]):
+            state_dict = {
+                key: value 
+                for key, value in state_dict.items() 
+                if not key.startswith('score.')
+            }
+
         model.load_state_dict(state_dict)
 
         return cls(config, model, tokenizer, model_config, init_head_weights=init_head_weights, init_head_bias=init_head_bias)
