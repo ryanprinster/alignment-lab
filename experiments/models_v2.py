@@ -22,22 +22,26 @@ from experiments.monitor import detect_nans
 
 
 class HFModel(nn.Module, ABC):
-    def __init__(self, config, model, tokenizer, model_config):
+    def __init__(self, config, model, tokenizer, model_config, **kwargs):
         super().__init__()
         self.transformer = model
         self.tokenizer = tokenizer
         self.model_config = model_config
         self.config = config
 
-        # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
-        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
-        self.transformer.resize_token_embeddings(len(self.tokenizer))
+
     
     @classmethod
     @abstractmethod
     def _get_model_class(cls):
         pass
+
+    @staticmethod
+    def _setup_padding_token(model, tokenizer):
+        # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
+        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        model.config.pad_token_id = tokenizer.pad_token_id
+        model.resize_token_embeddings(len(tokenizer))
     
     @classmethod
     def from_pretrained(cls, config, model_name, revision=None, init_head_weights=True, init_head_bias=True, **kwargs):
@@ -47,6 +51,8 @@ class HFModel(nn.Module, ABC):
         tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
         model = model_class.from_pretrained(model_name, revision=revision, **kwargs)
         model_config = model.config
+
+        cls._setup_padding_token(model, tokenizer)
     
         return cls(config, model, tokenizer, model_config, init_head_weights=init_head_weights, init_head_bias=init_head_bias)
     
@@ -69,6 +75,9 @@ class HFModel(nn.Module, ABC):
                 setattr(model_config, key, value)
 
         model = model_class.from_config(model_config)
+
+        cls._setup_padding_token(model, tokenizer)
+        
         checkpoint = torch.load(init_model_path, map_location='cpu')
         if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
             state_dict = checkpoint['model_state_dict']
@@ -90,6 +99,10 @@ class HFModel(nn.Module, ABC):
     def save_pretrained(self, path):
         pass
         # Save full HF-style model
+
+    def clean_logits(logits):
+        # clean scores, -inf --> 1e-9
+        return logits.masked_fill_(torch.isinf(logits), 1e-9)
 
 
 class HFModel_Causal(HFModel):
@@ -174,7 +187,7 @@ class HFModel_Causal(HFModel):
             (0, 0, 0, max_length - policy_logits.size(1)),
             value= -float('inf')
         )
-        policy_logits = self.clean_logits(policy_logits)
+        policy_logits = HFModel.clean_logits(policy_logits)
 
         return padded_tokens, policy_logits
     

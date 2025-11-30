@@ -27,7 +27,7 @@ from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
 from experiments.util import masked_mean, masked_var, masked_whiten, masked_log_softmax, whiten
 
-from experiments.models import HFModel_Policy, HFModel_TokenClassification, HFModel_SFT, HFModel_SequenceClassification
+from experiments.models_v2 import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_Reward
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
@@ -49,7 +49,7 @@ class PPORLHFTrainer(BaseTrainer):
                                           hf_model_name=self.config.hf_sft_model_name,
                                           hf_model_revision=self.config.hf_sft_model_revision,
                                           ).to(self.device).requires_grad_(False)
-        self.reward_model = HFModel_SequenceClassification(self.config, 
+        self.reward_model = HFModel_Reward(self.config, 
                                             init_model_path=self.config.rm_model_path,
                                             hf_model_name=self.config.hf_rm_model_name,
                                             hf_model_revision=self.config.hf_rm_model_revision,
@@ -61,7 +61,7 @@ class PPORLHFTrainer(BaseTrainer):
                                                 hf_model_name=self.config.hf_sft_model_name,
                                                 hf_model_revision=self.config.hf_sft_model_revision,
                                                 ).to(self.device)
-        self.value_model = HFModel_TokenClassification(self.config, 
+        self.value_model = HFModel_Value(self.config, 
                                               init_model_path=self.config.rm_model_path,
                                               hf_model_name=self.config.hf_rm_model_name,
                                               hf_model_revision=self.config.hf_rm_model_revision,
@@ -91,6 +91,63 @@ class PPORLHFTrainer(BaseTrainer):
         self.mixed_precision_context = autocast("cuda", dtype=torch.bfloat16) if self.config.enable_mixed_precision_training else nullcontext()
         self.scaler_policy = GradScaler("cuda") 
         self.scaler_value = GradScaler("cuda") 
+
+    def _load_models(self):
+        # SFT Model
+        if self.config.sft_model_path:
+            self.sft_model = HFModel_SFT.from_state_dict(
+                config=self.config,
+                init_model_path=self.config.sft_model_path
+            ).to(self.device).requires_grad_(False)
+        else:
+            self.sft_model = HFModel_SFT.from_pretrained(
+                config=self.config,
+                model_name=self.config.hf_sft_model_name,
+                revision=self.config.hf_sft_model_revision
+            ).to(self.device).requires_grad_(False)
+
+        # Reward Model
+        if self.config.rm_model_path:
+            self.reward_model = HFModel_Reward.from_state_dict(
+                config=self.config,
+                init_model_path=self.config.rm_model_path,
+                init_head_bias=True
+            ).to(self.device).requires_grad_(False)
+        else:
+            self.reward_model = HFModel_Reward.from_pretrained(
+                config=self.config,
+                model_name=self.config.hf_rm_model_name,
+                revision=self.config.hf_rm_model_revision,
+                num_labels=1
+            ).to(self.device).requires_grad_(False)
+
+        # Policy Model
+        if self.config.sft_model_path:
+            self.policy_model = HFModel_Policy.from_state_dict(
+                config=self.config,
+                init_model_path=self.config.sft_model_path
+            ).to(self.device)
+        else:
+            self.policy_model = HFModel_Policy.from_pretrained(
+                config=self.config,
+                model_name=self.config.hf_sft_model_name,
+                revision=self.config.hf_sft_model_revision
+            ).to(self.device)
+
+        # Value Model
+        if self.config.rm_model_path:
+            self.value_model = HFModel_Value.from_state_dict(
+                config=self.config,
+                init_model_path=self.config.rm_model_path,
+                init_head_bias=True  # Don't reinit bias from state dict
+            ).to(self.device)
+        else:
+            self.value_model = HFModel_Value.from_pretrained(
+                config=self.config,
+                model_name=self.config.hf_rm_model_name,
+                revision=self.config.hf_rm_model_revision,
+                num_labels=1
+            ).to(self.device)
 
 
     def _zero_grad(self, optimizer_policy, optimizer_value):
