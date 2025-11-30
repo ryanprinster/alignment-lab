@@ -95,6 +95,14 @@ class HFModel(nn.Module, ABC):
         else:
             state_dict = checkpoint
 
+        # Strip "transformer." prefix if present (from HFModel wrapper)
+        # TODO: remove this if / when retraining and re saving llama models
+        if any(key.startswith('transformer.') for key in state_dict.keys()):
+            state_dict = {
+                key.replace('transformer.', '', 1): value 
+                for key, value in state_dict.items()
+            }
+
         model.load_state_dict(state_dict)
 
         return cls(config, model, tokenizer, model_config, init_head_weights=init_head_weights, init_head_bias=init_head_bias)
