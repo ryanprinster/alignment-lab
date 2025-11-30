@@ -44,6 +44,7 @@ class HFModel(nn.Module, ABC):
         model.resize_token_embeddings(len(tokenizer))
     
     @classmethod
+    @profile
     def from_pretrained(cls, config, model_name, revision=None, init_head_weights=True, init_head_bias=True, **kwargs):
         # Download model + tokenizer from HF
         model_class = cls._get_model_class()
@@ -57,6 +58,7 @@ class HFModel(nn.Module, ABC):
         return cls(config, model, tokenizer, model_config, init_head_weights=init_head_weights, init_head_bias=init_head_bias)
     
     @classmethod
+    @profile
     def from_state_dict(cls, config, init_model_path, init_head_weights=False, init_head_bias=False, **kwargs):
         # Load from local state dict
         # Auto-detect tokenizer/config from same directory
