@@ -68,6 +68,17 @@ class HFModel(nn.Module, ABC):
         save_dir = os.path.dirname(init_model_path)
         model_config = AutoConfig.from_pretrained(save_dir)
         tokenizer = AutoTokenizer.from_pretrained(save_dir)
+
+        # Handle custom architectures like ScalarModel (vwxyzjn's reward models)
+        if hasattr(model_config, 'base_config'):
+            # This is a wrapped model, extract the base config
+            base_config_dict = model_config.base_config
+            # Create new config from base
+            model_config = AutoConfig.from_pretrained(save_dir)
+            # Update with base config values
+            for key, value in base_config_dict.items():
+                if key != '_name_or_path':  # Skip internal fields
+                    setattr(model_config, key, value)
         
         # Apply config overrides (e.g., num_labels for sequence classification)
         for key, value in kwargs.items():
