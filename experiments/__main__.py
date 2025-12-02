@@ -1,6 +1,7 @@
 import os 
 # Helps manage reserved memory fragments
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True' # NOTE: make sure this is imported before torch
+os.environ['HF_HOME'] = '/workspace/alignment-lab/hf_cache'
 
 
 from experiments.trainers.sft_model_trainer import SFTTrainer
