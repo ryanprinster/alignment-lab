@@ -102,7 +102,7 @@ class Llama_3p2_1B(nn.Module, ABC):
         self.load_state_dict(state_dict)
 
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.init_model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
         
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
