@@ -47,24 +47,21 @@ class MLPSimple(nn.Module):
             x = x.squeeze(dim=0)
         return x
 
-class HFModel(nn.Module, ABC):
+class Llama_3p2_1B(nn.Module, ABC):
     HF_MODEL_NAME = "meta-llama/Llama-3.2-1B"
     
-    def __init__(self, config, hf_model_name, hf_model_revision=None):
+    def __init__(self, config):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.config = config
-        self.hf_model_name = hf_model_name
-        self.hf_model_revision = hf_model_revision
         self.transformer = self._set_model_class()
         if config.enable_gradient_checkpointing:
             self.transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
 
-        # Temp
-        self.tokenizer = AutoTokenizer.from_pretrained(hf_model_name, revision=hf_model_revision)
-    
+        self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME, self.config.hf_model_revision)
+        
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
@@ -105,17 +102,17 @@ class HFModel(nn.Module, ABC):
         self.load_state_dict(state_dict)
 
 
-        # self.tokenizer = AutoTokenizer.from_pretrained(self.init_model_path, self.init_model_revision_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.init_model_path, self.init_model_revision_path)
         
-        # # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
-        # self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        # self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
-        # self.transformer.resize_token_embeddings(len(self.tokenizer))
+        # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
+        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+        self.transformer.resize_token_embeddings(len(self.tokenizer))
 
-class HFModel_Causal(HFModel):
-    def __init__(self, config, hf_model_name, hf_model_revision=None, init_model_path=None):
+class Llama_3p2_1B_Causal(Llama_3p2_1B):
+    def __init__(self, config, init_model_path=None):
         self.init_model_path = init_model_path
-        super().__init__(config, hf_model_name, hf_model_revision)
+        super().__init__(config)
         self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
 
         self._init_model_weights()
@@ -126,7 +123,6 @@ class HFModel_Causal(HFModel):
         generation_obj = self.transformer.generate(
             input_ids=inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
-            top_p=self.config.top_p_generation,
             max_length=max_length,
             temperature=temp,
             do_sample=do_sample,
@@ -197,20 +193,20 @@ class HFModel_Causal(HFModel):
         return outputs.logits, outputs.loss
 
     def _set_model_class(self):
-        return AutoModelForCausalLM.from_pretrained(self.hf_model_name, revision=self.hf_model_revision)
+        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
 
 
-class HFModel_SFT(HFModel_Causal):
+class Llama_3p2_1B_SFT(Llama_3p2_1B_Causal):
     pass
 
-class HFModel_Policy(HFModel_Causal):
+class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
     pass   
     
 
-class HFModel_SequenceClassification(HFModel):
-    def __init__(self, config, hf_model_name, hf_model_revision=None,init_model_path=None, calculated_sft_bias=None):
+class Llama_3p2_1B_RM(Llama_3p2_1B):
+    def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
         self.init_model_path = init_model_path
-        super().__init__(config, hf_model_name, hf_model_revision=None)
+        super().__init__(config)
         
         # score layer doesn't come with a bias
         if self.transformer.score.bias is None:
@@ -240,11 +236,10 @@ class HFModel_SequenceClassification(HFModel):
 
     def _set_model_class(self):
         return AutoModelForSequenceClassification.from_pretrained(
-            self.hf_model_name,
-            revision=self.hf_model_revision,
+            Llama_3p2_1B.HF_MODEL_NAME, 
             num_labels=1
         )
-        # Detail 12 (Extract reward from the EOS token) Done by default for Llama models
+        # Detail 12 (Extract reward from the EOS token) Done by default
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
     def forward(self, input_ids, attention_mask=None):
@@ -258,18 +253,19 @@ class HFModel_SequenceClassification(HFModel):
         return outputs.logits.squeeze(-1)  # -> (batch, )
 
 
-class HFModel_TokenClassification(HFModel):
-    def __init__(self, config, hf_model_name, hf_model_revision=None, init_model_path=None, init_rm_model=None):
+class Llama_3p2_1B_Value(Llama_3p2_1B):
+    def __init__(self, config, init_model_path=None, init_model_revision_path=None,init_rm_model=None):
         self.init_model_path = init_model_path
-        super().__init__(config, hf_model_name, hf_model_revision)
-        # self.transformer.config.pad_token_id = self.tokenizer.pad_token_id # should be done in superclass
+        self.init_model_revision_path = init_model_revision_path
+        super().__init__(config)
+        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         self._init_model_weights()
         self._init_head_weights(init_rm_model)
 
+
     def _set_model_class(self):
         return AutoModelForTokenClassification.from_pretrained(
-            self.hf_model_name,
-            revision=self.hf_model_revision,
+            Llama_3p2_1B.HF_MODEL_NAME,
             num_labels=1
         )
     
@@ -307,3 +303,12 @@ class HFModel_TokenClassification(HFModel):
             return outputs.logits[:,max_query_length_truncate:,:].squeeze(-1)
         
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
+
+
+#  For some reason, forward in Llama_3p2_1B_Value does not give the same or even close values to forward in Llama_3p2_1B_RM
+# Hypotheses include: 
+# off by one errors in indexing, 
+# some sort of randomness is added, 
+# the models are actually not equivalent for some sort of intialization issue 
+# This could be messing with ppo rlhf training
+# The RM one is not actually returning the reward at EOS token
