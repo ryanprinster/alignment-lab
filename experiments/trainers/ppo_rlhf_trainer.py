@@ -159,7 +159,7 @@ class PPORLHFTrainer(BaseTrainer):
         self.scaler_policy = GradScaler("cuda") 
         self.scaler_value = GradScaler("cuda") 
 
-    def _load_model(self, model_class, local_path, hf_name, hf_revision, pythia_path=None, **kwargs):
+    def _load_model(self, model_class=None, local_path=None, hf_name=None, hf_revision=None, pythia_path=None, **kwargs):
         if pythia_path:
             return model_class.from_pythia_checkpoint(config=self.config,checkpoint_path=pythia_path,**kwargs)
         elif local_path:
