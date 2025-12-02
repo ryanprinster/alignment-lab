@@ -121,6 +121,57 @@ class HFModel(nn.Module, ABC):
 
         return cls(config, model, tokenizer, model_config, init_head_weights=init_head_weights, init_head_bias=init_head_bias)
 
+
+    @classmethod
+    def from_pythia_checkpoint(cls, config, checkpoint_path, **kwargs):
+        """Load Pythia models from vwxyzjn's checkpoint format with ScalarModel wrapper"""
+        import json
+        
+        # Load tokenizer from base model (avoids GPT-NeoX tokenizer bugs)
+        tokenizer = AutoTokenizer.from_pretrained("EleutherAI/pythia-1b-deduped")
+        
+        # Load and fix config
+        config_path = os.path.join(checkpoint_path, "config.json")
+        with open(config_path, 'r') as f:
+            config_dict = json.load(f)
+        
+        # Extract base config if it's a ScalarModel
+        if 'base_config' in config_dict:
+            base_config_dict = config_dict['base_config']
+            from transformers import GPTNeoXConfig
+            model_config = GPTNeoXConfig(**base_config_dict)
+        else:
+            model_config = AutoConfig.from_pretrained(checkpoint_path)
+        
+        # Apply config overrides (e.g., num_labels)
+        for key, value in kwargs.items():
+            if hasattr(model_config, key):
+                setattr(model_config, key, value)
+        
+        # Create model
+        model_class = cls._get_model_class()
+        model = model_class.from_config(model_config)
+        
+        # Setup padding token
+        cls._setup_padding_token(model, tokenizer)
+        
+        # Add bias to score layer if needed
+        if hasattr(model, 'score') and model.score.bias is None:
+            model.score.bias = nn.Parameter(torch.zeros(model.score.out_features))
+        
+        # Load weights
+        weights_path = os.path.join(checkpoint_path, "pytorch_model.bin")
+        state_dict = torch.load(weights_path, map_location='cpu')
+        model.load_state_dict(state_dict, strict=False)
+        
+        # Get init flags from kwargs
+        init_head_weights = kwargs.pop('init_head_weights', False)
+        init_head_bias = kwargs.pop('init_head_bias', False)
+        
+        return cls(config, model, tokenizer, model_config, 
+                init_head_weights=init_head_weights, 
+                init_head_bias=init_head_bias)
+
     @abstractmethod
     def forward(self, *args, **kwargs):
         pass

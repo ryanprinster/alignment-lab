@@ -68,20 +68,52 @@ class PPORLHFTrainer(BaseTrainer):
         #                                       ).to(self.device)
         # self.value_model.init_head_bias(self.config.calculated_sft_bias)
 
+        # # SFT Model
+        # self.sft_model = self._load_model(
+        #     HFModel_SFT,
+        #     self.config.sft_model_path,
+        #     self.config.hf_sft_model_name,
+        #     self.config.hf_sft_model_revision
+        # ).to(self.device).requires_grad_(False)
+
+        # # Reward Model
+        # self.reward_model = self._load_model(
+        #     HFModel_Reward,
+        #     self.config.rm_model_path,
+        #     self.config.hf_rm_model_name,
+        #     self.config.hf_rm_model_revision,
+        #     init_head_bias=False if self.config.rm_model_path else True,
+        #     num_labels=1
+        # ).to(self.device).requires_grad_(False)
+
+        # # Policy Model
+        # self.policy_model = self._load_model(
+        #     HFModel_Policy,
+        #     self.config.sft_model_path,
+        #     self.config.hf_sft_model_name,
+        #     self.config.hf_sft_model_revision
+        # ).to(self.device)
+
+        # # Value Model
+        # self.value_model = self._load_model(
+        #     HFModel_Value,
+        #     self.config.rm_model_path,
+        #     self.config.hf_rm_model_name,
+        #     self.config.hf_rm_model_revision,
+        #     init_head_bias=False if self.config.rm_model_path else True,
+        #     num_labels=1
+        # ).to(self.device)
+
         # SFT Model
         self.sft_model = self._load_model(
             HFModel_SFT,
-            self.config.sft_model_path,
-            self.config.hf_sft_model_name,
-            self.config.hf_sft_model_revision
+            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__sft__tldr/snapshots/997a2257eaaa3bb8d2ecf14e1929789dd3dceab0/pytorch_model.bin",
         ).to(self.device).requires_grad_(False)
 
         # Reward Model
         self.reward_model = self._load_model(
             HFModel_Reward,
-            self.config.rm_model_path,
-            self.config.hf_rm_model_name,
-            self.config.hf_rm_model_revision,
+            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__reward__tldr/snapshots/33b95d01a8f208eba7236e2a3e5277f342b453cf/pytorch_model.bin",
             init_head_bias=False if self.config.rm_model_path else True,
             num_labels=1
         ).to(self.device).requires_grad_(False)
@@ -89,17 +121,13 @@ class PPORLHFTrainer(BaseTrainer):
         # Policy Model
         self.policy_model = self._load_model(
             HFModel_Policy,
-            self.config.sft_model_path,
-            self.config.hf_sft_model_name,
-            self.config.hf_sft_model_revision
+            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__sft__tldr/snapshots/997a2257eaaa3bb8d2ecf14e1929789dd3dceab0/pytorch_model.bin",
         ).to(self.device)
 
         # Value Model
         self.value_model = self._load_model(
             HFModel_Value,
-            self.config.rm_model_path,
-            self.config.hf_rm_model_name,
-            self.config.hf_rm_model_revision,
+            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__reward__tldr/snapshots/33b95d01a8f208eba7236e2a3e5277f342b453cf/pytorch_model.bin",
             init_head_bias=False if self.config.rm_model_path else True,
             num_labels=1
         ).to(self.device)
@@ -131,69 +159,13 @@ class PPORLHFTrainer(BaseTrainer):
         self.scaler_policy = GradScaler("cuda") 
         self.scaler_value = GradScaler("cuda") 
 
-    def _load_model(self, model_class, local_path, hf_name, hf_revision, **kwargs):
-        if local_path:
-            return model_class.from_state_dict(self.config, local_path, **kwargs)
+    def _load_model(self, model_class, local_path, hf_name, hf_revision, pythia_path=None, **kwargs):
+        if pythia_path:
+            return model_class.from_pythia_checkpoint(config=self.config,checkpoint_path=pythia_path,**kwargs)
+        elif local_path:
+            return model_class.from_state_dict(config=self.config,init_model_path=local_path,**kwargs)
         else:
-            return model_class.from_pretrained(self.config, hf_name, hf_revision, **kwargs)
-
-
-    def _load_models(self):
-        # SFT Model
-        if self.config.sft_model_path:
-            self.sft_model = HFModel_SFT.from_state_dict(
-                config=self.config,
-                init_model_path=self.config.sft_model_path
-            ).to(self.device).requires_grad_(False)
-        else:
-            self.sft_model = HFModel_SFT.from_pretrained(
-                config=self.config,
-                model_name=self.config.hf_sft_model_name,
-                revision=self.config.hf_sft_model_revision
-            ).to(self.device).requires_grad_(False)
-
-        # Reward Model
-        if self.config.rm_model_path:
-            self.reward_model = HFModel_Reward.from_state_dict(
-                config=self.config,
-                init_model_path=self.config.rm_model_path,
-                init_head_bias=False
-            ).to(self.device).requires_grad_(False)
-        else:
-            self.reward_model = HFModel_Reward.from_pretrained(
-                config=self.config,
-                model_name=self.config.hf_rm_model_name,
-                revision=self.config.hf_rm_model_revision,
-                num_labels=1
-            ).to(self.device).requires_grad_(False)
-
-        # Policy Model
-        if self.config.sft_model_path:
-            self.policy_model = HFModel_Policy.from_state_dict(
-                config=self.config,
-                init_model_path=self.config.sft_model_path
-            ).to(self.device)
-        else:
-            self.policy_model = HFModel_Policy.from_pretrained(
-                config=self.config,
-                model_name=self.config.hf_sft_model_name,
-                revision=self.config.hf_sft_model_revision
-            ).to(self.device)
-
-        # Value Model
-        if self.config.rm_model_path:
-            self.value_model = HFModel_Value.from_state_dict(
-                config=self.config,
-                init_model_path=self.config.rm_model_path,
-                init_head_bias=False  # Don't reinit bias from state dict
-            ).to(self.device)
-        else:
-            self.value_model = HFModel_Value.from_pretrained(
-                config=self.config,
-                model_name=self.config.hf_rm_model_name,
-                revision=self.config.hf_rm_model_revision,
-                num_labels=1
-            ).to(self.device)
+            return model_class.from_pretrained(config=self.config,model_name=hf_name,revision=hf_revision,**kwargs)
 
 
     def _zero_grad(self, optimizer_policy, optimizer_value):
