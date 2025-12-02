@@ -44,78 +44,44 @@ class PPORLHFTrainer(BaseTrainer):
 
         # Models
         # TODO: reconcile init_model_path and hf_model_revision
-        # self.sft_model = HFModel_SFT(self.config, 
-        #                                   init_model_path=self.config.sft_model_path,
-        #                                   hf_model_name=self.config.hf_sft_model_name,
-        #                                   hf_model_revision=self.config.hf_sft_model_revision,
-        #                                   ).to(self.device).requires_grad_(False)
-        # self.reward_model = HFModel_Reward(self.config, 
-        #                                     init_model_path=self.config.rm_model_path,
-        #                                     hf_model_name=self.config.hf_rm_model_name,
-        #                                     hf_model_revision=self.config.hf_rm_model_revision,
-        #                                     ).to(self.device).requires_grad_(False)
-        # self.reward_model.init_head_bias(self.config.calculated_sft_bias)
+        self.sft_model = HFModel_SFT(self.config, 
+                                          init_model_path=self.config.sft_model_path,
+                                        #   hf_model_name=self.config.hf_sft_model_name,
+                                        #   hf_model_revision=self.config.hf_sft_model_revision,
+                                          ).to(self.device).requires_grad_(False)
+        self.reward_model = HFModel_Reward(self.config, 
+                                            init_model_path=self.config.rm_model_path,
+                                            # hf_model_name=self.config.hf_rm_model_name,
+                                            # hf_model_revision=self.config.hf_rm_model_revision,
+                                            ).to(self.device).requires_grad_(False)
+        self.reward_model.init_head_bias(self.config.calculated_sft_bias)
 
-        # self.policy_model = HFModel_Policy(self.config, 
-        #                                         init_model_path=self.config.sft_model_path,
-        #                                         hf_model_name=self.config.hf_sft_model_name,
-        #                                         hf_model_revision=self.config.hf_sft_model_revision,
-        #                                         ).to(self.device)
-        # self.value_model = HFModel_Value(self.config, 
-        #                                       init_model_path=self.config.rm_model_path,
-        #                                       hf_model_name=self.config.hf_rm_model_name,
-        #                                       hf_model_revision=self.config.hf_rm_model_revision,
-        #                                       ).to(self.device)
-        # self.value_model.init_head_bias(self.config.calculated_sft_bias)
-
-        # # SFT Model
-        # self.sft_model = self._load_model(
-        #     HFModel_SFT,
-        #     self.config.sft_model_path,
-        #     self.config.hf_sft_model_name,
-        #     self.config.hf_sft_model_revision
-        # ).to(self.device).requires_grad_(False)
-
-        # # Reward Model
-        # self.reward_model = self._load_model(
-        #     HFModel_Reward,
-        #     self.config.rm_model_path,
-        #     self.config.hf_rm_model_name,
-        #     self.config.hf_rm_model_revision,
-        #     init_head_bias=False if self.config.rm_model_path else True,
-        #     num_labels=1
-        # ).to(self.device).requires_grad_(False)
-
-        # # Policy Model
-        # self.policy_model = self._load_model(
-        #     HFModel_Policy,
-        #     self.config.sft_model_path,
-        #     self.config.hf_sft_model_name,
-        #     self.config.hf_sft_model_revision
-        # ).to(self.device)
-
-        # # Value Model
-        # self.value_model = self._load_model(
-        #     HFModel_Value,
-        #     self.config.rm_model_path,
-        #     self.config.hf_rm_model_name,
-        #     self.config.hf_rm_model_revision,
-        #     init_head_bias=False if self.config.rm_model_path else True,
-        #     num_labels=1
-        # ).to(self.device)
+        self.policy_model = HFModel_Policy(self.config, 
+                                                init_model_path=self.config.sft_model_path,
+                                                # hf_model_name=self.config.hf_sft_model_name,
+                                                # hf_model_revision=self.config.hf_sft_model_revision,
+                                                ).to(self.device)
+        self.value_model = HFModel_Value(self.config, 
+                                              init_model_path=self.config.rm_model_path,
+                                            #   hf_model_name=self.config.hf_rm_model_name,
+                                            #   hf_model_revision=self.config.hf_rm_model_revision,
+                                              ).to(self.device)
+        self.value_model.init_head_bias(self.config.calculated_sft_bias)
 
         # SFT Model
         self.sft_model = self._load_model(
             HFModel_SFT,
-            hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
-            hf_revision="sft__44413__1708611267",
+            self.config.sft_model_path,
+            self.config.hf_sft_model_name,
+            self.config.hf_sft_model_revision
         ).to(self.device).requires_grad_(False)
 
         # Reward Model
         self.reward_model = self._load_model(
             HFModel_Reward,
-            hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__reward__tldr",
-            hf_revision="reward__44413__1708628552",
+            self.config.rm_model_path,
+            self.config.hf_rm_model_name,
+            self.config.hf_rm_model_revision,
             init_head_bias=False if self.config.rm_model_path else True,
             num_labels=1
         ).to(self.device).requires_grad_(False)
@@ -123,18 +89,52 @@ class PPORLHFTrainer(BaseTrainer):
         # Policy Model
         self.policy_model = self._load_model(
             HFModel_Policy,
-            hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
-            hf_revision="sft__44413__1708611267",
+            self.config.sft_model_path,
+            self.config.hf_sft_model_name,
+            self.config.hf_sft_model_revision
         ).to(self.device)
 
         # Value Model
         self.value_model = self._load_model(
             HFModel_Value,
-            hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__reward__tldr",
-            hf_revision="reward__44413__1708628552",
+            self.config.rm_model_path,
+            self.config.hf_rm_model_name,
+            self.config.hf_rm_model_revision,
             init_head_bias=False if self.config.rm_model_path else True,
             num_labels=1
         ).to(self.device)
+
+        # # SFT Model
+        # self.sft_model = self._load_model(
+        #     HFModel_SFT,
+        #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
+        #     hf_revision="sft__44413__1708611267",
+        # ).to(self.device).requires_grad_(False)
+
+        # # Reward Model
+        # self.reward_model = self._load_model(
+        #     HFModel_Reward,
+        #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__reward__tldr",
+        #     hf_revision="reward__44413__1708628552",
+        #     init_head_bias=False if self.config.rm_model_path else True,
+        #     num_labels=1
+        # ).to(self.device).requires_grad_(False)
+
+        # # Policy Model
+        # self.policy_model = self._load_model(
+        #     HFModel_Policy,
+        #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
+        #     hf_revision="sft__44413__1708611267",
+        # ).to(self.device)
+
+        # # Value Model
+        # self.value_model = self._load_model(
+        #     HFModel_Value,
+        #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__reward__tldr",
+        #     hf_revision="reward__44413__1708628552",
+        #     init_head_bias=False if self.config.rm_model_path else True,
+        #     num_labels=1
+        # ).to(self.device)
 
 
 
@@ -164,9 +164,7 @@ class PPORLHFTrainer(BaseTrainer):
         self.scaler_value = GradScaler("cuda") 
 
     def _load_model(self, model_class=None, local_path=None, hf_name=None, hf_revision=None, pythia_path=None, **kwargs):
-        if pythia_path:
-            return model_class.from_pythia_checkpoint(config=self.config,checkpoint_path=pythia_path,**kwargs)
-        elif local_path:
+        if local_path:
             return model_class.from_state_dict(config=self.config,init_model_path=local_path,**kwargs)
         else:
             return model_class.from_pretrained(config=self.config,model_name=hf_name,revision=hf_revision,**kwargs)
