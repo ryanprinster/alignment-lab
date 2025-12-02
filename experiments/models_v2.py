@@ -43,20 +43,87 @@ class HFModel(nn.Module, ABC):
         model.config.pad_token_id = tokenizer.pad_token_id
         model.resize_token_embeddings(len(tokenizer))
     
+    # @classmethod
+    # @profile
+    # def from_pretrained(cls, config, model_name, revision=None, init_head_weights=True, init_head_bias=True, **kwargs):
+    #     # Download model + tokenizer from HF
+    #     model_class = cls._get_model_class()
+
+    #     # Handle custom architectures like ScalarModel (vwxyzjn's reward models)
+    #     if hasattr(model_config, 'base_config'):
+    #         # This is a wrapped model, extract the base config
+    #         base_config_dict = model_config.base_config
+    #         model_config = AutoConfig.from_pretrained(save_dir)
+    #         # Update with base config values
+    #         for key, value in base_config_dict.items():
+    #             if key != '_name_or_path':  # Skip internal fields
+    #                 setattr(model_config, key, value)
+        
+    
+    #     tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
+    #     model = model_class.from_pretrained(model_name, revision=revision, **kwargs)
+    #     model_config = model.config
+
+    #     cls._setup_padding_token(model, tokenizer)
+    
+    #     return cls(config, model, tokenizer, model_config, init_head_weights=init_head_weights, init_head_bias=init_head_bias)
+    
     @classmethod
-    @profile
     def from_pretrained(cls, config, model_name, revision=None, init_head_weights=True, init_head_bias=True, **kwargs):
         # Download model + tokenizer from HF
         model_class = cls._get_model_class()
-    
-        tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
-        model = model_class.from_pretrained(model_name, revision=revision, **kwargs)
-        model_config = model.config
 
+        # Try loading tokenizer
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
+        except (AttributeError, OSError):
+            # Fallback for Pythia/GPT-NeoX tokenizers
+            from transformers import GPTNeoXTokenizerFast
+            tokenizer = GPTNeoXTokenizerFast.from_pretrained("EleutherAI/pythia-1b-deduped")
+        
+        # Try loading model, handle custom architectures
+        try:
+            model = model_class.from_pretrained(model_name, revision=revision, **kwargs)
+            model_config = model.config
+        except (ValueError, OSError) as e:
+            if "Unrecognized model" in str(e) or "ScalarModel" in str(e):
+                # Handle ScalarModel wrapper (vwxyzjn's models)
+                import json
+                from huggingface_hub import hf_hub_download
+                
+                config_file = hf_hub_download(repo_id=model_name, filename="config.json", revision=revision)
+                with open(config_file, 'r') as f:
+                    config_dict = json.load(f)
+                
+                if 'base_config' in config_dict:
+                    from transformers import GPTNeoXConfig
+                    model_config = GPTNeoXConfig(**config_dict['base_config'])
+                else:
+                    raise e
+                
+                # Apply kwargs to config
+                for key, value in kwargs.items():
+                    if hasattr(model_config, key):
+                        setattr(model_config, key, value)
+                
+                model = model_class.from_config(model_config)
+                
+                # Download and load weights
+                weights_file = hf_hub_download(repo_id=model_name, filename="pytorch_model.bin", revision=revision)
+                state_dict = torch.load(weights_file, map_location='cpu')
+                
+                # Add bias if needed
+                if hasattr(model, 'score') and model.score.bias is None:
+                    model.score.bias = nn.Parameter(torch.zeros(model.score.out_features))
+                
+                model.load_state_dict(state_dict, strict=False)
+            else:
+                raise e
+        
         cls._setup_padding_token(model, tokenizer)
-    
+
         return cls(config, model, tokenizer, model_config, init_head_weights=init_head_weights, init_head_bias=init_head_bias)
-    
+
     @classmethod
     @profile
     def from_state_dict(cls, config, init_model_path, init_head_weights=False, init_head_bias=False, **kwargs):
@@ -80,16 +147,6 @@ class HFModel(nn.Module, ABC):
             )
         # tokenizer = AutoTokenizer.from_pretrained(save_dir)
 
-        # Handle custom architectures like ScalarModel (vwxyzjn's reward models)
-        if hasattr(model_config, 'base_config'):
-            # This is a wrapped model, extract the base config
-            base_config_dict = model_config.base_config
-            model_config = AutoConfig.from_pretrained(save_dir)
-            # Update with base config values
-            for key, value in base_config_dict.items():
-                if key != '_name_or_path':  # Skip internal fields
-                    setattr(model_config, key, value)
-        
         # Apply config overrides (e.g., num_labels for sequence classification)
         for key, value in kwargs.items():
             if hasattr(model_config, key):
