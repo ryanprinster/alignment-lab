@@ -43,45 +43,45 @@ class PPORLHFTrainer(BaseTrainer):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Models
-        # TODO: reconcile init_model_path and hf_model_revision
-        self.sft_model = HFModel_SFT(self.config, 
-                                          init_model_path=self.config.sft_model_path,
-                                        #   hf_model_name=self.config.hf_sft_model_name,
-                                        #   hf_model_revision=self.config.hf_sft_model_revision,
-                                          ).to(self.device).requires_grad_(False)
-        self.reward_model = HFModel_Reward(self.config, 
-                                            init_model_path=self.config.rm_model_path,
-                                            # hf_model_name=self.config.hf_rm_model_name,
-                                            # hf_model_revision=self.config.hf_rm_model_revision,
-                                            ).to(self.device).requires_grad_(False)
-        self.reward_model.init_head_bias(self.config.calculated_sft_bias)
+        # # TODO: reconcile init_model_path and hf_model_revision
+        # self.sft_model = HFModel_SFT(self.config, 
+        #                                   init_model_path=self.config.sft_model_path,
+        #                                 #   hf_model_name=self.config.hf_sft_model_name,
+        #                                 #   hf_model_revision=self.config.hf_sft_model_revision,
+        #                                   ).to(self.device).requires_grad_(False)
+        # self.reward_model = HFModel_Reward(self.config, 
+        #                                     init_model_path=self.config.rm_model_path,
+        #                                     # hf_model_name=self.config.hf_rm_model_name,
+        #                                     # hf_model_revision=self.config.hf_rm_model_revision,
+        #                                     ).to(self.device).requires_grad_(False)
+        # self.reward_model.init_head_bias(self.config.calculated_sft_bias)
 
-        self.policy_model = HFModel_Policy(self.config, 
-                                                init_model_path=self.config.sft_model_path,
-                                                # hf_model_name=self.config.hf_sft_model_name,
-                                                # hf_model_revision=self.config.hf_sft_model_revision,
-                                                ).to(self.device)
-        self.value_model = HFModel_Value(self.config, 
-                                              init_model_path=self.config.rm_model_path,
-                                            #   hf_model_name=self.config.hf_rm_model_name,
-                                            #   hf_model_revision=self.config.hf_rm_model_revision,
-                                              ).to(self.device)
-        self.value_model.init_head_bias(self.config.calculated_sft_bias)
+        # self.policy_model = HFModel_Policy(self.config, 
+        #                                         init_model_path=self.config.sft_model_path,
+        #                                         # hf_model_name=self.config.hf_sft_model_name,
+        #                                         # hf_model_revision=self.config.hf_sft_model_revision,
+        #                                         ).to(self.device)
+        # self.value_model = HFModel_Value(self.config, 
+        #                                       init_model_path=self.config.rm_model_path,
+        #                                     #   hf_model_name=self.config.hf_rm_model_name,
+        #                                     #   hf_model_revision=self.config.hf_rm_model_revision,
+        #                                       ).to(self.device)
+        # self.value_model.init_head_bias(self.config.calculated_sft_bias)
 
         # SFT Model
         self.sft_model = self._load_model(
             HFModel_SFT,
             self.config.sft_model_path,
-            self.config.hf_sft_model_name,
-            self.config.hf_sft_model_revision
+            # self.config.hf_sft_model_name,
+            # self.config.hf_sft_model_revision
         ).to(self.device).requires_grad_(False)
 
         # Reward Model
         self.reward_model = self._load_model(
             HFModel_Reward,
             self.config.rm_model_path,
-            self.config.hf_rm_model_name,
-            self.config.hf_rm_model_revision,
+            # self.config.hf_rm_model_name,
+            # self.config.hf_rm_model_revision,
             init_head_bias=False if self.config.rm_model_path else True,
             num_labels=1
         ).to(self.device).requires_grad_(False)
@@ -90,16 +90,16 @@ class PPORLHFTrainer(BaseTrainer):
         self.policy_model = self._load_model(
             HFModel_Policy,
             self.config.sft_model_path,
-            self.config.hf_sft_model_name,
-            self.config.hf_sft_model_revision
+            # self.config.hf_sft_model_name,
+            # self.config.hf_sft_model_revision
         ).to(self.device)
 
         # Value Model
         self.value_model = self._load_model(
             HFModel_Value,
             self.config.rm_model_path,
-            self.config.hf_rm_model_name,
-            self.config.hf_rm_model_revision,
+            # self.config.hf_rm_model_name,
+            # self.config.hf_rm_model_revision,
             init_head_bias=False if self.config.rm_model_path else True,
             num_labels=1
         ).to(self.device)
