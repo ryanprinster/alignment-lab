@@ -107,13 +107,13 @@ class PPORLHFTrainer(BaseTrainer):
         # SFT Model
         self.sft_model = self._load_model(
             HFModel_SFT,
-            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__sft__tldr/snapshots/997a2257eaaa3bb8d2ecf14e1929789dd3dceab0/pytorch_model.bin",
+            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__sft__tldr/snapshots/997a2257eaaa3bb8d2ecf14e1929789dd3dceab0",
         ).to(self.device).requires_grad_(False)
 
         # Reward Model
         self.reward_model = self._load_model(
             HFModel_Reward,
-            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__reward__tldr/snapshots/33b95d01a8f208eba7236e2a3e5277f342b453cf/pytorch_model.bin",
+            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__reward__tldr/snapshots/33b95d01a8f208eba7236e2a3e5277f342b453cf",
             init_head_bias=False if self.config.rm_model_path else True,
             num_labels=1
         ).to(self.device).requires_grad_(False)
@@ -121,13 +121,13 @@ class PPORLHFTrainer(BaseTrainer):
         # Policy Model
         self.policy_model = self._load_model(
             HFModel_Policy,
-            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__sft__tldr/snapshots/997a2257eaaa3bb8d2ecf14e1929789dd3dceab0/pytorch_model.bin",
+            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__sft__tldr/snapshots/997a2257eaaa3bb8d2ecf14e1929789dd3dceab0",
         ).to(self.device)
 
         # Value Model
         self.value_model = self._load_model(
             HFModel_Value,
-            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__reward__tldr/snapshots/33b95d01a8f208eba7236e2a3e5277f342b453cf/pytorch_model.bin",
+            pythia_path="models--vwxyzjn--EleutherAI_pythia-1b-deduped__reward__tldr/snapshots/33b95d01a8f208eba7236e2a3e5277f342b453cf",
             init_head_bias=False if self.config.rm_model_path else True,
             num_labels=1
         ).to(self.device)
