@@ -75,7 +75,6 @@ class HFModel(nn.Module, ABC):
         if hasattr(model_config, 'base_config'):
             # This is a wrapped model, extract the base config
             base_config_dict = model_config.base_config
-            # Create new config from base
             model_config = AutoConfig.from_pretrained(save_dir)
             # Update with base config values
             for key, value in base_config_dict.items():
@@ -105,15 +104,10 @@ class HFModel(nn.Module, ABC):
                 for key, value in state_dict.items()
             }
 
-        # Remove classification head keys if loading into a non-classification model
-        if not any('score' in str(model.__class__) or 'Classification' in str(model.__class__) for _ in [1]):
-            state_dict = {
-                key: value 
-                for key, value in state_dict.items() 
-                if not key.startswith('score.')
-            }
+        # Add bias layer if needed
+        if hasattr(model, 'score') and model.score.bias is None:
+            model.score.bias = nn.Parameter(torch.zeros(model.score.out_features))
         
-        pdb.set_trace()
         model.load_state_dict(state_dict)
 
         return cls(config, model, tokenizer, model_config, init_head_weights=init_head_weights, init_head_bias=init_head_bias)
