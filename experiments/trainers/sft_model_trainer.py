@@ -6,7 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
 
 
-from experiments.models import HFModel_SFT
+from experiments.models_v2 import HFModel_SFT
 from experiments.config import SFTConfigBase
 from experiments.datasets import TLDRFilteredDataSFT
 from experiments.logger import Logger
@@ -21,6 +21,8 @@ class SFTTrainer(BaseTrainer):
     def __init__(self, config: SFTConfigBase):
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        # TODO: change back models
         self.model = HFModel_SFT(self.config,
                                 hf_model_name=self.config.hf_sft_model_name,
                                 hf_model_revision=self.config.hf_sft_model_revision

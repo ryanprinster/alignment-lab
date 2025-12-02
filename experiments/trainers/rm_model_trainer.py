@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
 import pdb
 
-from experiments.models import HFModel_SequenceClassification, HFModel_TokenClassification
+from experiments.models_v2 import HFModel_SequenceClassification, HFModel_TokenClassification
 from experiments.config import RMConfigBase
 from experiments.datasets import OpenAIPreferenceData, TLDRFilteredDataSFT
 from experiments.logger import Logger
