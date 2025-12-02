@@ -112,7 +112,8 @@ class HFModel(nn.Module, ABC):
                 for key, value in state_dict.items() 
                 if not key.startswith('score.')
             }
-
+        
+        pdb.set_trace()
         model.load_state_dict(state_dict)
 
         return cls(config, model, tokenizer, model_config, init_head_weights=init_head_weights, init_head_bias=init_head_bias)
