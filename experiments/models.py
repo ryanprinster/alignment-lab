@@ -60,7 +60,7 @@ class Llama_3p2_1B(nn.Module, ABC):
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME, self.config.hf_model_revision)
+        self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
         
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
@@ -102,7 +102,7 @@ class Llama_3p2_1B(nn.Module, ABC):
         self.load_state_dict(state_dict)
 
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.init_model_path, self.init_model_revision_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.init_model_path)
         
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
@@ -254,9 +254,8 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
 
 
 class Llama_3p2_1B_Value(Llama_3p2_1B):
-    def __init__(self, config, init_model_path=None, init_model_revision_path=None,init_rm_model=None):
+    def __init__(self, config, init_model_path=None, init_rm_model=None):
         self.init_model_path = init_model_path
-        self.init_model_revision_path = init_model_revision_path
         super().__init__(config)
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         self._init_model_weights()
