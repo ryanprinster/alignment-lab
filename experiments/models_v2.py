@@ -69,7 +69,16 @@ class HFModel(nn.Module, ABC):
         
         save_dir = os.path.dirname(init_model_path)
         model_config = AutoConfig.from_pretrained(save_dir)
-        tokenizer = AutoTokenizer.from_pretrained(save_dir)
+
+
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(save_dir)
+        except AttributeError:
+            tokenizer = AutoTokenizer.from_pretrained(
+                save_dir,
+                vocab_file=os.path.join(save_dir, "tokenizer.json")
+            )
+        # tokenizer = AutoTokenizer.from_pretrained(save_dir)
 
         # Handle custom architectures like ScalarModel (vwxyzjn's reward models)
         if hasattr(model_config, 'base_config'):
