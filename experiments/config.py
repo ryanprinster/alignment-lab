@@ -119,7 +119,7 @@ class RLFHPPOConfig(PPOConfigBase):
         # becomes over-optimized (7.1 point 3). 
         # Additionally, 8.56 epochs creates a training scale factor of 8.56x time and $$.
         # For these reasons, we train for 1 epoch.
-        self.num_epochs = 1 # (or 116,722 episodes)
+        self.num_epochs = 2 # (or 116,722 episodes)
         self.max_episodes = 1e7
 
         # Adam W Optimizer
@@ -159,7 +159,7 @@ class RLFHPPOConfig(PPOConfigBase):
 
 
         # Checkpointing
-        self.save_freq_steps = 100 * self.mini_batch_accumulation_steps
+        self.save_freq_steps = 912
         self.save_interval_min = 60
         # self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
         self.sft_model_path = "checkpoints/sft_final_checkpoint.pt"

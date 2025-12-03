@@ -437,6 +437,26 @@ class PPORLHFTrainer(BaseTrainer):
                                     ),
                                 }
                         )
+
+                        # Save policy checkpoint
+                        self.checkpointer.save_checkpoint(
+                            self.policy_model,
+                            self.optimizer_policy,
+                            self.global_step,
+                            epoch,
+                            loss=loss_ppo,
+                            final_checkpoint=False
+                        )
+
+                        # Save value checkpoint
+                        self.checkpointer.save_checkpoint(
+                            self.value_model,
+                            self.optimizer_value,
+                            self.global_step,
+                            epoch,
+                            loss=loss_value, # placeholder
+                            final_checkpoint=False
+                        )
                         
                                             
                 # 3. Theta old <-- theta new
@@ -454,4 +474,6 @@ class PPORLHFTrainer(BaseTrainer):
                     final_checkpoint=True
                 )
 
-        return self.policy_model      
+        return self.policy_model  
+
+
