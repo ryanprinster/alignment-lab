@@ -33,6 +33,7 @@ from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
 from experiments.trainers.base_trainer import BaseTrainer
+from experiments.checkpointer import Checkpointer
 from torch.optim.lr_scheduler import LinearLR
 from experiments.monitor import detect_nans
 
@@ -41,6 +42,8 @@ class PPORLHFTrainer(BaseTrainer):
     @profile
     def __init__(self, config: PPOConfigBase):
         self.config = config
+        self.checkpointer = Checkpointer(self.config)
+
         self.logger = Logger(self.config)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
