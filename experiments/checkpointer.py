@@ -21,7 +21,7 @@ class Checkpointer:
     @profile
     def save_checkpoint(self, model, optimizer, global_step, epoch, loss, checkpoint_prefix, final_checkpoint=False):        
         
-        should_save_checkpoint, path = self._should_save_checkpoint(global_step, loss, final_checkpoint)
+        should_save_checkpoint, path = self._should_save_checkpoint(global_step, loss, checkpoint_prefix, final_checkpoint)
         
         if should_save_checkpoint:
             self._save_checkpoint(path, model, optimizer, global_step, epoch, loss, checkpoint_prefix)
