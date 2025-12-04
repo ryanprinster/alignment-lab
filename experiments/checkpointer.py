@@ -19,12 +19,12 @@ class Checkpointer:
         os.makedirs(checkpoint_dir, exist_ok=True)
 
     @profile
-    def save_checkpoint(self, model, optimizer, global_step, epoch, loss, final_checkpoint=False):        
+    def save_checkpoint(self, model, optimizer, global_step, epoch, loss, checkpoint_prefix, final_checkpoint=False):        
         
         should_save_checkpoint, path = self._should_save_checkpoint(global_step, loss, final_checkpoint)
         
         if should_save_checkpoint:
-            self._save_checkpoint(path, model, optimizer, global_step, epoch, loss)
+            self._save_checkpoint(path, model, optimizer, global_step, epoch, loss, checkpoint_prefix)
 
     @profile
     def load_model(self, checkpoint_path, model, device):
@@ -39,12 +39,12 @@ class Checkpointer:
     def load_checkpoint(self, checkpoint_path, model, device, optimizer=None):
         pass
 
-    def _should_save_checkpoint(self, global_step, loss, final_checkpoint):
+    def _should_save_checkpoint(self, global_step, loss, checkpoint_prefix, final_checkpoint):
         should_save_checkpoint = False
         path = None
 
         if final_checkpoint:
-            path = os.path.join(self.checkpoint_dir, f"final_checkpoint.pt")
+            path = os.path.join(self.checkpoint_dir, f"{checkpoint_prefix}_final_checkpoint.pt")
             return True, path
 
         if hasattr(self.config, 'save_freq_steps'):
@@ -60,7 +60,7 @@ class Checkpointer:
         #     should_save_checkpoint = True
 
         if global_step % self.save_freq_steps == 0 and global_step != 0:
-            path = os.path.join(self.checkpoint_dir, f"checkpoint_step_{global_step}.pt")
+            path = os.path.join(self.checkpoint_dir, f"{checkpoint_prefix}_checkpoint_step_{global_step}.pt")
             should_save_checkpoint = True
         # elif time.time() - self.last_save_time >= self.save_interval_secs:
         #     path = os.path.join(self.checkpoint_dir, f"checkpoint_at_{datetime.now().isoformat()}.pt")
@@ -87,7 +87,7 @@ class Checkpointer:
 
     def _cleanup_old_checkpoints(self):
         checkpoints = [f for f in os.listdir(self.checkpoint_dir) 
-                           if (f.startswith("checkpoint_step_") or f.startswith("checkpoint_at_"))]
+                           if (f.__contains__("checkpoint_step_") or f.__contains__("checkpoint_at_"))]
         checkpoints.sort(key=lambda x: int(x.split('_')[2].split('.')[0]))
         
         for old_checkpoint in checkpoints[:-self.keep_last_n]:

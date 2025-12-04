@@ -445,6 +445,7 @@ class PPORLHFTrainer(BaseTrainer):
                             self.global_step,
                             epoch,
                             loss=loss_ppo,
+                            checkpoint_prefix="policy_",
                             final_checkpoint=False
                         )
 
@@ -454,7 +455,8 @@ class PPORLHFTrainer(BaseTrainer):
                             self.optimizer_value,
                             self.global_step,
                             epoch,
-                            loss=loss_value, # placeholder
+                            loss=loss_value,
+                            checkpoint_prefix="value_",
                             final_checkpoint=False
                         )
                         
