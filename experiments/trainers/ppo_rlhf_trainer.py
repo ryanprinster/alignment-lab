@@ -534,8 +534,10 @@ class PPORLHFTrainer(BaseTrainer):
                 self.global_step += 1
 
             # temp
+                if self.global_step > 4:
+                    break
+            if self.global_step > 4:
                 break
-            break
 
         self.checkpointer._cleanup_old_checkpoints()
             
