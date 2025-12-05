@@ -152,6 +152,71 @@ class PPORLHFTrainer(BaseTrainer):
         self.scaler_policy = GradScaler("cuda") 
         self.scaler_value = GradScaler("cuda") 
 
+
+        if self.config.resume_from_checkpoint:
+            print("Loading initial checkpoint...")
+            self.load_from_checkpoint(policy_checkpoint_path=self.config.policy_checkpoint_path, value_checkpoint_path=self.config.value_checkpoint_path)
+
+    def load_from_checkpoint(self, policy_checkpoint_path=None, value_checkpoint_path=None):
+        training_state = {'global_step': 0, 'epoch': 0}
+    
+        if policy_checkpoint_path:
+            policy_state = self.checkpointer.load_checkpoint(
+                policy_checkpoint_path,
+                self.policy_model,
+                self.device,
+                self.optimizer_policy
+            )
+            training_state = policy_state
+            
+            # Update old policy state dict after loading
+            self.old_policy_state_dict = self.policy_model.state_dict()
+            print("Updated old_policy_state_dict")
+
+        if value_checkpoint_path:
+            value_state = self.checkpointer.load_checkpoint(
+                value_checkpoint_path,
+                self.value_model,
+                self.device,
+                self.optimizer_value
+            )
+            # Use value state if policy wasn't loaded
+            if not policy_checkpoint_path:
+                training_state = value_state
+                
+            # Update old value state dict after loading
+            self.old_value_state_dict = self.value_model.state_dict()
+            print("Updated old_value_state_dict")
+
+        # Rebuild LR schedulers with proper starting point
+        if training_state['global_step'] > 0:
+            total_iters = int(self.config.max_episodes / self.config.batch_size) * self.config.K
+            remaining_iters = max(0, total_iters - training_state['global_step'])
+            
+            self.lr_scheduler_policy = LinearLR(
+                self.optimizer_policy,
+                total_iters=total_iters,
+                start_factor=1.0,
+                end_factor=self.config.lr_final_ratio
+            )
+            # Step scheduler to current position
+            for _ in range(training_state['global_step']):
+                self.lr_scheduler_policy.step()
+            
+            self.lr_scheduler_value = LinearLR(
+                self.optimizer_value,
+                total_iters=total_iters,
+                start_factor=1.0,
+                end_factor=self.config.lr_final_ratio
+            )
+            for _ in range(training_state['global_step']):
+                self.lr_scheduler_value.step()
+            
+            print(f"LR schedulers advanced to step {training_state['global_step']}")
+        
+        return training_state
+        
+
     def _load_model(self, model_class=None, local_path=None, hf_name=None, hf_revision=None, pythia_path=None, **kwargs):
         if local_path:
             return model_class.from_state_dict(config=self.config,init_model_path=local_path,**kwargs)
@@ -314,7 +379,6 @@ class PPORLHFTrainer(BaseTrainer):
 
                     for _, old_data in enumerate(tj_loader):
 
-
                         self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
                         # FP32 --> FP16 for mixed precision training
@@ -325,7 +389,6 @@ class PPORLHFTrainer(BaseTrainer):
                             loss_value = self.compute_value_loss_mse(old_data['R'], new_values, old_data['values'], old_data['value_pad_mask'])
 
                             # 2.2 Compute ppo loss for policy model
-                            # NOTE: all tensors in function below are in fp32?
                             loss_ppo, ppo_log_data = self.compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
 
                             del new_policy_logits
@@ -333,9 +396,6 @@ class PPORLHFTrainer(BaseTrainer):
                         # 2.3 Update models
                         self._backward(loss_value, loss_ppo)
                         self._step(self.optimizer_policy, self.optimizer_value)
-
-                        # if self.global_step % 10 == 0:
-                        #     pdb.set_trace()
 
                         
                         ### Logging ###
@@ -467,27 +527,26 @@ class PPORLHFTrainer(BaseTrainer):
                 self._update_old_models()
 
                 self.global_step += 1
-
             
-            self.checkpointer.save_checkpoint(
-                    self.policy_model,
-                    self.optimizer_policy,
-                    self.global_step,
-                    epoch,
-                    loss=0, # placeholder
-                    checkpoint_prefix="policy_",
-                    final_checkpoint=True
-                )
-            
-            self.checkpointer.save_checkpoint(
-                self.value_model,
-                self.optimizer_value,
+        self.checkpointer.save_checkpoint(
+                self.policy_model,
+                self.optimizer_policy,
                 self.global_step,
                 epoch,
                 loss=0, # placeholder
-                checkpoint_prefix="value_",
+                checkpoint_prefix="policy_",
                 final_checkpoint=True
             )
+        
+        self.checkpointer.save_checkpoint(
+            self.value_model,
+            self.optimizer_value,
+            self.global_step,
+            epoch,
+            loss=0, # placeholder
+            checkpoint_prefix="value_",
+            final_checkpoint=True
+        )
 
         return self.policy_model  
 

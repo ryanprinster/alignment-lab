@@ -85,16 +85,6 @@ class Checkpointer:
             'timestamp': datetime.now().isoformat()
         }
 
-    # def _cleanup_old_checkpoints(self):
-    #     checkpoints = [f for f in os.listdir(self.checkpoint_dir) 
-    #                        if (f.__contains__("checkpoint_step_") or f.__contains__("checkpoint_at_"))]
-    #     checkpoints.sort(key=lambda x: int(x.split('_')[2].split('.')[0]))
-        
-    #     for old_checkpoint in checkpoints[:-self.keep_last_n]:
-    #         old_path = os.path.join(self.checkpoint_dir, old_checkpoint)
-    #         os.remove(old_path)
-    #         print(f"Removed old checkpoint: {old_checkpoint}")
-
     def _cleanup_old_checkpoints(self):
         checkpoints = [f for f in os.listdir(self.checkpoint_dir) 
                         if (f.__contains__("checkpoint_step_") or f.__contains__("checkpoint_at_"))]
@@ -114,3 +104,45 @@ class Checkpointer:
             old_path = os.path.join(self.checkpoint_dir, old_checkpoint)
             os.remove(old_path)
             print(f"Removed old checkpoint: {old_checkpoint}")
+
+    @profile
+    def load_checkpoint(self, checkpoint_path, model, device, optimizer=None):
+        """
+        Load a checkpoint and return the training state.
+        
+        Args:
+            checkpoint_path: Path to the checkpoint file
+            model: Model to load weights into
+            device: Device to map tensors to
+            optimizer: Optional optimizer to load state into
+            
+        Returns:
+            dict: Training state containing global_step, epoch, loss, etc.
+        """
+        if not os.path.exists(checkpoint_path):
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+        
+        print(f"Loading checkpoint from: {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        
+        # Load model state
+        model.load_state_dict(checkpoint['model_state_dict'], strict=False)
+        print(f"Loaded model state from step {checkpoint.get('global_step', 'unknown')}")
+        
+        # Load optimizer state if provided
+        if optimizer is not None and 'optimizer_state_dict' in checkpoint:
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            print("Loaded optimizer state")
+        
+        # Return training state for resuming
+        training_state = {
+            'global_step': checkpoint.get('global_step', 0),
+            'epoch': checkpoint.get('epoch', 0),
+            'loss': checkpoint.get('loss', float('inf')),
+            'timestamp': checkpoint.get('timestamp', 'unknown')
+        }
+        
+        print(f"Checkpoint loaded - Step: {training_state['global_step']}, "
+            f"Epoch: {training_state['epoch']}, Loss: {training_state['loss']:.4f}")
+        
+        return training_state
