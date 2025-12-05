@@ -532,14 +532,6 @@ class PPORLHFTrainer(BaseTrainer):
                 self._update_old_models()
 
                 self.global_step += 1
-
-            # temp
-                if self.global_step > 4:
-                    break
-            if self.global_step > 4:
-                break
-
-        self.checkpointer._cleanup_old_checkpoints()
             
         self.checkpointer.save_checkpoint(
                 self.policy_model,
@@ -550,16 +542,6 @@ class PPORLHFTrainer(BaseTrainer):
                 checkpoint_prefix="policy_",
                 final_checkpoint=True
             )
-        
-        self.checkpointer.save_checkpoint(
-            self.value_model,
-            self.optimizer_value,
-            self.global_step,
-            epoch,
-            loss=0, # placeholder
-            checkpoint_prefix="value_",
-            final_checkpoint=True
-        )
 
         return self.policy_model  
 
