@@ -160,7 +160,7 @@ class RLFHPPOConfig(PPOConfigBase):
 
         # Checkpointing
         self.save_freq_steps = 1
-        self.keep_last_n = 4
+        self.keep_last_n = 2
         # self.save_interval_min = 60
         # self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
         self.sft_model_path = "checkpoints/sft_final_checkpoint.pt"

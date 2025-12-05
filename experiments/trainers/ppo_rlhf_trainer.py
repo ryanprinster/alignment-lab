@@ -478,6 +478,16 @@ class PPORLHFTrainer(BaseTrainer):
                     checkpoint_prefix="policy_",
                     final_checkpoint=True
                 )
+            
+            self.checkpointer.save_checkpoint(
+                self.value_model,
+                self.optimizer_value,
+                self.global_step,
+                epoch,
+                loss=0, # placeholder
+                checkpoint_prefix="value_",
+                final_checkpoint=True
+            )
 
         return self.policy_model  
 
