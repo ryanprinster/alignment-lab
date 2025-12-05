@@ -462,7 +462,6 @@ class PPORLHFTrainer(BaseTrainer):
                             checkpoint_prefix="value_",
                             final_checkpoint=False
                         )
-                        
                                             
                 # 3. Theta old <-- theta new
                 self._update_old_models()
@@ -471,11 +470,12 @@ class PPORLHFTrainer(BaseTrainer):
 
             
             self.checkpointer.save_checkpoint(
-                    self.model,
-                    self.optimizer,
+                    self.policy_model,
+                    self.optimizer_policy,
                     self.global_step,
                     epoch,
                     loss=0, # placeholder
+                    checkpoint_prefix="policy_",
                     final_checkpoint=True
                 )
 
