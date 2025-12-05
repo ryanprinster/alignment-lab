@@ -532,6 +532,12 @@ class PPORLHFTrainer(BaseTrainer):
                 self._update_old_models()
 
                 self.global_step += 1
+
+            # temp
+                break
+            break
+
+        self.checkpointer._cleanup_old_checkpoints()
             
         self.checkpointer.save_checkpoint(
                 self.policy_model,
