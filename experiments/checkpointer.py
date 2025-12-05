@@ -24,7 +24,7 @@ class Checkpointer:
         should_save_checkpoint, path = self._should_save_checkpoint(global_step, loss, checkpoint_prefix, final_checkpoint)
         
         if should_save_checkpoint:
-            self._save_checkpoint(path, model, optimizer, global_step, epoch, loss, checkpoint_prefix)
+            self._save_checkpoint(path, model, optimizer, global_step, epoch, loss)
 
     @profile
     def load_model(self, checkpoint_path, model, device):
@@ -70,8 +70,8 @@ class Checkpointer:
         return should_save_checkpoint, path
 
     @profile
-    def _save_checkpoint(self, path, model, optimizer, global_step, epoch, loss, checkpoint_prefix):
-        checkpoint = self._build_checkpoint(model, optimizer, global_step, epoch, loss, checkpoint_prefix)
+    def _save_checkpoint(self, path, model, optimizer, global_step, epoch, loss):
+        checkpoint = self._build_checkpoint(model, optimizer, global_step, epoch, loss)
         torch.save(checkpoint, path)
         # self._cleanup_old_checkpoints()
 
