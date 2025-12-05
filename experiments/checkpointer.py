@@ -85,10 +85,30 @@ class Checkpointer:
             'timestamp': datetime.now().isoformat()
         }
 
+    # def _cleanup_old_checkpoints(self):
+    #     checkpoints = [f for f in os.listdir(self.checkpoint_dir) 
+    #                        if (f.__contains__("checkpoint_step_") or f.__contains__("checkpoint_at_"))]
+    #     checkpoints.sort(key=lambda x: int(x.split('_')[2].split('.')[0]))
+        
+    #     for old_checkpoint in checkpoints[:-self.keep_last_n]:
+    #         old_path = os.path.join(self.checkpoint_dir, old_checkpoint)
+    #         os.remove(old_path)
+    #         print(f"Removed old checkpoint: {old_checkpoint}")
+
     def _cleanup_old_checkpoints(self):
         checkpoints = [f for f in os.listdir(self.checkpoint_dir) 
-                           if (f.__contains__("checkpoint_step_") or f.__contains__("checkpoint_at_"))]
-        checkpoints.sort(key=lambda x: int(x.split('_')[2].split('.')[0]))
+                        if (f.__contains__("checkpoint_step_") or f.__contains__("checkpoint_at_"))]
+        
+        def get_step_number(filename):
+            # policy__checkpoint_step_123.pt or policy__checkpoint_at_123.pt
+            parts = filename.split('_')
+            # Find 'step' or 'at' and get the next part
+            for i, part in enumerate(parts):
+                if part in ['step', 'at'] and i + 1 < len(parts):
+                    return int(parts[i + 1].split('.')[0])
+            return 0
+        
+        checkpoints.sort(key=get_step_number)
         
         for old_checkpoint in checkpoints[:-self.keep_last_n]:
             old_path = os.path.join(self.checkpoint_dir, old_checkpoint)
