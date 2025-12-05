@@ -9,7 +9,7 @@ class Checkpointer:
     def __init__(self, config, checkpoint_dir="./checkpoints", keep_last_n=2, save_freq_steps=200, save_freq_epochs=1, save_interval_min=60):
         self.config = config
         self.checkpoint_dir = checkpoint_dir
-        self.keep_last_n = keep_last_n
+        self.keep_last_n = self.config.keep_last_n or keep_last_n
         self.best_loss = float('inf')
         self.save_freq_steps = save_freq_steps
         self.save_freq_epochs = save_freq_epochs
