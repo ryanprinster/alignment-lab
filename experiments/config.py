@@ -120,7 +120,7 @@ class RLFHPPOConfig(PPOConfigBase):
         # Additionally, 8.56 epochs creates a training scale factor of 8.56x time and $$.
         # For these reasons, we train for 1 epoch.
         self.num_epochs = 9 # (or 116,722 episodes)
-        self.max_episodes = 1e7
+        self.max_episodes = 1e6
 
         # Adam W Optimizer
         self.eps_adam = 1e-5
@@ -167,8 +167,8 @@ class RLFHPPOConfig(PPOConfigBase):
         self.rm_model_path = "checkpoints/rm_final_checkpoint_v2.pt"
         self.calculated_sft_bias = 4.6745805740356
         self.resume_from_checkpoint = False
-        self.policy_checkpoint_path = "/workspace/alignment-lab/checkpoints/policy__final_checkpoint.pt"
-        self.value_checkpoint_path = "/workspace/alignment-lab/checkpoints/value__final_checkpoint.pt"
+        self.policy_checkpoint_path = "checkpoints/policy__final_checkpoint.pt"
+        self.value_checkpoint_path = "/checkpoints/value__final_checkpoint.pt"
 
 
         # Logging

@@ -356,9 +356,6 @@ class PPORLHFTrainer(BaseTrainer):
         # Go through the data num_epochs times, or max_episodes steps
         for epoch in range(self.config.num_epochs):
             for batch_idx, batch in enumerate(self.data.train_loader):
-                if self.global_step * self.data.train_loader.batch_size > self.config.max_episodes: 
-                    break 
-
                 
                 batch = self._to_device(batch)
 
@@ -532,6 +529,11 @@ class PPORLHFTrainer(BaseTrainer):
                 self._update_old_models()
 
                 self.global_step += 1
+
+                if self.global_step * self.data.train_loader.batch_size >= self.config.max_episodes: 
+                    break 
+            if self.global_step * self.data.train_loader.batch_size >= self.config.max_episodes: 
+                break 
             
         self.checkpointer.save_checkpoint(
                 self.policy_model,
