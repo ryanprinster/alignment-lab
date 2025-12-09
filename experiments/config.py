@@ -167,8 +167,8 @@ class RLFHPPOConfig(PPOConfigBase):
         self.rm_model_path = "checkpoints/rm_final_checkpoint_v2.pt"
         self.calculated_sft_bias = 4.6745805740356
         self.resume_from_checkpoint = False
-        self.policy_checkpoint_path = "checkpoints/policy__final_checkpoint.pt"
-        self.value_checkpoint_path = "/checkpoints/value__final_checkpoint.pt"
+        self.policy_checkpoint_path = "checkpoints/policy__checkpoint_step_600.pt"
+        self.value_checkpoint_path = "checkpoints/value__checkpoint_step_600.pt"
 
 
         # Logging
