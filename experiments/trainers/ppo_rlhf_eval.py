@@ -48,10 +48,17 @@ class PPORLHFEval(BaseTrainer):
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.client = anthropic.Anthropic(api_key="your-api-key")
+        self.checkpointer = Checkpointer(self.config)
 
         # Model that we want to evaluate vs reference summaries
         self.model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
 
+        self.checkpointer.load_checkpoint(
+                self.config.policy_checkpoint_path,
+                self.model,
+                self.device
+            )
+        
         # self.reference_ppo_model = self._load_model(
         #     HFModel_Policy,
         #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
@@ -90,7 +97,7 @@ class PPORLHFEval(BaseTrainer):
         }
 
     def construct_claude_request(self):
-        self.policy_model.eval()
+        self.model.eval()
 
         requests = []
 
