@@ -47,17 +47,19 @@ class PPORLHFEval(BaseTrainer):
     def __init__(self, config: PPOConfigBase):
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.data = TLDRFilteredDataPPO(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
         self.client = anthropic.Anthropic(api_key="your-api-key")
 
         # Model that we want to evaluate vs reference summaries
-        self.model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.sft_model_path).to(self.device)
+        self.model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
 
         # self.reference_ppo_model = self._load_model(
         #     HFModel_Policy,
         #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
         #     hf_revision="sft__44413__1708611267",
         # ).to(self.device)
+
+        self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
+
 
     def _judge_prompt(post, summary_a, summary_b):
         return f"""Which of the following summaries does a better job of summarizing the most important points in the given forum post, without including unimportant or irrelevant details? Judge based on accuracy, coverage, and coherence.
@@ -93,6 +95,7 @@ class PPORLHFEval(BaseTrainer):
         requests = []
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
+
             
             # get prompts from batch
             # get reference summaries from batch
@@ -104,6 +107,8 @@ class PPORLHFEval(BaseTrainer):
                 max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
             )
             del _
+
+            pdb.set_trace()
             response_length = full_states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
             # Truncate to responses
