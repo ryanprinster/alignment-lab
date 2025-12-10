@@ -103,14 +103,16 @@ class PPORLHFEval(BaseTrainer):
     
     def format_batch(self, batch):
         pdb.set_trace()
-        result = []
+        input_ids = []
+        attention_masks = []
         for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
             query_text = self.data.get_query_text(subreddit, title, post)
             inputs = self.data.tokenizer(query_text, return_tensors="pt")
             inputs = self._to_device(inputs)
-            batch.append(inputs)
+            input_ids.append(inputs['input_ids'])
+            attention_masks.append(attention_masks['attention_mask'])
         
-        return torch.stack(batch)
+        return torch.stack(input_ids), torch.stack(attention_masks)
         
 
     def construct_claude_request(self):
@@ -120,7 +122,7 @@ class PPORLHFEval(BaseTrainer):
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
 
-            self.format_batch(batch)
+            input_ids, attention_mask = self.format_batch(batch)
 
 
 
