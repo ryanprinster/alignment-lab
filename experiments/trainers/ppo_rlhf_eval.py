@@ -103,7 +103,7 @@ class PPORLHFEval(BaseTrainer):
     
     def format_batch(self, batch):
         pdb.set_trace()
-        batch = []
+        result = []
         for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
             query_text = self.data.get_query_text(subreddit, title, post)
             inputs = self.data.tokenizer(query_text, return_tensors="pt")
