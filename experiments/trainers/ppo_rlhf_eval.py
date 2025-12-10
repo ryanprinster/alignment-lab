@@ -87,7 +87,7 @@ class PPORLHFEval(BaseTrainer):
             }
         }
 
-    def _construct_claude_request(self):
+    def construct_claude_request(self):
         self.policy_model.eval()
 
         requests = []
