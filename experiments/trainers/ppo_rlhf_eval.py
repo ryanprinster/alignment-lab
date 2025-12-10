@@ -129,7 +129,7 @@ class PPORLHFEval(BaseTrainer):
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
 
-            batch = self.format_batch(batch, self.data.__class__.SFT_MAX_INPUT_LENGTH)
+            batch = self.format_batch(batch, self.data.__class__.SFT_MAX_QUERY_LENGTH)
 
             
             # get prompts from batch
