@@ -67,6 +67,11 @@ class PPORLHFEval(BaseTrainer):
 
         self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
 
+    def _to_device(self, batch):
+        for k in batch.keys():
+            if isinstance(batch[k], torch.Tensor):
+                batch[k] = batch[k].to(self.device)
+        return batch
 
     def _judge_prompt(post, summary_a, summary_b):
         return f"""Which of the following summaries does a better job of summarizing the most important points in the given forum post, without including unimportant or irrelevant details? Judge based on accuracy, coverage, and coherence.
@@ -95,6 +100,18 @@ class PPORLHFEval(BaseTrainer):
                     "content": PPORLHFEval._judge_prompt(post, summary_a, summary_b)}]
             }
         }
+    
+    def format_batch(self, batch):
+        pdb.set_trace()
+        batch = []
+        for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
+            query_text = self.data.get_query_text(subreddit, title, post)
+            inputs = self.data.tokenizer(query_text, return_tensors="pt")
+            inputs = self._to_device(inputs)
+            batch.append(inputs)
+        
+        return torch.stack(batch)
+        
 
     def construct_claude_request(self):
         self.model.eval()
@@ -102,6 +119,12 @@ class PPORLHFEval(BaseTrainer):
         requests = []
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
+
+            self.format_batch(batch)
+
+
+
+
 
             
             # get prompts from batch
