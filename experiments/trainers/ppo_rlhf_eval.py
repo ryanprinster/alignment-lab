@@ -116,8 +116,10 @@ class PPORLHFEval(BaseTrainer):
             input_ids.append(torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id))
             attention_masks.append(torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0))
         
-
-        return torch.stack(input_ids), torch.stack(attention_masks)
+        return {
+            'input_ids': torch.stack(input_ids),
+            'attention_masks': torch.stack(attention_masks)
+        }
         
 
     def construct_claude_request(self):
@@ -127,11 +129,7 @@ class PPORLHFEval(BaseTrainer):
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
 
-            input_ids, attention_mask = self.format_batch(batch, self.data.__class__.SFT_MAX_INPUT_LENGTH)
-
-
-
-
+            batch = self.format_batch(batch, self.data.__class__.SFT_MAX_INPUT_LENGTH)
 
             
             # get prompts from batch
