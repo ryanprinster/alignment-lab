@@ -110,7 +110,7 @@ class PPORLHFEval(BaseTrainer):
             inputs = self.data.tokenizer(query_text, return_tensors="pt")
             inputs = self._to_device(inputs)
             input_ids.append(inputs['input_ids'])
-            attention_masks.append(attention_masks['attention_mask'])
+            attention_masks.append(inputs['attention_mask'])
         
         return torch.stack(input_ids), torch.stack(attention_masks)
         
