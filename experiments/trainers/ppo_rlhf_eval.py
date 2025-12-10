@@ -107,7 +107,7 @@ class PPORLHFEval(BaseTrainer):
             # get prompts from batch
             # get reference summaries from batch
             
-            full_states, _  = self.policy_model.generate(
+            full_states, _  = self.model.generate(
                 batch,
                 self.config.max_sequence_length, # ???
                 self.config.generation_temperature,
