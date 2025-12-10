@@ -110,6 +110,9 @@ class PPORLHFEval(BaseTrainer):
             inputs = self.data.tokenizer(query_text, return_tensors="pt")
             inputs = self._to_device(inputs)
 
+            inputs['input_ids'] = inputs['input_ids'].squeeze()
+            inputs['attention_mask'] = inputs['attention_mask'].squeeze()
+
             input_ids.append(torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id))
             attention_masks.append(torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0))
         
