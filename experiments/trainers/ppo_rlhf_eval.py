@@ -106,7 +106,8 @@ class PPORLHFEval(BaseTrainer):
             
             # get prompts from batch
             # get reference summaries from batch
-            
+            pdb.set_trace()
+
             full_states, _  = self.model.generate(
                 batch,
                 self.data.__class__.SFT_MAX_INPUT_LENGTH, # ???
@@ -115,7 +116,6 @@ class PPORLHFEval(BaseTrainer):
             )
             del _
 
-            pdb.set_trace()
             response_length = full_states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
 
             # Truncate to responses
