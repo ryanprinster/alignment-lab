@@ -109,9 +109,9 @@ class PPORLHFEval(BaseTrainer):
             
             full_states, _  = self.model.generate(
                 batch,
-                self.config.max_sequence_length, # ???
+                self.data.__class__.SFT_MAX_INPUT_LENGTH, # ???
                 self.config.generation_temperature,
-                max_query_length=self.data.SFT_MAX_QUERY_LENGTH,
+                max_query_length=self.data.__class__.SFT_MAX_QUERY_LENGTH,
             )
             del _
 
