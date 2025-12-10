@@ -118,7 +118,7 @@ class PPORLHFEval(BaseTrainer):
         
         return {
             'input_ids': torch.stack(input_ids),
-            'attention_masks': torch.stack(attention_masks)
+            'attention_mask': torch.stack(attention_masks)
         }
         
 
