@@ -101,7 +101,7 @@ class PPORLHFEval(BaseTrainer):
             }
         }
     
-    def format_batch(self, batch):
+    def format_batch(self, batch, max_query_length):
         pdb.set_trace()
         input_ids = []
         attention_masks = []
@@ -109,9 +109,11 @@ class PPORLHFEval(BaseTrainer):
             query_text = self.data.get_query_text(subreddit, title, post)
             inputs = self.data.tokenizer(query_text, return_tensors="pt")
             inputs = self._to_device(inputs)
-            input_ids.append(inputs['input_ids'])
-            attention_masks.append(inputs['attention_mask'])
+
+            input_ids.append(torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id))
+            attention_masks.append(torch.nn.functional.pad(attention_masks['input_ids'], (max_query_length - attention_masks['input_ids'].size(0), 0), value=0))
         
+
         return torch.stack(input_ids), torch.stack(attention_masks)
         
 
@@ -122,7 +124,7 @@ class PPORLHFEval(BaseTrainer):
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
 
-            input_ids, attention_mask = self.format_batch(batch)
+            input_ids, attention_mask = self.format_batch(batch, self.data.__class__.SFT_MAX_INPUT_LENGTH)
 
 
 
