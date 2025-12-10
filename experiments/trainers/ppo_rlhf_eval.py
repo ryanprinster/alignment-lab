@@ -111,7 +111,7 @@ class PPORLHFEval(BaseTrainer):
             inputs = self._to_device(inputs)
 
             input_ids.append(torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id))
-            attention_masks.append(torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - attention_masks['input_ids'].size(0), 0), value=0))
+            attention_masks.append(torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0))
         
 
         return torch.stack(input_ids), torch.stack(attention_masks)
