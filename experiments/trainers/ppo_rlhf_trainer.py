@@ -37,6 +37,8 @@ from experiments.checkpointer import Checkpointer
 from torch.optim.lr_scheduler import LinearLR
 from experiments.monitor import detect_nans
 
+import anthropic
+
 
 class PPORLHFTrainer(BaseTrainer):
     @profile
@@ -547,4 +549,15 @@ class PPORLHFTrainer(BaseTrainer):
 
         return self.policy_model  
 
+
+    def evaluate(self):
+        self.policy_model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.sft_model_path).to(self.device)
+
+
+        # Policy Model
+        self.policy_model = self._load_model(
+            HFModel_Policy,
+            hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
+            hf_revision="sft__44413__1708611267",
+        ).to(self.device)
 
