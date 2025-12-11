@@ -145,7 +145,8 @@ class PPORLHFEval(BaseTrainer):
             prompt_text = self.tensor_to_formatted_string(prompts[i])
             generated_summary_text = self.tensor_to_formatted_string(generated_summaries[i])
             reference_summary_text = self.tensor_to_formatted_string(summary_ids[i])
-            request = PPORLHFEval._claude_request_json(prompt_text, generated_summary_text, reference_summary_text)
+            # TODO: placeholder idx
+            request = PPORLHFEval._claude_request_json(12, prompt_text, generated_summary_text, reference_summary_text)
             
             # requests.append(request)
 
