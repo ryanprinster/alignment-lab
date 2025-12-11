@@ -105,7 +105,7 @@ class PPORLHFEval(BaseTrainer):
         """
         Trims tokenized tensor of both pad and eos tokens, then decodes to text 
         """
-        trim_ids = [self.data.tokenizer.pad_token_id, self.data.tokenizer.eos_token_id]
+        trim_ids = [self.data.tokenizer.pad_token_id, self.data.tokenizer.eos_token_id, self.data.tokenizer.bos_token_id]
 
         left = 0
         right = len(tensor) - 1
