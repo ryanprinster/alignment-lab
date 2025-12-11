@@ -66,6 +66,7 @@ class PPORLHFEval(BaseTrainer):
         # ).to(self.device)
 
         self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
+       
 
     def _to_device(self, batch):
         for k in batch.keys():
@@ -138,23 +139,20 @@ class PPORLHFEval(BaseTrainer):
             'attention_mask': torch.stack(attention_masks)
         }, summary_ids
     
+    @profile
     def torch_batch_to_request(self, prompts, summary_ids, generated_summaries):
-        
-        pdb.set_trace()
         for i in range(len(summary_ids)): # enumerate through batch
             prompt_text = self.tensor_to_formatted_string(prompts[i])
             generated_summary_text = self.tensor_to_formatted_string(generated_summaries[i])
             reference_summary_text = self.tensor_to_formatted_string(summary_ids[i])
-            # TODO: placeholder idx
-            request = PPORLHFEval._claude_request_json(12, prompt_text, generated_summary_text, reference_summary_text)
-            
-            # requests.append(request)
+            request = PPORLHFEval._claude_request_json(len(self.requests), prompt_text, generated_summary_text, reference_summary_text)
+            self.requests.append(request)
 
 
     def construct_claude_request(self):
         self.model.eval()
 
-        requests = []
+        self.requests = []
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
 
@@ -175,14 +173,12 @@ class PPORLHFEval(BaseTrainer):
             generated_summaries = full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
             del full_states
 
-            pdb.set_trace()
+            self.torch_batch_to_request(prompts, summary_ids, generated_summaries)
 
-            request = self.torch_batch_to_request(prompts, summary_ids, generated_summaries)
-
-
-
-        batch = self.client.messages.batches.create(requests=requests)
-        print(f"Submitted 7000 comparisons: {batch.id}")
+        print("finished creating batched requests")
+        pdb.set_trace()
+        batch = self.client.messages.batches.create(requests=self.requests)
+        print(f"Submitted comparisons: {batch.id}")
 
             
             
