@@ -102,7 +102,6 @@ class PPORLHFEval(BaseTrainer):
         }
     
     def format_batch(self, batch, max_query_length):
-        pdb.set_trace()
         input_ids = []
         attention_masks = []
         summary_ids = []
@@ -142,7 +141,6 @@ class PPORLHFEval(BaseTrainer):
 
             # get prompts from batch
             # get reference summaries from batch
-            pdb.set_trace()
 
             full_states, _  = self.model.generate(
                 input_batch,
@@ -151,6 +149,12 @@ class PPORLHFEval(BaseTrainer):
                 max_query_length=self.data.__class__.SFT_MAX_QUERY_LENGTH,
             )
             del _
+            prompts = input_batch['input_ids']
+            del input_batch
+            generated_summaries = full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
+            del full_states
+
+
 
             pdb.set_trace()
 
