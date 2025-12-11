@@ -101,7 +101,25 @@ class PPORLHFEval(BaseTrainer):
             }
         }
     
-    def format_batch(self, batch, max_query_length):
+    def tensor_to_formatted_string(self, tensor):
+        """
+        Trims tokenized tensor of both pad and eos tokens, then decodes to text 
+        """
+        trim_ids = [self.data.tokenizer.pad_token_id, self.data.tokenizer.eos_token_id]
+
+        left = 0
+        right = len(tensor) - 1
+        
+        while left <= right and tensor[left].item() in trim_ids:
+            left += 1
+        while right >= left and tensor[right].item() in trim_ids:
+            right -= 1
+            
+        return self.data.tokenizer.decode(tensor[left:right+1])
+        
+
+    
+    def format_batch_for_generation(self, batch, max_query_length):
         input_ids = []
         attention_masks = []
         summary_ids = []
@@ -114,21 +132,23 @@ class PPORLHFEval(BaseTrainer):
             input_ids.append(torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id))
             attention_masks.append(torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0))
 
-            summaries = self.data.tokenizer(summary, return_tensors="pt")['input_ids'].squeeze()
-            summary_ids.append(summaries)
+            summary_ids.append(self.data.tokenizer(summary, return_tensors="pt")['input_ids'].squeeze())
         return {
             'input_ids': torch.stack(input_ids),
             'attention_mask': torch.stack(attention_masks)
         }, summary_ids
     
-    def torch_batch_to_request(self, batch):
+    def torch_batch_to_request(self, prompts, summary_ids, generated_summaries):
         
-        states = full_states[:, -self.data.SFT_MAX_REPONSE_LENGTH:]
+        pdb.set_trace()
+        for i in range(len(summary_ids)): # enumerate through batch
+            prompt_text = self.tensor_to_formatted_string(prompts[i])
+            generated_summary_text = self.tensor_to_formatted_string(generated_summaries[i])
+            reference_summary_text = self.tensor_to_formatted_string(summary_ids[i])
+            request = PPORLHFEval._claude_request_json(prompt_text, generated_summary_text, reference_summary_text)
+            
+            # requests.append(request)
 
-        for i in enumerate(batch): # enumerate through batch
-            # extract post
-            request = PPORLHFEval._claude_request_json(post, generated_summary, reference_summary)
-            requests.append(request)
 
     def construct_claude_request(self):
         self.model.eval()
@@ -137,7 +157,7 @@ class PPORLHFEval(BaseTrainer):
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
 
-            input_batch, summary_ids = self.format_batch(batch, self.data.__class__.SFT_MAX_QUERY_LENGTH)
+            input_batch, summary_ids = self.format_batch_for_generation(batch, self.data.__class__.SFT_MAX_QUERY_LENGTH)
 
             # get prompts from batch
             # get reference summaries from batch
@@ -149,14 +169,15 @@ class PPORLHFEval(BaseTrainer):
                 max_query_length=self.data.__class__.SFT_MAX_QUERY_LENGTH,
             )
             del _
-            prompts = input_batch['input_ids']
+            prompts = self.data.tokenizer.decode(input_batch['input_ids'])
             del input_batch
             generated_summaries = full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
             del full_states
 
-
-
             pdb.set_trace()
+
+            request = self.torch_batch_to_request(prompts, summary_ids, generated_summaries)
+
 
 
         batch = self.client.messages.batches.create(requests=requests)
