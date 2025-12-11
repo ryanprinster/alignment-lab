@@ -105,22 +105,31 @@ class PPORLHFEval(BaseTrainer):
         pdb.set_trace()
         input_ids = []
         attention_masks = []
+        summary_ids = []
         for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
             query_text = self.data.get_query_text(subreddit, title, post)
             inputs = self.data.tokenizer(query_text, return_tensors="pt")
-            inputs = self._to_device(inputs)
-
             inputs['input_ids'] = inputs['input_ids'].squeeze()
             inputs['attention_mask'] = inputs['attention_mask'].squeeze()
-
+            inputs = self._to_device(inputs)
             input_ids.append(torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id))
             attention_masks.append(torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0))
-        
+
+            summaries = self.data.tokenizer(summary, return_tensors="pt")['input_ids'].squeeze()
+            summary_ids.append(summaries)
         return {
             'input_ids': torch.stack(input_ids),
             'attention_mask': torch.stack(attention_masks)
-        }
+        }, summary_ids
+    
+    def torch_batch_to_request(self, batch):
         
+        states = full_states[:, -self.data.SFT_MAX_REPONSE_LENGTH:]
+
+        for i in enumerate(batch): # enumerate through batch
+            # extract post
+            request = PPORLHFEval._claude_request_json(post, generated_summary, reference_summary)
+            requests.append(request)
 
     def construct_claude_request(self):
         self.model.eval()
@@ -129,31 +138,22 @@ class PPORLHFEval(BaseTrainer):
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
 
-            batch = self.format_batch(batch, self.data.__class__.SFT_MAX_QUERY_LENGTH)
+            input_batch, summary_ids = self.format_batch(batch, self.data.__class__.SFT_MAX_QUERY_LENGTH)
 
-            
             # get prompts from batch
             # get reference summaries from batch
             pdb.set_trace()
 
             full_states, _  = self.model.generate(
-                batch,
+                input_batch,
                 self.data.__class__.SFT_MAX_INPUT_LENGTH, # ???
                 self.config.generation_temperature,
                 max_query_length=self.data.__class__.SFT_MAX_QUERY_LENGTH,
             )
             del _
 
-            response_length = full_states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
+            pdb.set_trace()
 
-            # Truncate to responses
-            states = full_states[:, -response_length:]
-
-
-            for i in enumerate(batch): # enumerate through batch
-                # extract post
-                request = PPORLHFEval._claude_request_json(post, generated_summary, reference_summary)
-                requests.append(request)
 
         batch = self.client.messages.batches.create(requests=requests)
         print(f"Submitted 7000 comparisons: {batch.id}")
