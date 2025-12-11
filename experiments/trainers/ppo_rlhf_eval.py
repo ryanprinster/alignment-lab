@@ -169,7 +169,7 @@ class PPORLHFEval(BaseTrainer):
                 max_query_length=self.data.__class__.SFT_MAX_QUERY_LENGTH,
             )
             del _
-            prompts = self.data.tokenizer.decode(input_batch['input_ids'])
+            prompts = input_batch['input_ids']
             del input_batch
             generated_summaries = full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
             del full_states
