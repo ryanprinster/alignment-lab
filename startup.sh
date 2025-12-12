@@ -23,13 +23,13 @@ python -m experiments RMTrainer train --config RLFHCaseStudyConfig --load_checkp
 python -m experiments RMTrainer validation --config RLFHCaseStudyConfig --load_checkpoint_path checkpoints/rm_final_checkpoint_v2.pt  --batch_size 64 --accumulation_steps 1
 # PPORLHFTrainer
 python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128
-nohup python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128 --alpha 1.5e-6 > train.log 2>&1 &
+nohup python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128 --alpha 1.5e-6 --save_freq_steps 150 > train.log 2>&1 &
 tail -f train.log
 python3 -m experiments PPORLHFTrainer train --config RLFHPPOConfig --batch_size 128 --rm_model_path "models--vwxyzjn--EleutherAI_pythia-1b-deduped__reward__tldr/snapshots/33b95d01a8f208eba7236e2a3e5277f342b453cf/pytorch_model.bin" --sft_model_path "models--vwxyzjn--EleutherAI_pythia-1b-deduped__sft__tldr/snapshots/997a2257eaaa3bb8d2ecf14e1929789dd3dceab0/pytorch_model.bin"
 --hf_sft_model_name "vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr" --hf_sft_revision_name "sft__44413__1708611267" --hf_rm_model_name "vwxyzjn/EleutherAI_pythia-1b-deduped__reward__tldr" --hf_rm_revision_name "reward__44413__1708628552"
 
 # PPORLHFEval
-python3 -m experiments PPORLHFEval construct_claude_request --config RLFHPPOConfig --batch_size 128
+python3 -m experiments PPORLHFEval construct_claude_request --config RLFHPPOConfig --batch_size 128 --policy_checkpoint_path "checkpoints/policy__checkpoint_step_900.pt"
 
 
 

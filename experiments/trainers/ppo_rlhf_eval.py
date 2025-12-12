@@ -147,7 +147,6 @@ class PPORLHFEval(BaseTrainer):
             reference_summary_text = self.tensor_to_formatted_string(summary_ids[i])
             request = PPORLHFEval._claude_request_json(len(self.requests), prompt_text, generated_summary_text, reference_summary_text)
             self.requests.append(request)
-            pdb.set_trace()
         print("\n\n\n", PPORLHFEval._judge_prompt(prompt_text, generated_summary_text, reference_summary_text), "\n\n\n")
 
 
