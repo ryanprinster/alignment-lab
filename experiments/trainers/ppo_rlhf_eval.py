@@ -156,7 +156,7 @@ class PPORLHFEval(BaseTrainer):
         self.model.eval()
 
         self.requests = []
-        pdb.set_trace()
+        # pdb.set_trace()
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
 
