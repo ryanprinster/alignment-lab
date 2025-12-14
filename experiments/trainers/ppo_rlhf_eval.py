@@ -53,11 +53,11 @@ class PPORLHFEval(BaseTrainer):
         # Model that we want to evaluate vs reference summaries
         # self.model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
 
-        self.checkpointer.load_checkpoint(
-                self.config.policy_checkpoint_path,
-                self.model,
-                self.device
-            )
+        # self.checkpointer.load_checkpoint(
+        #         self.config.policy_checkpoint_path,
+        #         self.model,
+        #         self.device
+        #     )
         
         self.model = self._load_model(
             HFModel_Policy,
