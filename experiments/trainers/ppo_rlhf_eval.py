@@ -47,7 +47,7 @@ class PPORLHFEval(BaseTrainer):
     def __init__(self, config: PPOConfigBase):
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.client = anthropic.Anthropic(api_key="your-api-key")
+        self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.checkpointer = Checkpointer(self.config)
 
         # Model that we want to evaluate vs reference summaries
@@ -74,6 +74,7 @@ class PPORLHFEval(BaseTrainer):
                 batch[k] = batch[k].to(self.device)
         return batch
 
+    @staticmethod
     def _judge_prompt(post, summary_a, summary_b):
         return f"""Which of the following summaries does a better job of summarizing the most important points in the given forum post, without including unimportant or irrelevant details? Judge based on accuracy, coverage, and coherence.
 
@@ -90,6 +91,7 @@ class PPORLHFEval(BaseTrainer):
             Comparison: <one-sentence comparison and explanation>
             Preferred: <"A" or "B">"""
 
+    @staticmethod
     def _claude_request_json(idx, post, summary_a, summary_b):
         return {
             "custom_id": f"comparison-{idx}",
@@ -154,6 +156,7 @@ class PPORLHFEval(BaseTrainer):
         self.model.eval()
 
         self.requests = []
+        pdb.set_trace()
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
 
