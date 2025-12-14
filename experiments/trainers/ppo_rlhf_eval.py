@@ -51,7 +51,7 @@ class PPORLHFEval(BaseTrainer):
         self.checkpointer = Checkpointer(self.config)
 
         # Model that we want to evaluate vs reference summaries
-        self.model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
+        # self.model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
 
         self.checkpointer.load_checkpoint(
                 self.config.policy_checkpoint_path,
@@ -59,11 +59,11 @@ class PPORLHFEval(BaseTrainer):
                 self.device
             )
         
-        # self.reference_ppo_model = self._load_model(
-        #     HFModel_Policy,
-        #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
-        #     hf_revision="sft__44413__1708611267",
-        # ).to(self.device)
+        self.model = self._load_model(
+            HFModel_Policy,
+            hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
+            hf_revision="ppo_left_padding_new_nowhiten_reward__44413__1709671965",
+        ).to(self.device)
 
         self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
        
