@@ -58,12 +58,11 @@ class PPORLHFEval(BaseTrainer):
         #         self.model,
         #         self.device
         #     )
-        
-        self.model = self._load_model(
-            HFModel_Policy,
-            hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
-            hf_revision="ppo_left_padding_new_nowhiten_reward__44413__1709671965",
-        ).to(self.device)
+
+        self.model = HFModel_Policy.from_pretrained(
+            config=self.config,
+            model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
+            revision="ppo_left_padding_new_nowhiten_reward__44413__1709671965").to(self.device)
 
         self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
        
