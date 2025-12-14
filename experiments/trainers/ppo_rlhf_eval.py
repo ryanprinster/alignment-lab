@@ -184,6 +184,76 @@ class PPORLHFEval(BaseTrainer):
         batch = self.client.messages.batches.create(requests=self.requests)
         print(f"Submitted comparisons: {batch.id}")
 
+    
+    def download_batch_results(self, batch_id="msgbatch_01KunPMsZouDwKJsWNh2j3Er", output_file="batch_results.jsonl"):
+        """Download batch results and save to file"""
+        
+        # Check if batch is complete
+        batch = self.client.messages.batches.retrieve(batch_id)
+        print(f"Status: {batch.processing_status}")
+        print(f"Succeeded: {batch.request_counts.succeeded}")
+        print(f"Errored: {batch.request_counts.errored}")
+        
+        if batch.processing_status != "ended":
+            print(f"Batch not ready yet. Current status: {batch.processing_status}")
+            return None
+        
+        # Download all results
+        results = []
+        for result in self.client.messages.batches.results(batch_id):
+            if result.result.type == "succeeded":
+                response_text = result.result.message.content[0].text
+                results.append({
+                    "custom_id": result.custom_id,
+                    "response": response_text,
+                    "status": "success"
+                })
+            else:
+                results.append({
+                    "custom_id": result.custom_id,
+                    "error": str(result.result.error),
+                    "status": "error"
+                })
+        
+        # Save to file
+        import json
+        with open(output_file, 'w') as f:
+            for result in results:
+                f.write(json.dumps(result) + '\n')
+        
+        print(f"Downloaded {len(results)} results to {output_file}")
+        return results
+
+
+    def parse_preferences(self):
+        """Extract A/B preferences from results"""
+        results = 
+        preferences = []
+        for result in results:
+            if result['status'] == 'success':
+                response = result['response']
+                # Extract the "Preferred: A" or "Preferred: B" line
+                if "Preferred: A" in response:
+                    preference = "A"  # Your model won
+                elif "Preferred: B" in response:
+                    preference = "B"  # Reference won
+                else:
+                    preference = "unclear"
+                
+                preferences.append({
+                    "comparison_id": result['custom_id'],
+                    "preference": preference,
+                    "full_response": response
+                })
+        
+        # Calculate win rate
+        model_wins = sum(1 for p in preferences if p['preference'] == 'A')
+        total = len(preferences)
+        win_rate = model_wins / total if total > 0 else 0
+        
+        print(f"Model win rate: {win_rate:.2%} ({model_wins}/{total})")
+        return preferences
+
             
             
             
