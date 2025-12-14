@@ -225,9 +225,8 @@ class PPORLHFEval(BaseTrainer):
         return results
 
 
-    def parse_preferences(self):
+    def parse_preferences(self, results):
         """Extract A/B preferences from results"""
-        results = 
         preferences = []
         for result in results:
             if result['status'] == 'success':
