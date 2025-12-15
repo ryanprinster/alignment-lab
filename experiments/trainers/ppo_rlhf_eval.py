@@ -205,11 +205,19 @@ class PPORLHFEval(BaseTrainer):
         for result in self.client.messages.batches.results(batch_id):
             if result.result.type == "succeeded":
                 response_text = result.result.message.content[0].text
+                pdb.set_trace()
                 results.append({
                     "custom_id": result.custom_id,
                     "response": response_text,
-                    "status": "success"
+                    "status": "success",
+                    "generated_summary": summary_pair.get('generated', ''),
+                    "reference_summary": summary_pair.get('reference', '')
                 })
+
+                idx = int(result.custom_id.split('-')[1])
+                summary_pair = self.summaries[idx] if idx < len(self.summaries) else {}
+
+
             else:
                 results.append({
                     "custom_id": result.custom_id,
@@ -254,6 +262,10 @@ class PPORLHFEval(BaseTrainer):
         
         print(f"Model win rate: {win_rate:.2%} ({model_wins}/{total})")
         return preferences
+    
+    # def length_controlled_win_rates(self):
+
+
 
             
             
