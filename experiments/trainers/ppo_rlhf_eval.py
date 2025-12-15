@@ -38,6 +38,7 @@ from experiments.monitor import detect_nans
 
 
 import anthropic
+import json
 
 class PPORLHFEval(BaseTrainer):
     
@@ -51,24 +52,24 @@ class PPORLHFEval(BaseTrainer):
         self.checkpointer = Checkpointer(self.config)
 
         # Model that we want to evaluate vs reference summaries
-        # self.model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
+        self.model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
 
-        # self.checkpointer.load_checkpoint(
-        #         self.config.policy_checkpoint_path,
-        #         self.model,
-        #         self.device
-        #     )
+        self.checkpointer.load_checkpoint(
+                self.config.policy_checkpoint_path,
+                self.model,
+                self.device
+            )
 
         # self.model = HFModel_Policy.from_pretrained(
         #     config=self.config,
         #     model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
         #     revision="ppo_left_padding_new_nowhiten_reward__44413__1709671965").to(self.device)
 
-        self.model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
+        # self.model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
 
 
         self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
-       
+        
 
     def _to_device(self, batch):
         for k in batch.keys():
@@ -106,9 +107,9 @@ class PPORLHFEval(BaseTrainer):
             }
         }
     
-    def tensor_to_formatted_string(self, tensor):
+    def trim_tensor(self, tensor):
         """
-        Trims tokenized tensor of both pad and eos tokens, then decodes to text 
+        Trims tokenized tensor of pad, eos, and bos tokens 
         """
         trim_ids = [self.data.tokenizer.pad_token_id, self.data.tokenizer.eos_token_id, self.data.tokenizer.bos_token_id]
 
@@ -119,9 +120,8 @@ class PPORLHFEval(BaseTrainer):
             left += 1
         while right >= left and tensor[right].item() in trim_ids:
             right -= 1
-            
-        return self.data.tokenizer.decode(tensor[left:right+1])
-        
+
+        return tensor[left:right+1]
 
     
     def format_batch_for_generation(self, batch, max_query_length):
@@ -146,44 +146,60 @@ class PPORLHFEval(BaseTrainer):
     @profile
     def torch_batch_to_request(self, prompts, summary_ids, generated_summaries):
         for i in range(len(summary_ids)): # enumerate through batch
-            prompt_text = self.tensor_to_formatted_string(prompts[i])
-            generated_summary_text = self.tensor_to_formatted_string(generated_summaries[i])
-            reference_summary_text = self.tensor_to_formatted_string(summary_ids[i])
+            prompt_ids = self.trim_tensor(prompts[i])
+            gen_sum_ids = self.trim_tensor(generated_summaries[i])
+            ref_sum_ids = self.trim_tensor(summary_ids[i])
+
+            prompt_text = self.data.tokenizer.decode(prompt_ids)
+            generated_summary_text = self.data.tokenizer.decode(gen_sum_ids)
+            reference_summary_text = self.data.tokenizer.decode(ref_sum_ids)
             request = PPORLHFEval._claude_request_json(len(self.requests), prompt_text, generated_summary_text, reference_summary_text)
             self.requests.append(request)
+
+            self.summaries.append({
+                'generated': generated_summary_text,
+                'reference': reference_summary_text,
+                'prompt': prompt_text,
+                'log(len(gen)/len(ref))': torch.log(gen_sum_ids.size(0)/ref_sum_ids.size(0)).item()
+            })
         print("\n\n\n", PPORLHFEval._judge_prompt(prompt_text, generated_summary_text, reference_summary_text), "\n\n\n")
 
+    def generate_summaries(self, input_batch):
+        full_states, _  = self.model.generate(
+            input_batch,
+            self.data.__class__.SFT_MAX_INPUT_LENGTH, # ???
+            self.config.generation_temperature,
+            max_query_length=self.data.__class__.SFT_MAX_QUERY_LENGTH,
+        )
+        del _
+        generated_summaries = full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
+        del full_states
+        return generated_summaries
 
     def construct_claude_request(self):
         self.model.eval()
 
         self.requests = []
+        self.summaries = []
         pdb.set_trace()
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
+            print(f"Preparing batch {batch_idx}")
             
-            input_batch, summary_ids = self.format_batch_for_generation(batch, self.data.__class__.SFT_MAX_QUERY_LENGTH)
-
-            # get prompts from batch
-            # get reference summaries from batch
-
-            full_states, _  = self.model.generate(
-                input_batch,
-                self.data.__class__.SFT_MAX_INPUT_LENGTH, # ???
-                self.config.generation_temperature,
-                max_query_length=self.data.__class__.SFT_MAX_QUERY_LENGTH,
-            )
-            del _
+            input_batch, reference_summary_ids = self.format_batch_for_generation(batch, self.data.__class__.SFT_MAX_QUERY_LENGTH)
             prompts = input_batch['input_ids']
+            generated_summaries = self.generate_summaries(input_batch)
             del input_batch
-            generated_summaries = full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH:]
-            del full_states
 
-            self.torch_batch_to_request(prompts, summary_ids, generated_summaries)
+            self.torch_batch_to_request(prompts, reference_summary_ids, generated_summaries)
 
         print("finished creating batched requests")
         pdb.set_trace()
         batch = self.client.messages.batches.create(requests=self.requests)
+
+        with open(f'summaries_{batch.id}.jsonl', 'w') as f:
+            for summary in self.summaries:
+                f.write(json.dumps(summary) + '\n')
         print(f"Submitted comparisons: {batch.id}")
 
     
