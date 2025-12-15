@@ -39,6 +39,7 @@ from experiments.monitor import detect_nans
 
 import anthropic
 import json
+import math
 
 class PPORLHFEval(BaseTrainer):
     
@@ -160,7 +161,7 @@ class PPORLHFEval(BaseTrainer):
                 'generated': generated_summary_text,
                 'reference': reference_summary_text,
                 'prompt': prompt_text,
-                'log(len(gen)/len(ref))': torch.log(gen_sum_ids.size(0)/ref_sum_ids.size(0)).item()
+                'log(len(gen)/len(ref))': math.log(gen_sum_ids.size(0)/ref_sum_ids.size(0))
             })
         print("\n\n\n", PPORLHFEval._judge_prompt(prompt_text, generated_summary_text, reference_summary_text), "\n\n\n")
 
