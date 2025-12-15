@@ -187,7 +187,7 @@ class PPORLHFEval(BaseTrainer):
         print(f"Submitted comparisons: {batch.id}")
 
     
-    def download_batch_results(self, batch_id="msgbatch_01KunPMsZouDwKJsWNh2j3Er", output_file="batch_results.jsonl"):
+    def download_batch_results(self, batch_id="msgbatch_01KunPMsZouDwKJsWNh2j3Er", output_file="batch_results_my_ppo.jsonl"):
         """Download batch results and save to file"""
         
         # Check if batch is complete
@@ -206,6 +206,11 @@ class PPORLHFEval(BaseTrainer):
             if result.result.type == "succeeded":
                 response_text = result.result.message.content[0].text
                 pdb.set_trace()
+                
+                idx = int(result.custom_id.split('-')[1])
+                summary_pair = self.summaries[idx] if idx < len(self.summaries) else {}
+
+
                 results.append({
                     "custom_id": result.custom_id,
                     "response": response_text,
@@ -214,8 +219,6 @@ class PPORLHFEval(BaseTrainer):
                     "reference_summary": summary_pair.get('reference', '')
                 })
 
-                idx = int(result.custom_id.split('-')[1])
-                summary_pair = self.summaries[idx] if idx < len(self.summaries) else {}
 
 
             else:
