@@ -148,102 +148,6 @@ class PPORLHFTrainer(BaseTrainer):
         self.global_step = training_state['global_step']
         
         return training_state
-
-    def _zero_grad(self, optimizer_policy, optimizer_value):
-        optimizer_policy.zero_grad()
-        optimizer_value.zero_grad()
-
-    @profile
-    def _forward(self, states):
-        new_values = self.value_model.forward(
-            states, 
-            max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH - 1).squeeze(1) 
-        new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH-1)
-        new_policy_logits = new_policy_logits[:, :-1, :] # slice to action indexing
-        return new_values, new_policy_logits
-
-    def _compute_value_loss_mse(self, R, new_values, old_values, value_pad_mask):
-        old_values = old_values[:, :-1].masked_fill(~value_pad_mask, 0)
-        new_values = new_values[:, :-1].masked_fill(~value_pad_mask, 0)
-        
-        V_clipped = old_values + torch.clamp(
-            new_values - old_values, 
-            -self.config.eps_value_clipping, 
-            self.config.eps_value_clipping
-        )
-        
-        loss_value_unclipped = (new_values - R) ** 2
-        loss_value_clipped = (V_clipped - R) ** 2
-        
-        loss_value = torch.max(loss_value_unclipped, loss_value_clipped)
-        
-        return masked_mean(loss_value * self.config.c1, value_pad_mask)
-
-    def _compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):
-
-        old_log_probs = old_log_probs.detach()
-        A = A.detach()
-
-        new_log_policies = masked_log_softmax(new_policy_logits, action_pad_mask.unsqueeze(2), mask_value=0, dim=-1)
-        new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
-        diff_log_probs = (new_log_probs - old_log_probs).masked_fill(~action_pad_mask, 0)
-        
-        ratios = torch.exp(diff_log_probs)
-
-        # Compute ppo loss
-        loss_ppo = torch.min(ratios * A, torch.clamp(ratios, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
-        loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
-
-
-        ### For tracking ###
-        with torch.no_grad():
-            entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
-            entropy = -masked_mean(entropy, action_pad_mask)
-            approx_kl = masked_mean(0.5 * diff_log_probs**2, action_pad_mask)
-
-            # NOTE: Upon code inspection, Huang et al. computes some of these metrics slightly differently.
-            # both were included here for analysis purposes.
-            new_log_policies_unmasked = torch.log_softmax(new_policy_logits, dim=-1)
-            entropy_per_token = -torch.sum(new_log_policies_unmasked * torch.exp(new_log_policies_unmasked), dim=-1) 
-            entropy_paper = entropy_per_token.mean()
-            entropy_per_sequence = entropy_per_token.sum(dim=-1) 
-            approx_kl_paper = (0.5 * diff_log_probs**2).mean()
-
-            log_data = {
-                'ratios': ratios,
-                'entropy': entropy,
-                'approx_kl': approx_kl,
-                'entropy_paper': entropy_paper,
-                'entropy_per_sequence': entropy_per_sequence,
-                'approx_kl_paper': approx_kl_paper
-
-            }
-
-        return loss_ppo, log_data
-    
-    @profile
-    def _backward(self, loss_value, loss_ppo):
-        loss_ppo.backward()
-        loss_value.backward()
-    
-    @profile
-    def _step(self, optimizer_policy, optimizer_value):
-        optimizer_policy.step()
-        optimizer_value.step()
-        self.lr_scheduler_policy.step()
-        self.lr_scheduler_value.step()
-
-    @profile
-    def _update_old_models(self):
-        self.old_policy_state_dict = self.policy_model.state_dict()
-        self.old_value_state_dict = self.value_model.state_dict()
-
-    @profile
-    def _to_device(self, batch):
-        for k in batch.keys():
-            if isinstance(batch[k], torch.Tensor):
-                batch[k] = batch[k].to(self.device)
-        return batch
     
     @profile
     def _log(self, loss_ppo, loss_value, k, old_data, ppo_log_data):
@@ -344,6 +248,103 @@ class PPORLHFTrainer(BaseTrainer):
                     ),
                 }
         )
+
+    def _zero_grad(self, optimizer_policy, optimizer_value):
+        optimizer_policy.zero_grad()
+        optimizer_value.zero_grad()
+
+    @profile
+    def _forward(self, states):
+        new_values = self.value_model.forward(
+            states, 
+            max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH - 1).squeeze(1) 
+        new_policy_logits, _ = self.policy_model.forward(states, max_query_length_truncate=self.data.SFT_MAX_QUERY_LENGTH-1)
+        new_policy_logits = new_policy_logits[:, :-1, :] # slice to action indexing
+        return new_values, new_policy_logits
+
+    def _compute_value_loss_mse(self, R, new_values, old_values, value_pad_mask):
+        old_values = old_values[:, :-1].masked_fill(~value_pad_mask, 0)
+        new_values = new_values[:, :-1].masked_fill(~value_pad_mask, 0)
+        
+        V_clipped = old_values + torch.clamp(
+            new_values - old_values, 
+            -self.config.eps_value_clipping, 
+            self.config.eps_value_clipping
+        )
+        
+        loss_value_unclipped = (new_values - R) ** 2
+        loss_value_clipped = (V_clipped - R) ** 2
+        
+        loss_value = torch.max(loss_value_unclipped, loss_value_clipped)
+        
+        return masked_mean(loss_value * self.config.c1, value_pad_mask)
+
+    def _compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):
+
+        old_log_probs = old_log_probs.detach()
+        A = A.detach()
+
+        new_log_policies = masked_log_softmax(new_policy_logits, action_pad_mask.unsqueeze(2), mask_value=0, dim=-1)
+        new_log_probs = torch.gather(new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)).squeeze(-1)
+        diff_log_probs = (new_log_probs - old_log_probs).masked_fill(~action_pad_mask, 0)
+        
+        ratios = torch.exp(diff_log_probs)
+
+        # Compute ppo loss
+        loss_ppo = torch.min(ratios * A, torch.clamp(ratios, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
+        loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
+
+
+        ### For tracking ###
+        with torch.no_grad():
+            entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
+            entropy = -masked_mean(entropy, action_pad_mask)
+            approx_kl = masked_mean(0.5 * diff_log_probs**2, action_pad_mask)
+
+            # NOTE: Upon code inspection, Huang et al. computes some of these metrics slightly differently.
+            # both were included here for analysis purposes.
+            new_log_policies_unmasked = torch.log_softmax(new_policy_logits, dim=-1)
+            entropy_per_token = -torch.sum(new_log_policies_unmasked * torch.exp(new_log_policies_unmasked), dim=-1) 
+            entropy_paper = entropy_per_token.mean()
+            entropy_per_sequence = entropy_per_token.sum(dim=-1) 
+            approx_kl_paper = (0.5 * diff_log_probs**2).mean()
+
+            log_data = {
+                'ratios': ratios,
+                'entropy': entropy,
+                'approx_kl': approx_kl,
+                'entropy_paper': entropy_paper,
+                'entropy_per_sequence': entropy_per_sequence,
+                'approx_kl_paper': approx_kl_paper
+
+            }
+
+        return loss_ppo, log_data
+    
+    @profile
+    def _backward(self, loss_value, loss_ppo):
+        loss_ppo.backward()
+        loss_value.backward()
+    
+    @profile
+    def _step(self, optimizer_policy, optimizer_value):
+        optimizer_policy.step()
+        optimizer_value.step()
+        self.lr_scheduler_policy.step()
+        self.lr_scheduler_value.step()
+
+    @profile
+    def _update_old_models(self):
+        self.old_policy_state_dict = self.policy_model.state_dict()
+        self.old_value_state_dict = self.value_model.state_dict()
+
+    @profile
+    def _to_device(self, batch):
+        for k in batch.keys():
+            if isinstance(batch[k], torch.Tensor):
+                batch[k] = batch[k].to(self.device)
+        return batch
+    
 
 
     @profile
