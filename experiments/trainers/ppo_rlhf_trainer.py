@@ -383,44 +383,42 @@ class PPORLHFTrainer(BaseTrainer):
 
                         # FP32 --> FP16 for mixed precision training
                         with self.mixed_precision_context:
-                            new_values, new_policy_logits = self._forward(old_data['full_states'], ) # TODO: which pad mask
+                            new_values, new_policy_logits = self._forward(old_data['full_states'])
 
                             # 2.1 Compute mse loss for value model
-                            loss_value = self._compute_value_loss_mse(old_data['R'], new_values, old_data['values'], old_data['value_pad_mask'])
+                            self.loss_value = self._compute_value_loss_mse(old_data['R'], new_values, old_data['values'], old_data['value_pad_mask'])
 
                             # 2.2 Compute ppo loss for policy model
-                            loss_ppo, ppo_log_data = self._compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
+                            self.loss_ppo, ppo_log_data = self._compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
 
                             del new_policy_logits
 
                         # 2.3 Update models
-                        self._backward(loss_value, loss_ppo)
+                        self._backward(self.loss_value, self.loss_ppo)
                         self._step(self.optimizer_policy, self.optimizer_value)
 
-                        
-                        ### Logging ###
-                        self._log(loss_ppo, loss_value, k, old_data, ppo_log_data)
 
-                        # TODO: could move one scope out
-                        self.checkpointer.save_checkpoint(
-                            self.policy_model,
-                            self.optimizer_policy,
-                            self.global_step,
-                            epoch,
-                            loss=loss_ppo,
-                            checkpoint_prefix="policy_",
-                            final_checkpoint=False
-                        )
+                        self._log(self.loss_ppo, self.loss_value, k, old_data, ppo_log_data)
 
-                        self.checkpointer.save_checkpoint(
-                            self.value_model,
-                            self.optimizer_value,
-                            self.global_step,
-                            epoch,
-                            loss=loss_value,
-                            checkpoint_prefix="value_",
-                            final_checkpoint=False
-                        )
+                self.checkpointer.save_checkpoint(
+                    self.policy_model,
+                    self.optimizer_policy,
+                    self.global_step,
+                    epoch,
+                    loss=self.loss_ppo,
+                    checkpoint_prefix="policy_",
+                    final_checkpoint=False
+                )
+
+                self.checkpointer.save_checkpoint(
+                    self.value_model,
+                    self.optimizer_value,
+                    self.global_step,
+                    epoch,
+                    loss=self.loss_value,
+                    checkpoint_prefix="value_",
+                    final_checkpoint=False
+                )
                                             
                 # 3. Theta old <-- theta new
                 self._update_old_models()
