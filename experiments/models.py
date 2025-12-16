@@ -54,7 +54,7 @@ class HFModel(nn.Module, ABC):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.config = config
-        self.transformer = self._set_model_class()
+        self.transformer = self._get_model_class()
         if config.enable_gradient_checkpointing:
             self.transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
@@ -68,7 +68,7 @@ class HFModel(nn.Module, ABC):
         self.transformer.resize_token_embeddings(len(self.tokenizer))
 
     @abstractmethod
-    def _set_model_class(self):
+    def _get_model_class(self):
         pass
 
     def _init_model_weights(self):
@@ -192,7 +192,7 @@ class HFModel_Causal(HFModel):
             return outputs.logits / (self.config.generation_temperature + 1e-7 ), outputs.loss
         return outputs.logits, outputs.loss
 
-    def _set_model_class(self):
+    def _get_model_class(self):
         return AutoModelForCausalLM.from_pretrained(HFModel.HF_MODEL_NAME)
 
 
@@ -329,7 +329,7 @@ class HFModel_Value(HFModel_TokenClassification):
 #         print(f"Initializing Head Bias to {calculated_sft_bias}...")
 #         self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
 
-#     def _set_model_class(self):
+#     def _get_model_class(self):
 #         return AutoModelForSequenceClassification.from_pretrained(
 #             HFModel.HF_MODEL_NAME, 
 #             num_labels=1
@@ -357,7 +357,7 @@ class HFModel_Value(HFModel_TokenClassification):
 #         self._init_head_weights(init_rm_model)
 
 
-#     def _set_model_class(self):
+#     def _get_model_class(self):
 #         return AutoModelForTokenClassification.from_pretrained(
 #             HFModel.HF_MODEL_NAME,
 #             num_labels=1
