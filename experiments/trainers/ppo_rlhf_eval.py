@@ -41,6 +41,9 @@ import anthropic
 import json
 import math
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 class PPORLHFEval(BaseTrainer):
     
 
@@ -287,13 +290,114 @@ class PPORLHFEval(BaseTrainer):
         print(f"Model win rate: {win_rate:.2%} ({model_wins}/{total})")
         return preferences
     
-    # def length_controlled_win_rates(self):
-
-    def entry(self):
-        pdb.set_trace()
-
-
+    def load_and_bin_results(self, results_file, n_bins=8):
+        """Load results and bin by length control"""
+        # Load results
+        results = []
+        with open(results_file, 'r') as f:
+            for line in f:
+                results.append(json.loads(line))
+        
+        # Extract length ratios and wins
+        length_ratios = []
+        wins = []
+        
+        for result in results:
+            if result['status'] != 'success':
+                continue
             
+            response = result['response']
+            
+            # Extract preference
+            if "Preferred: A" in response:
+                wins.append(1)  # Model won
+            elif "Preferred: B" in response:
+                wins.append(0)  # Reference won
+            else:
+                continue  # Skip unclear
+            
+            # Get length ratio
+            len_control = result.get('len_control', None)
+            if len_control is not None and len_control != '':
+                length_ratios.append(len_control)
+            else:
+                # Fallback: calculate from summaries if not stored
+                gen_tokens = self.data.tokenizer.encode(result['generated_summary'])
+                ref_tokens = self.data.tokenizer.encode(result['reference_summary'])
+                if len(ref_tokens) > 0:
+                    len_control = np.log(len(gen_tokens) / len(ref_tokens))
+                    length_ratios.append(len_control)
+        
+        length_ratios = np.array(length_ratios)
+        wins = np.array(wins)
+        
+        # Create bins with equal number of samples (quantile-based)
+        percentiles = np.linspace(0, 100, n_bins + 1)
+        bin_edges = np.percentile(length_ratios, percentiles)
+        
+        # Calculate win rate per bin
+        bin_centers = []
+        win_rates = []
+        bin_counts = []
+        
+        for i in range(n_bins):
+            mask = (length_ratios >= bin_edges[i]) & (length_ratios < bin_edges[i+1])
+            if i == n_bins - 1:  # Include right edge in last bin
+                mask = (length_ratios >= bin_edges[i]) & (length_ratios <= bin_edges[i+1])
+            
+            if mask.sum() > 0:
+                bin_centers.append((bin_edges[i] + bin_edges[i+1]) / 2)
+                win_rates.append(wins[mask].mean())
+                bin_counts.append(mask.sum())
+        
+        return bin_centers, win_rates, bin_counts
+
+    def plot_length_controlled_winrates(self, ppo_results_file, sft_results_file):
+        # Load and bin both models
+        ppo_centers, ppo_rates, ppo_counts = self.load_and_bin_results(ppo_results_file)
+        sft_centers, sft_rates, sft_counts = self.load_and_bin_results(sft_results_file)
+        
+        # Plot
+        plt.figure(figsize=(12, 7))
+        plt.plot(ppo_centers, ppo_rates, 'o-', linewidth=2, markersize=8, label='PPO', color='blue')
+        plt.plot(sft_centers, sft_rates, 's-', linewidth=2, markersize=8, label='SFT', color='orange')
+        plt.axhline(y=0.5, color='gray', linestyle='--', alpha=0.5, label='Random baseline')
+        
+        plt.xlabel('log(generated_length / reference_length)', fontsize=12)
+        plt.ylabel('Win Rate', fontsize=12)
+        plt.title('Length-Controlled Win Rate: PPO vs SFT', fontsize=14)
+        plt.grid(True, alpha=0.3)
+        plt.legend(fontsize=11)
+        
+        # Add sample counts as text
+        for x, y, count in zip(ppo_centers, ppo_rates, ppo_counts):
+            plt.text(x, y + 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='blue')
+        for x, y, count in zip(sft_centers, sft_rates, sft_counts):
+            plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='orange')
+        
+        plt.tight_layout()
+        plt.savefig('length_controlled_winrate_comparison.png', dpi=300)
+        plt.show()
+        
+        # Print statistics
+        print("\n=== PPO Model ===")
+        for i, (center, rate, count) in enumerate(zip(ppo_centers, ppo_rates, ppo_counts)):
+            print(f"Bin {i+1}: log_ratio={center:.3f}, win_rate={rate:.3f}, n={count}")
+        
+        print("\n=== SFT Model ===")
+        for i, (center, rate, count) in enumerate(zip(sft_centers, sft_rates, sft_counts)):
+            print(f"Bin {i+1}: log_ratio={center:.3f}, win_rate={rate:.3f}, n={count}")
+        
+        # Overall win rates
+        ppo_overall = np.average(ppo_rates, weights=ppo_counts)
+        sft_overall = np.average(sft_rates, weights=sft_counts)
+        print(f"\nOverall PPO win rate: {ppo_overall:.3f}")
+        print(f"Overall SFT win rate: {sft_overall:.3f}")
+        
+        return {
+            'ppo': (ppo_centers, ppo_rates, ppo_counts),
+            'sft': (sft_centers, sft_rates, sft_counts)
+        }
             
             
 
