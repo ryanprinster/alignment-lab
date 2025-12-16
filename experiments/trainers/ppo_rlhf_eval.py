@@ -352,7 +352,7 @@ class PPORLHFEval(BaseTrainer):
         
         return bin_centers, win_rates, bin_counts
 
-    def plot_length_controlled_winrates(self, ppo_results_file="batch_results_my_ppo.jsonl", sft_results_file="batch_results_sft.jsonl"):
+    def plot_length_controlled_winrates(self, ppo_results_file="batch_results_my_ppo.jsonl", sft_results_file="batch_results_my_sft.jsonl"):
         # Load and bin both models
         ppo_centers, ppo_rates, ppo_counts = self.load_and_bin_results(ppo_results_file)
         sft_centers, sft_rates, sft_counts = self.load_and_bin_results(sft_results_file)
