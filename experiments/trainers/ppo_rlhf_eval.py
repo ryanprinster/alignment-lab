@@ -392,7 +392,7 @@ class PPORLHFEval(BaseTrainer):
         #     plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='red')
 
         plt.tight_layout()
-        plt.gca().set_aspect('equal', adjustable='box')
+        plt.axis('equal')
         plt.savefig('length_controlled_winrate_comparison.png', dpi=300)
         plt.show()
         
