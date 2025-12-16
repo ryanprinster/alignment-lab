@@ -211,7 +211,7 @@ class HFModel_Classification(HFModel):
         
         # score layer doesn't come with a bias
         if self.transformer.score.bias is None:
-            self.transformer.score.bias = nn.Parameter(torch.zeros(1))
+            self.transformer.score.bias = nn.Parameter(torch.zeros(self.transformer.score.out_features))
 
         if calculated_sft_bias is not None:
             self.init_head_bias(calculated_sft_bias)
