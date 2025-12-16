@@ -295,7 +295,7 @@ class PPORLHFTrainer(BaseTrainer):
         loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
 
 
-        ### For tracking ###
+        ### For logging ###
         with torch.no_grad():
             entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
             entropy = -masked_mean(entropy, action_pad_mask)
@@ -437,7 +437,7 @@ class PPORLHFTrainer(BaseTrainer):
                 self.optimizer_policy,
                 self.global_step,
                 epoch,
-                loss=0, # placeholder
+                loss=self.loss_ppo,
                 checkpoint_prefix="policy_",
                 final_checkpoint=True
             )
