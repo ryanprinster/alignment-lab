@@ -350,15 +350,17 @@ class PPORLHFEval(BaseTrainer):
         
         return bin_centers, win_rates, bin_counts
 
-    def plot_length_controlled_winrates(self, ppo_results_file="batch_results_my_ppo.jsonl", sft_results_file="batch_results_my_sft.jsonl"):
+    def plot_length_controlled_winrates(self, ppo_results_file="batch_results_my_ppo.jsonl", sft_results_file="batch_results_my_sft.jsonl", paper_ppo_results_file="batch_results_paper_ppo.jsonl"):
         # Load and bin both models
         ppo_centers, ppo_rates, ppo_counts = self.load_and_bin_results(ppo_results_file)
         sft_centers, sft_rates, sft_counts = self.load_and_bin_results(sft_results_file)
+        ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts = self.load_and_bin_results(paper_ppo_results_file)
         
         # Plot
         plt.figure(figsize=(12, 7))
         plt.plot(ppo_centers, ppo_rates, 'o-', linewidth=2, markersize=8, label='PPO', color='blue')
         plt.plot(sft_centers, sft_rates, 's-', linewidth=2, markersize=8, label='SFT', color='orange')
+        plt.plot(ppr_ppo_centers, ppr_ppo_rates, 'o-', linewidth=2, markersize=8, label='Paper PPO', color='red')
         plt.axhline(y=0.5, color='gray', linestyle='--', alpha=0.5, label='Random baseline')
         
         plt.xlabel('log(generated_length / reference_length)', fontsize=12)
@@ -372,7 +374,9 @@ class PPORLHFEval(BaseTrainer):
             plt.text(x, y + 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='blue')
         for x, y, count in zip(sft_centers, sft_rates, sft_counts):
             plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='orange')
-        
+        for x, y, count in zip(ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts):
+            plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='red')
+
         plt.tight_layout()
         plt.savefig('length_controlled_winrate_comparison.png', dpi=300)
         plt.show()
@@ -385,16 +389,24 @@ class PPORLHFEval(BaseTrainer):
         print("\n=== SFT Model ===")
         for i, (center, rate, count) in enumerate(zip(sft_centers, sft_rates, sft_counts)):
             print(f"Bin {i+1}: log_ratio={center:.3f}, win_rate={rate:.3f}, n={count}")
+
+        print("\n=== Paper PPO Model ===")
+        for i, (center, rate, count) in enumerate(zip(ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts)):
+            print(f"Bin {i+1}: log_ratio={center:.3f}, win_rate={rate:.3f}, n={count}")
+        
         
         # Overall win rates
         ppo_overall = np.average(ppo_rates, weights=ppo_counts)
         sft_overall = np.average(sft_rates, weights=sft_counts)
+        ppr_ppo_overall = np.average(ppr_ppo_rates, weights=ppr_ppo_counts)
         print(f"\nOverall PPO win rate: {ppo_overall:.3f}")
         print(f"Overall SFT win rate: {sft_overall:.3f}")
+        print(f"\nOverall Paper PPO win rate: {ppr_ppo_overall:.3f}")
         
         return {
             'ppo': (ppo_centers, ppo_rates, ppo_counts),
-            'sft': (sft_centers, sft_rates, sft_counts)
+            'sft': (sft_centers, sft_rates, sft_counts),
+            'ppr_ppo': (ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts)
         }
             
             
