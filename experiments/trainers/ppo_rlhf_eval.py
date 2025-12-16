@@ -185,7 +185,6 @@ class PPORLHFEval(BaseTrainer):
 
         self.requests = []
         self.summaries = []
-        pdb.set_trace()
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
             print(f"Preparing batch {batch_idx}")
@@ -198,7 +197,6 @@ class PPORLHFEval(BaseTrainer):
             self.torch_batch_to_request(prompts, reference_summary_ids, generated_summaries)
 
         print("finished creating batched requests")
-        pdb.set_trace()
         batch = self.client.messages.batches.create(requests=self.requests)
 
         with open(f'summaries_{batch.id}.jsonl', 'w') as f:
