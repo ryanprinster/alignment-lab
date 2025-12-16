@@ -64,12 +64,12 @@ class PPORLHFEval(BaseTrainer):
         #         self.device
         #     )
 
-        # self.model = HFModel_Policy.from_pretrained(
-        #     config=self.config,
-        #     model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
-        #     revision="ppo_left_padding_new_nowhiten_reward__44413__1709671965").to(self.device)
+        self.model = HFModel_Policy.from_pretrained(
+            config=self.config,
+            model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
+            revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device)
 
-        self.model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
+        # self.model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
 
 
         self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
