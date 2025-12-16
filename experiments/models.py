@@ -208,6 +208,7 @@ class HFModel_Classification(HFModel):
         super().__init__(config)
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         
+        pdb.set_trace()
         # score layer doesn't come with a bias
         if self.transformer.score.bias is None:
             self.transformer.score.bias = nn.Parameter(torch.zeros(1))
