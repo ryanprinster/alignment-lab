@@ -55,7 +55,6 @@ class HFModel(nn.Module, ABC):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.config = config
         self.transformer = self._get_model_class()
-        pdb.set_trace()
         if config.enable_gradient_checkpointing:
             self.transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
@@ -220,24 +219,7 @@ class HFModel_Classification(HFModel):
             self._init_head_weights()
 
         self._init_model_weights()
-    
-    # def __init__(self, config, model, tokenizer, **kwargs):
-    #     super().__init__(config, model, tokenizer)
 
-    #     # Initialize head weights if loading from pretrained (used as a base model)
-    #     # But not from state dict, as state dicts presumably trained as part of the rlhf pipeline
-    #     if kwargs["init_head_weights"]:
-    #         self._init_head_weights()
-
-    #     if kwargs["init_head_bias"]:
-
-    #         score_head = self._get_score_head()
-            
-    #         if score_head.bias is None:
-    #             score_head.bias = nn.Parameter(torch.zeros(1))
-            
-    #         if self.config.calculated_sft_bias is not None:
-    #             self.init_head_bias(self.config.calculated_sft_bias)
         
     def _get_score_head(self):
         """Get the final classification layer (naming varies by model architecture)"""
