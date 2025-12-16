@@ -26,7 +26,8 @@ from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
 from experiments.util import masked_mean, masked_var, masked_whiten, masked_log_softmax, whiten
 
 from experiments.models_v2 import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_Reward
-from experiments.models import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_RM
+# from experiments.models import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_Reward
+from experiments.models import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_Reward
 
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
@@ -49,7 +50,7 @@ class PPORLHFTrainer(BaseTrainer):
 
         # Models
         self.sft_model = HFModel_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
-        self.reward_model = HFModel_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
+        self.reward_model = HFModel_Reward(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
         self.reward_model.init_head_bias(self.config.calculated_sft_bias)
 
         self.policy_model = HFModel_Policy(self.config, init_model_path=self.config.sft_model_path).to(self.device)

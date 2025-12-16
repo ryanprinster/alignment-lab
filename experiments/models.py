@@ -202,44 +202,59 @@ class HFModel_SFT(HFModel_Causal):
 class HFModel_Policy(HFModel_Causal):
     pass   
     
+class HFModel_Classification(HFModel):
+    def __init__(self, config, model, tokenizer, model_config, **kwargs):
+        super().__init__(config, model, tokenizer, model_config)
 
-class HFModel_RM(HFModel):
-    def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
-        self.init_model_path = init_model_path
-        super().__init__(config)
-        
-        # score layer doesn't come with a bias
-        if self.transformer.score.bias is None:
-            self.transformer.score.bias = nn.Parameter(torch.zeros(1))
-
-        if calculated_sft_bias is not None:
-            self.init_head_bias(calculated_sft_bias)
-
-        if init_model_path is None:
+        # Initialize head weights if loading from pretrained (used as a base model)
+        # But not from state dict, as state dicts presumably trained as part of the rlhf pipeline
+        if kwargs["init_head_weights"]:
             self._init_head_weights()
 
-        self._init_model_weights()
+        if kwargs["init_head_bias"]:
 
+            score_head = self._get_score_head()
+            
+            if score_head.bias is None:
+                score_head.bias = nn.Parameter(torch.zeros(1))
+            
+            if self.config.calculated_sft_bias is not None:
+                self.init_head_bias(self.config.calculated_sft_bias)
+        
+    def _get_score_head(self):
+        """Get the final classification layer (naming varies by model architecture)"""
+        # Add new architectures here as needed
+        if hasattr(self.transformer, 'score'):
+            return self.transformer.score
+        elif hasattr(self.transformer, 'classifier'):
+            return self.transformer.classifier
+        else:
+            raise AttributeError(
+                f"Could not find score head in {type(self.transformer).__name__}. "
+                f"Add the attribute name to _get_score_head()"
+            )
+        
     def _init_head_weights(self):
         # Detail 11 (Reward head initialization)
         print("Initializing Head Weights...")
-
-        d_model = self.transformer.score.in_features
+        
+        score_head = self._get_score_head()
+        d_model = score_head.in_features
         std = 1.0 / (d_model + 1) ** 0.5
         
-        init.normal_(self.transformer.score.weight, mean=0, std=std)
-
+        init.normal_(score_head.weight, mean=0, std=std)
+        
     def init_head_bias(self, calculated_sft_bias):
         # Detail 15 (Reward normalization based on SFT demonstrations)
         print(f"Initializing Head Bias to {calculated_sft_bias}...")
-        self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
+        score_head = self._get_score_head()
+        score_head.bias.data.fill_(-1.0 * calculated_sft_bias)
 
-    def _set_model_class(self):
-        return AutoModelForSequenceClassification.from_pretrained(
-            HFModel.HF_MODEL_NAME, 
-            num_labels=1
-        )
-        # Detail 12 (Extract reward from the EOS token) Done by default
+class HFModel_SequenceClassification(HFModel_Classification):
+    @classmethod
+    def _get_model_class(cls):
+        return AutoModelForSequenceClassification
+        # Detail 12 (Extract reward from the EOS token) Done by default for Llama models
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
     def forward(self, input_ids, attention_mask=None):
@@ -252,38 +267,11 @@ class HFModel_RM(HFModel):
         )
         return outputs.logits.squeeze(-1)  # -> (batch, )
 
+class HFModel_TokenClassification(HFModel_Classification):
 
-class HFModel_Value(HFModel):
-    def __init__(self, config, init_model_path=None, init_rm_model=None):
-        self.init_model_path = init_model_path
-        super().__init__(config)
-        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
-        self._init_model_weights()
-        self._init_head_weights(init_rm_model)
-
-
-    def _set_model_class(self):
-        return AutoModelForTokenClassification.from_pretrained(
-            HFModel.HF_MODEL_NAME,
-            num_labels=1
-        )
-    
-    def init_head_bias(self, calculated_sft_bias):
-        # Detail 15 (Reward normalization based on SFT demonstrations)
-        print(f"Initializing Head Bias to {calculated_sft_bias}...")
-        self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
-    
-    def _init_head_weights(self, init_rm_model):
-        # TODO: cleanup how this is called
-        if init_rm_model is None:
-            return 
-        # if not os.path.exists(self.init_model_path):
-        #     raise FileNotFoundError(f"Model not found: {self.init_model_path}")
-        
-        # TODO: Finish properly init the value model
-        # NOTE: It seems the model does this by default, but 
-        self.transformer.score.weight.data = init_rm_model.transformer.score.weight.data.clone()
-        self.transformer.score.bias.data = init_rm_model.transformer.score.bias.data.clone()
+    @classmethod
+    def _get_model_class(cls):
+        return AutoModelForTokenClassification
 
     @profile
     def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
@@ -302,6 +290,113 @@ class HFModel_Value(HFModel):
             return outputs.logits[:,max_query_length_truncate:,:].squeeze(-1)
         
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
+
+# Aliases
+class HFModel_Reward(HFModel_SequenceClassification):
+    pass
+
+class HFModel_Value(HFModel_TokenClassification):
+    pass   
+
+# class HFModel_RM(HFModel):
+#     def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
+#         self.init_model_path = init_model_path
+#         super().__init__(config)
+        
+#         # score layer doesn't come with a bias
+#         if self.transformer.score.bias is None:
+#             self.transformer.score.bias = nn.Parameter(torch.zeros(1))
+
+#         if calculated_sft_bias is not None:
+#             self.init_head_bias(calculated_sft_bias)
+
+#         if init_model_path is None:
+#             self._init_head_weights()
+
+#         self._init_model_weights()
+
+#     def _init_head_weights(self):
+#         # Detail 11 (Reward head initialization)
+#         print("Initializing Head Weights...")
+
+#         d_model = self.transformer.score.in_features
+#         std = 1.0 / (d_model + 1) ** 0.5
+        
+#         init.normal_(self.transformer.score.weight, mean=0, std=std)
+
+#     def init_head_bias(self, calculated_sft_bias):
+#         # Detail 15 (Reward normalization based on SFT demonstrations)
+#         print(f"Initializing Head Bias to {calculated_sft_bias}...")
+#         self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
+
+#     def _set_model_class(self):
+#         return AutoModelForSequenceClassification.from_pretrained(
+#             HFModel.HF_MODEL_NAME, 
+#             num_labels=1
+#         )
+#         # Detail 12 (Extract reward from the EOS token) Done by default
+#         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
+
+#     def forward(self, input_ids, attention_mask=None):
+#         if attention_mask is None:
+#             attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
+
+#         outputs = self.transformer(
+#             input_ids=input_ids,
+#             attention_mask=attention_mask
+#         )
+#         return outputs.logits.squeeze(-1)  # -> (batch, )
+
+
+# class HFModel_Value(HFModel):
+#     def __init__(self, config, init_model_path=None, init_rm_model=None):
+#         self.init_model_path = init_model_path
+#         super().__init__(config)
+#         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+#         self._init_model_weights()
+#         self._init_head_weights(init_rm_model)
+
+
+#     def _set_model_class(self):
+#         return AutoModelForTokenClassification.from_pretrained(
+#             HFModel.HF_MODEL_NAME,
+#             num_labels=1
+#         )
+    
+#     def init_head_bias(self, calculated_sft_bias):
+#         # Detail 15 (Reward normalization based on SFT demonstrations)
+#         print(f"Initializing Head Bias to {calculated_sft_bias}...")
+#         self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
+    
+#     def _init_head_weights(self, init_rm_model):
+#         # TODO: cleanup how this is called
+#         if init_rm_model is None:
+#             return 
+#         # if not os.path.exists(self.init_model_path):
+#         #     raise FileNotFoundError(f"Model not found: {self.init_model_path}")
+        
+#         # TODO: Finish properly init the value model
+#         # NOTE: It seems the model does this by default, but 
+#         self.transformer.score.weight.data = init_rm_model.transformer.score.weight.data.clone()
+#         self.transformer.score.bias.data = init_rm_model.transformer.score.bias.data.clone()
+
+#     @profile
+#     def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
+#         # Forward parallel decode
+
+#         # Mask pad tokens
+#         if attention_mask is None:
+#             attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
+
+#         outputs = self.transformer(
+#             input_ids=input_ids.squeeze(-1),
+#             attention_mask=attention_mask.squeeze(-1),
+#         )
+        
+#         if max_query_length_truncate is not None:
+#             return outputs.logits[:,max_query_length_truncate:,:].squeeze(-1)
+        
+#         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
 
 
 #  For some reason, forward in HFModel_Value does not give the same or even close values to forward in HFModel_RM
