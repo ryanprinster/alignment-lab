@@ -358,9 +358,23 @@ class PPORLHFEval(BaseTrainer):
         
         # Plot
         plt.figure(figsize=(12, 7))
-        plt.plot(ppo_centers, ppo_rates, 'o-', linewidth=2, markersize=8, label='PPO', color='blue')
-        plt.plot(sft_centers, sft_rates, 's-', linewidth=2, markersize=8, label='SFT', color='orange')
-        plt.plot(ppr_ppo_centers, ppr_ppo_rates, 'o-', linewidth=2, markersize=8, label='Paper PPO', color='red')
+        plt.scatter(ppo_centers, ppo_rates, s=80, label='PPO', color='blue', marker='o', zorder=3)
+        plt.scatter(sft_centers, sft_rates, s=80, label='SFT', color='orange', marker='s', zorder=3)
+        plt.scatter(ppr_ppo_centers, ppr_ppo_rates, s=80, label='Paper PPO', color='red', marker='o', zorder=3)
+
+        # Fit and plot trendlines
+        ppo_fit = np.polyfit(ppo_centers, ppo_rates, 1)
+        ppo_trendline = np.poly1d(ppo_fit)
+        sft_fit = np.polyfit(sft_centers, sft_rates, 1)
+        sft_trendline = np.poly1d(sft_fit)
+        ppr_ppo_fit = np.polyfit(ppr_ppo_centers, ppr_ppo_rates, 1)
+        ppr_ppo_trendline = np.poly1d(ppr_ppo_fit)
+
+        x_range = np.linspace(min(min(ppo_centers), min(sft_centers), min(ppr_ppo_centers)), 
+                            max(max(ppo_centers), max(sft_centers), max(ppr_ppo_centers)), 100)
+        plt.plot(x_range, ppo_trendline(x_range), '--', linewidth=2, color='blue', alpha=0.6, zorder=2)
+        plt.plot(x_range, sft_trendline(x_range), '--', linewidth=2, color='orange', alpha=0.6, zorder=2)
+        plt.plot(x_range, ppr_ppo_trendline(x_range), '--', linewidth=2, color='red', alpha=0.6, zorder=2)
         plt.axhline(y=0.5, color='gray', linestyle='--', alpha=0.5, label='Random baseline')
         
         plt.xlabel('log(generated_length / reference_length)', fontsize=12)
@@ -370,12 +384,12 @@ class PPORLHFEval(BaseTrainer):
         plt.legend(fontsize=11)
         
         # Add sample counts as text
-        for x, y, count in zip(ppo_centers, ppo_rates, ppo_counts):
-            plt.text(x, y + 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='blue')
-        for x, y, count in zip(sft_centers, sft_rates, sft_counts):
-            plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='orange')
-        for x, y, count in zip(ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts):
-            plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='red')
+        # for x, y, count in zip(ppo_centers, ppo_rates, ppo_counts):
+        #     plt.text(x, y + 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='blue')
+        # for x, y, count in zip(sft_centers, sft_rates, sft_counts):
+        #     plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='orange')
+        # for x, y, count in zip(ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts):
+        #     plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='red')
 
         plt.tight_layout()
         plt.savefig('length_controlled_winrate_comparison.png', dpi=300)
@@ -401,7 +415,7 @@ class PPORLHFEval(BaseTrainer):
         ppr_ppo_overall = np.average(ppr_ppo_rates, weights=ppr_ppo_counts)
         print(f"\nOverall PPO win rate: {ppo_overall:.3f}")
         print(f"Overall SFT win rate: {sft_overall:.3f}")
-        print(f"\nOverall Paper PPO win rate: {ppr_ppo_overall:.3f}")
+        print(f"Overall Paper PPO win rate: {ppr_ppo_overall:.3f}\n")
         
         return {
             'ppo': (ppo_centers, ppo_rates, ppo_counts),
