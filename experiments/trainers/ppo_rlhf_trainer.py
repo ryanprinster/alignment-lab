@@ -60,12 +60,9 @@ class PPORLHFTrainer(BaseTrainer):
 
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
-        # Class members
-        self.data = TLDRFilteredDataPPO(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
-        self.env = RLHFEnvironment(self.config, self.data)
+        
 
-
-        # Optimizers
+        # Optimizers + LR Schedulers
         self.optimizer_policy = optim.AdamW(self.policy_model.parameters(), lr = self.config.alpha, eps=self.config.eps_adam)
         self.optimizer_value = optim.AdamW(self.value_model.parameters(), lr = self.config.alpha, eps=self.config.eps_adam)
 
@@ -78,20 +75,21 @@ class PPORLHFTrainer(BaseTrainer):
                                         start_factor=1.0,
                                         end_factor=self.config.lr_final_ratio)
         
+        # Class members
+        self.data = TLDRFilteredDataPPO(tokenizer=self.policy_model.tokenizer, batch_size=self.config.batch_size)
+        self.env = RLHFEnvironment(self.config, self.data)
+        self.global_step = 0
+
         # Mixed precision training
         self.mixed_precision_context = autocast("cuda", dtype=torch.bfloat16) if self.config.enable_mixed_precision_training else nullcontext()
-        self.scaler_policy = GradScaler("cuda") 
-        self.scaler_value = GradScaler("cuda") 
-
-        # Init train state
-        self.global_step = 0
 
 
         if self.config.resume_from_checkpoint:
             print("Loading initial checkpoint...")
-            self.load_from_checkpoint(policy_checkpoint_path=self.config.policy_checkpoint_path, value_checkpoint_path=self.config.value_checkpoint_path)
+            self._load_from_checkpoint(policy_checkpoint_path=self.config.policy_checkpoint_path, value_checkpoint_path=self.config.value_checkpoint_path)
 
-    def load_from_checkpoint(self, policy_checkpoint_path=None, value_checkpoint_path=None):
+    @profile
+    def _load_from_checkpoint(self, policy_checkpoint_path=None, value_checkpoint_path=None):
         training_state = {'global_step': 0, 'epoch': 0}
     
         # Policy Model
@@ -150,14 +148,6 @@ class PPORLHFTrainer(BaseTrainer):
         self.global_step = training_state['global_step']
         
         return training_state
-        
-
-    def _load_model(self, model_class=None, local_path=None, hf_name=None, hf_revision=None, pythia_path=None, **kwargs):
-        if local_path:
-            return model_class.from_state_dict(config=self.config,init_model_path=local_path,**kwargs)
-        else:
-            return model_class.from_pretrained(config=self.config,model_name=hf_name,revision=hf_revision,**kwargs)
-
 
     def _zero_grad(self, optimizer_policy, optimizer_value):
         optimizer_policy.zero_grad()
@@ -172,34 +162,24 @@ class PPORLHFTrainer(BaseTrainer):
         new_policy_logits = new_policy_logits[:, :-1, :] # slice to action indexing
         return new_values, new_policy_logits
 
-    # @detect_nans
-    # def compute_value_loss_mse(self, R, new_values, mask):
-    #     loss_value = masked_mean((new_values - R) ** 2, mask)
-    #     return loss_value
-
-    def compute_value_loss_mse(self, R, new_values, old_values, value_pad_mask):
+    def _compute_value_loss_mse(self, R, new_values, old_values, value_pad_mask):
         old_values = old_values[:, :-1].masked_fill(~value_pad_mask, 0)
         new_values = new_values[:, :-1].masked_fill(~value_pad_mask, 0)
         
-        # Clip the new values relative to old values
         V_clipped = old_values + torch.clamp(
             new_values - old_values, 
             -self.config.eps_value_clipping, 
             self.config.eps_value_clipping
         )
         
-        # Compute both losses
         loss_value_unclipped = (new_values - R) ** 2
         loss_value_clipped = (V_clipped - R) ** 2
         
-        # Take max (more pessimistic loss)
         loss_value = torch.max(loss_value_unclipped, loss_value_clipped)
         
-        # Apply masking and return mean
         return masked_mean(loss_value * self.config.c1, value_pad_mask)
 
-    # @detect_nans
-    def compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):
+    def _compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):
 
         old_log_probs = old_log_probs.detach()
         A = A.detach()
@@ -214,26 +194,20 @@ class PPORLHFTrainer(BaseTrainer):
         loss_ppo = torch.min(ratios * A, torch.clamp(ratios, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
         loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
 
-        entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
-        entropy = -masked_mean(entropy, action_pad_mask)
 
         ### For tracking ###
         with torch.no_grad():
-            # Entropy for tracking, but KL is doing regularization
-
-
+            entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
+            entropy = -masked_mean(entropy, action_pad_mask)
             approx_kl = masked_mean(0.5 * diff_log_probs**2, action_pad_mask)
 
-            # NOTE: The paper computes some of these metrics differently
+            # NOTE: Upon code inspection, Huang et al. computes some of these metrics slightly differently.
+            # both were included here for analysis purposes.
             new_log_policies_unmasked = torch.log_softmax(new_policy_logits, dim=-1)
-            entropy_per_token = -torch.sum(new_log_policies_unmasked * torch.exp(new_log_policies_unmasked), dim=-1)  # [batch, seq]
+            entropy_per_token = -torch.sum(new_log_policies_unmasked * torch.exp(new_log_policies_unmasked), dim=-1) 
             entropy_paper = entropy_per_token.mean()
-            entropy_per_sequence = entropy_per_token.sum(dim=-1)  # [batch] - total entropy per sample
-
+            entropy_per_sequence = entropy_per_token.sum(dim=-1) 
             approx_kl_paper = (0.5 * diff_log_probs**2).mean()
-
-            # if entropy.item() < 1.0:
-            #     pdb.set_trace()
 
             log_data = {
                 'ratios': ratios,
@@ -245,10 +219,6 @@ class PPORLHFTrainer(BaseTrainer):
 
             }
 
-        if self.config.entropy_bonus_coeff > 0:
-            loss_ppo -= self.config.entropy_bonus_coeff * entropy
-
-
         return loss_ppo, log_data
     
     @profile
@@ -258,10 +228,8 @@ class PPORLHFTrainer(BaseTrainer):
     
     @profile
     def _step(self, optimizer_policy, optimizer_value):
-
         optimizer_policy.step()
         optimizer_value.step()
-
         self.lr_scheduler_policy.step()
         self.lr_scheduler_value.step()
 
@@ -289,10 +257,10 @@ class PPORLHFTrainer(BaseTrainer):
                 batch = self._to_device(batch)
 
                 # 1. N "parallel" actors each generate a trajectory
-                #       - runs policy on environment until failure
-                #       - computes advantage estimates
+                #    - runs policy on environment until failure or truncation
+                #    - computes advantage estimates
                 
-                # FP32 --> FP16 for mixed precision training
+                # FP32 --> FP16 (bfloat16) for mixed precision training
                 with self.mixed_precision_context:
                     tjs = self.env.generate_trajectory(
                         batch, 
@@ -304,9 +272,8 @@ class PPORLHFTrainer(BaseTrainer):
                 
                 tj_loader = DataLoader(TrajectorySet(tjs), batch_size=self.config._mini_batch_size, shuffle=False, num_workers=0)
 
-                # 2. Optimize loss, for K epochs
+                # 2. Optimize loss and update models for K epochs 
                 for k in range(self.config.K):
-                    # Update new policy for each minibatch
 
                     for _, old_data in enumerate(tj_loader):
 
@@ -317,10 +284,10 @@ class PPORLHFTrainer(BaseTrainer):
                             new_values, new_policy_logits = self._forward(old_data['full_states'], ) # TODO: which pad mask
 
                             # 2.1 Compute mse loss for value model
-                            loss_value = self.compute_value_loss_mse(old_data['R'], new_values, old_data['values'], old_data['value_pad_mask'])
+                            loss_value = self._compute_value_loss_mse(old_data['R'], new_values, old_data['values'], old_data['value_pad_mask'])
 
                             # 2.2 Compute ppo loss for policy model
-                            loss_ppo, ppo_log_data = self.compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
+                            loss_ppo, ppo_log_data = self._compute_policy_loss_ppo(old_data['actions'], old_data['log_probs'], old_data['A'], new_policy_logits, old_data['action_pad_mask'])
 
                             del new_policy_logits
 
@@ -330,7 +297,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                         
                         ### Logging ###
-                        
+                        # TODO: move this to another function
                         eos_mask = old_data['states'][:,1:] == self.data.tokenizer.eos_token_id
                         non_eos_mask = (old_data['states'][:,1:] != self.data.tokenizer.eos_token_id) & (old_data['states'][:,1:] != self.data.tokenizer.pad_token_id)
                         clipped_mask = (ppo_log_data['ratios'] > 1 + self.config.eps_policy_clipping) | (ppo_log_data['ratios'] < 1 - self.config.eps_policy_clipping)
@@ -349,8 +316,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 "A_std": old_data['A_raw'].std().item(),
                                 "A_abs_eos": masked_mean(old_data['A_raw'].abs(), eos_mask).item(),
                                 "A_abs_non_eos": masked_mean(old_data['A_raw'].abs(), non_eos_mask).item(),
-                                # 1 - var(A) / var(A + V)
-                                "explained_var": 1 - masked_var(old_data['A_raw'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'][:,:-1], old_data['action_pad_mask']).item(),
+                                "explained_var": 1 - masked_var(old_data['A_raw'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'][:,:-1], old_data['action_pad_mask']).item(), # 1 - var(A) / var(A + V)
                                 # State stats
                                 "eos_count": eos_mask.float().sum().item(),
                                 "eos_pct": (eos_mask.float().sum() / float(eos_mask.size(0))).item(),
@@ -395,9 +361,7 @@ class PPORLHFTrainer(BaseTrainer):
                                     old_data['action_pad_mask'].float().sum(1),
                                     old_data['raw_rewards'].sum(1)
                                 ]))[0, 1].item(),
-                                "unique_tokens_per_response": torch.tensor([len(torch.unique(resp)) for resp in old_data['states']]).float().mean().item(),
-                                # "token_diversity_ratio": (torch.tensor([len(torch.unique(resp[old_data['pad_mask'][i]])) for i, resp in enumerate(old_data['states'])]).float() / old_data['action_pad_mask'].float().sum(1)).mean().item(),
-                                
+                                "unique_tokens_per_response": torch.tensor([len(torch.unique(resp)) for resp in old_data['states']]).float().mean().item(),                                
                             },
                             models=[self.policy_model, self.value_model],
                             samples=
@@ -432,7 +396,7 @@ class PPORLHFTrainer(BaseTrainer):
                                 }
                         )
 
-                        # Save policy checkpoint
+                        # TODO: could move one scope out
                         self.checkpointer.save_checkpoint(
                             self.policy_model,
                             self.optimizer_policy,
@@ -443,7 +407,6 @@ class PPORLHFTrainer(BaseTrainer):
                             final_checkpoint=False
                         )
 
-                        # Save value checkpoint
                         self.checkpointer.save_checkpoint(
                             self.value_model,
                             self.optimizer_value,
@@ -459,11 +422,13 @@ class PPORLHFTrainer(BaseTrainer):
 
                 self.global_step += 1
 
+            # Break after a total number of episodes (train examples) instead of on training data epochs 
                 if self.global_step * self.data.train_loader.batch_size >= self.config.max_episodes: 
-                    break 
+                    break
             if self.global_step * self.data.train_loader.batch_size >= self.config.max_episodes: 
                 break 
-            
+        
+        # Final checkpoint
         self.checkpointer.save_checkpoint(
                 self.policy_model,
                 self.optimizer_policy,
@@ -475,28 +440,7 @@ class PPORLHFTrainer(BaseTrainer):
             )
 
         return self.policy_model  
-
-
-    def evaluate(self):
-        self.policy_model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.sft_model_path).to(self.device)
-
-
-        # Policy Model
-        self.ppo_reference = self._load_model(
-            HFModel_Policy,
-            hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
-            hf_revision="sft__44413__1708611267",
-        ).to(self.device)
-
-
-        # Load our model
-        # Load dataset
-        # Create win rate prompt
-        # Loop:
-            # Generate with my model
-            # Get reference summary from data
-            # Query claude for win rate
-        # Output overall win rate
+        
 
         
 
