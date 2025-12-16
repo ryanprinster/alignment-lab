@@ -55,6 +55,7 @@ class HFModel(nn.Module, ABC):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.config = config
         self.transformer = self._get_model_class()
+        pdb.set_trace()
         if config.enable_gradient_checkpointing:
             self.transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
@@ -208,7 +209,6 @@ class HFModel_Classification(HFModel):
         super().__init__(config)
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         
-        pdb.set_trace()
         # score layer doesn't come with a bias
         if self.transformer.score.bias is None:
             self.transformer.score.bias = nn.Parameter(torch.zeros(1))
