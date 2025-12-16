@@ -58,77 +58,6 @@ class PPORLHFTrainer(BaseTrainer):
         self.value_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
         self.value_model.init_head_bias(self.config.calculated_sft_bias)
 
-
-        # # SFT Model
-        # self.sft_model = self._load_model(
-        #     HFModel_SFT,
-        #     self.config.sft_model_path,
-        #     # self.config.hf_sft_model_name,
-        #     # self.config.hf_sft_model_revision
-        # ).to(self.device).requires_grad_(False)
-
-        # # Reward Model
-        # self.reward_model = self._load_model(
-        #     HFModel_Reward,
-        #     self.config.rm_model_path,
-        #     # self.config.hf_rm_model_name,
-        #     # self.config.hf_rm_model_revision,
-        #     init_head_bias=False if self.config.rm_model_path else True,
-        #     num_labels=1
-        # ).to(self.device).requires_grad_(False)
-
-        # # Policy Model
-        # self.policy_model = self._load_model(
-        #     HFModel_Policy,
-        #     self.config.sft_model_path,
-        #     # self.config.hf_sft_model_name,
-        #     # self.config.hf_sft_model_revision
-        # ).to(self.device)
-
-        # # Value Model
-        # self.value_model = self._load_model(
-        #     HFModel_Value,
-        #     self.config.rm_model_path,
-        #     # self.config.hf_rm_model_name,
-        #     # self.config.hf_rm_model_revision,
-        #     init_head_bias=False if self.config.rm_model_path else True,
-        #     num_labels=1
-        # ).to(self.device)
-
-        # # SFT Model
-        # self.sft_model = self._load_model(
-        #     HFModel_SFT,
-        #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
-        #     hf_revision="sft__44413__1708611267",
-        # ).to(self.device).requires_grad_(False)
-
-        # # Reward Model
-        # self.reward_model = self._load_model(
-        #     HFModel_Reward,
-        #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__reward__tldr",
-        #     hf_revision="reward__44413__1708628552",
-        #     init_head_bias=False if self.config.rm_model_path else True,
-        #     num_labels=1
-        # ).to(self.device).requires_grad_(False)
-
-        # # Policy Model
-        # self.policy_model = self._load_model(
-        #     HFModel_Policy,
-        #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
-        #     hf_revision="sft__44413__1708611267",
-        # ).to(self.device)
-
-        # # Value Model
-        # self.value_model = self._load_model(
-        #     HFModel_Value,
-        #     hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__reward__tldr",
-        #     hf_revision="reward__44413__1708628552",
-        #     init_head_bias=False if self.config.rm_model_path else True,
-        #     num_labels=1
-        # ).to(self.device)
-
-
-
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
         # Class members
@@ -165,6 +94,7 @@ class PPORLHFTrainer(BaseTrainer):
     def load_from_checkpoint(self, policy_checkpoint_path=None, value_checkpoint_path=None):
         training_state = {'global_step': 0, 'epoch': 0}
     
+        # Policy Model
         if policy_checkpoint_path:
             policy_state = self.checkpointer.load_checkpoint(
                 policy_checkpoint_path,
@@ -174,10 +104,9 @@ class PPORLHFTrainer(BaseTrainer):
             )
             training_state = policy_state
             
-            # Update old policy state dict after loading
             self.old_policy_state_dict = self.policy_model.state_dict()
-            print("Updated old_policy_state_dict")
 
+        # Value Model
         if value_checkpoint_path:
             value_state = self.checkpointer.load_checkpoint(
                 value_checkpoint_path,
@@ -185,15 +114,13 @@ class PPORLHFTrainer(BaseTrainer):
                 self.device,
                 self.optimizer_value
             )
-            # Use value state if policy wasn't loaded
             if not policy_checkpoint_path:
                 training_state = value_state
                 
-            # Update old value state dict after loading
             self.old_value_state_dict = self.value_model.state_dict()
             print("Updated old_value_state_dict")
 
-        # Rebuild LR schedulers with proper starting point
+        #  LR schedulers
         if training_state['global_step'] > 0:
             total_iters = int(self.config.max_episodes / self.config.batch_size) * self.config.K
             remaining_iters = max(0, total_iters - training_state['global_step'])
@@ -204,7 +131,7 @@ class PPORLHFTrainer(BaseTrainer):
                 start_factor=1.0,
                 end_factor=self.config.lr_final_ratio
             )
-            # Step scheduler to current position
+
             for _ in range(training_state['global_step']):
                 self.lr_scheduler_policy.step()
             
@@ -219,7 +146,7 @@ class PPORLHFTrainer(BaseTrainer):
             
             print(f"LR schedulers advanced to step {training_state['global_step']}")
         
-        # Update global step
+        # Global step
         self.global_step = training_state['global_step']
         
         return training_state
@@ -555,9 +482,26 @@ class PPORLHFTrainer(BaseTrainer):
 
 
         # Policy Model
-        self.policy_model = self._load_model(
+        self.ppo_reference = self._load_model(
             HFModel_Policy,
             hf_name="vwxyzjn/EleutherAI_pythia-1b-deduped__sft__tldr",
             hf_revision="sft__44413__1708611267",
         ).to(self.device)
+
+
+        # Load our model
+        # Load dataset
+        # Create win rate prompt
+        # Loop:
+            # Generate with my model
+            # Get reference summary from data
+            # Query claude for win rate
+        # Output overall win rate
+
+        
+
+
+
+
+
 

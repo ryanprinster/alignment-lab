@@ -204,7 +204,7 @@ class PPORLHFEval(BaseTrainer):
         print(f"Submitted comparisons: {batch.id}")
 
     
-    def download_batch_results(self, batch_id="msgbatch_01KunPMsZouDwKJsWNh2j3Er", output_file="batch_results_my_ppo.jsonl"):
+    def download_batch_results(self, batch_id="msgbatch_015FEKzjNS8uwW32UExydJkT", output_file="batch_results_my_ppo.jsonl"):
         """Download batch results and save to file"""
         
         # Check if batch is complete
