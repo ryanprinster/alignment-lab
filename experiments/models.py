@@ -203,23 +203,40 @@ class HFModel_Policy(HFModel_Causal):
     pass   
     
 class HFModel_Classification(HFModel):
-    def __init__(self, config, model, tokenizer, model_config, **kwargs):
-        super().__init__(config, model, tokenizer, model_config)
+    def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
+        self.init_model_path = init_model_path
+        super().__init__(config)
+        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
+        
+        # score layer doesn't come with a bias
+        if self.transformer.score.bias is None:
+            self.transformer.score.bias = nn.Parameter(torch.zeros(1))
 
-        # Initialize head weights if loading from pretrained (used as a base model)
-        # But not from state dict, as state dicts presumably trained as part of the rlhf pipeline
-        if kwargs["init_head_weights"]:
+        if calculated_sft_bias is not None:
+            self.init_head_bias(calculated_sft_bias)
+
+        if init_model_path is None:
             self._init_head_weights()
 
-        if kwargs["init_head_bias"]:
+        self._init_model_weights()
+    
+    # def __init__(self, config, model, tokenizer, **kwargs):
+    #     super().__init__(config, model, tokenizer)
 
-            score_head = self._get_score_head()
+    #     # Initialize head weights if loading from pretrained (used as a base model)
+    #     # But not from state dict, as state dicts presumably trained as part of the rlhf pipeline
+    #     if kwargs["init_head_weights"]:
+    #         self._init_head_weights()
+
+    #     if kwargs["init_head_bias"]:
+
+    #         score_head = self._get_score_head()
             
-            if score_head.bias is None:
-                score_head.bias = nn.Parameter(torch.zeros(1))
+    #         if score_head.bias is None:
+    #             score_head.bias = nn.Parameter(torch.zeros(1))
             
-            if self.config.calculated_sft_bias is not None:
-                self.init_head_bias(self.config.calculated_sft_bias)
+    #         if self.config.calculated_sft_bias is not None:
+    #             self.init_head_bias(self.config.calculated_sft_bias)
         
     def _get_score_head(self):
         """Get the final classification layer (naming varies by model architecture)"""
