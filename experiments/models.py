@@ -270,7 +270,7 @@ class HFModel_Classification(HFModel):
 class HFModel_SequenceClassification(HFModel_Classification):
     @classmethod
     def _get_model_class(cls):
-        return AutoModelForSequenceClassification
+        return AutoModelForSequenceClassification.from_pretrained(HFModel.HF_MODEL_NAME)
         # Detail 12 (Extract reward from the EOS token) Done by default for Llama models
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
@@ -288,7 +288,7 @@ class HFModel_TokenClassification(HFModel_Classification):
 
     @classmethod
     def _get_model_class(cls):
-        return AutoModelForTokenClassification
+        return AutoModelForTokenClassification.from_pretrained(HFModel.HF_MODEL_NAME)
 
     @profile
     def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
