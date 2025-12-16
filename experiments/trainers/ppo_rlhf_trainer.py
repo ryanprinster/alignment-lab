@@ -1,5 +1,3 @@
-#https://gymnasium.farama.org/introduction/basic_usage/
-
 # Standard library imports
 import os
 from functools import reduce
@@ -28,7 +26,7 @@ from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
 from experiments.util import masked_mean, masked_var, masked_whiten, masked_log_softmax, whiten
 
 from experiments.models_v2 import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_Reward
-from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
+from experiments.models import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_RM
 
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
@@ -50,18 +48,17 @@ class PPORLHFTrainer(BaseTrainer):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Models
-        self.sft_model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
-        self.reward_model = Llama_3p2_1B_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
+        self.sft_model = HFModel_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
+        self.reward_model = HFModel_RM(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
         self.reward_model.init_head_bias(self.config.calculated_sft_bias)
 
-        self.policy_model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.sft_model_path).to(self.device)
-        self.value_model = Llama_3p2_1B_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
+        self.policy_model = HFModel_Policy(self.config, init_model_path=self.config.sft_model_path).to(self.device)
+        self.value_model = HFModel_Value(self.config, init_model_path=self.config.rm_model_path).to(self.device)
         self.value_model.init_head_bias(self.config.calculated_sft_bias)
 
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
         
-
         # Optimizers + LR Schedulers
         self.optimizer_policy = optim.AdamW(self.policy_model.parameters(), lr = self.config.alpha, eps=self.config.eps_adam)
         self.optimizer_value = optim.AdamW(self.value_model.parameters(), lr = self.config.alpha, eps=self.config.eps_adam)
@@ -121,7 +118,6 @@ class PPORLHFTrainer(BaseTrainer):
         #  LR schedulers
         if training_state['global_step'] > 0:
             total_iters = int(self.config.max_episodes / self.config.batch_size) * self.config.K
-            remaining_iters = max(0, total_iters - training_state['global_step'])
             
             self.lr_scheduler_policy = LinearLR(
                 self.optimizer_policy,

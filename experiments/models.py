@@ -47,7 +47,7 @@ class MLPSimple(nn.Module):
             x = x.squeeze(dim=0)
         return x
 
-class Llama_3p2_1B(nn.Module, ABC):
+class HFModel(nn.Module, ABC):
     HF_MODEL_NAME = "meta-llama/Llama-3.2-1B"
     
     def __init__(self, config):
@@ -60,7 +60,7 @@ class Llama_3p2_1B(nn.Module, ABC):
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+        self.tokenizer = AutoTokenizer.from_pretrained(HFModel.HF_MODEL_NAME)
         
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
@@ -102,14 +102,14 @@ class Llama_3p2_1B(nn.Module, ABC):
         self.load_state_dict(state_dict)
 
 
-        self.tokenizer = AutoTokenizer.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+        self.tokenizer = AutoTokenizer.from_pretrained(HFModel.HF_MODEL_NAME)
         
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         self.transformer.resize_token_embeddings(len(self.tokenizer))
 
-class Llama_3p2_1B_Causal(Llama_3p2_1B):
+class HFModel_Causal(HFModel):
     def __init__(self, config, init_model_path=None):
         self.init_model_path = init_model_path
         super().__init__(config)
@@ -193,17 +193,17 @@ class Llama_3p2_1B_Causal(Llama_3p2_1B):
         return outputs.logits, outputs.loss
 
     def _set_model_class(self):
-        return AutoModelForCausalLM.from_pretrained(Llama_3p2_1B.HF_MODEL_NAME)
+        return AutoModelForCausalLM.from_pretrained(HFModel.HF_MODEL_NAME)
 
 
-class Llama_3p2_1B_SFT(Llama_3p2_1B_Causal):
+class HFModel_SFT(HFModel_Causal):
     pass
 
-class Llama_3p2_1B_Policy(Llama_3p2_1B_Causal):
+class HFModel_Policy(HFModel_Causal):
     pass   
     
 
-class Llama_3p2_1B_RM(Llama_3p2_1B):
+class HFModel_RM(HFModel):
     def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
         self.init_model_path = init_model_path
         super().__init__(config)
@@ -236,7 +236,7 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
 
     def _set_model_class(self):
         return AutoModelForSequenceClassification.from_pretrained(
-            Llama_3p2_1B.HF_MODEL_NAME, 
+            HFModel.HF_MODEL_NAME, 
             num_labels=1
         )
         # Detail 12 (Extract reward from the EOS token) Done by default
@@ -253,7 +253,7 @@ class Llama_3p2_1B_RM(Llama_3p2_1B):
         return outputs.logits.squeeze(-1)  # -> (batch, )
 
 
-class Llama_3p2_1B_Value(Llama_3p2_1B):
+class HFModel_Value(HFModel):
     def __init__(self, config, init_model_path=None, init_rm_model=None):
         self.init_model_path = init_model_path
         super().__init__(config)
@@ -264,7 +264,7 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
 
     def _set_model_class(self):
         return AutoModelForTokenClassification.from_pretrained(
-            Llama_3p2_1B.HF_MODEL_NAME,
+            HFModel.HF_MODEL_NAME,
             num_labels=1
         )
     
@@ -304,7 +304,7 @@ class Llama_3p2_1B_Value(Llama_3p2_1B):
         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
 
 
-#  For some reason, forward in Llama_3p2_1B_Value does not give the same or even close values to forward in Llama_3p2_1B_RM
+#  For some reason, forward in HFModel_Value does not give the same or even close values to forward in HFModel_RM
 # Hypotheses include: 
 # off by one errors in indexing, 
 # some sort of randomness is added, 

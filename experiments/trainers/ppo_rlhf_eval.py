@@ -27,7 +27,7 @@ from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
 from experiments.util import masked_mean, masked_var, masked_whiten, masked_log_softmax, whiten
 
 from experiments.models_v2 import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_Reward
-from experiments.models import Llama_3p2_1B_Policy, Llama_3p2_1B_Value, Llama_3p2_1B_SFT, Llama_3p2_1B_RM
+from experiments.models import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_RM
 
 from experiments.trajectory import Trajectory, TrajectorySet
 from experiments.config import PPOConfigBase
@@ -56,7 +56,7 @@ class PPORLHFEval(BaseTrainer):
         self.checkpointer = Checkpointer(self.config)
 
         # Model that we want to evaluate vs reference summaries
-        # self.model = Llama_3p2_1B_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
+        # self.model = HFModel_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
 
         # self.checkpointer.load_checkpoint(
         #         self.config.policy_checkpoint_path,
@@ -69,7 +69,7 @@ class PPORLHFEval(BaseTrainer):
         #     model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
         #     revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device)
 
-        # self.model = Llama_3p2_1B_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
+        # self.model = HFModel_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
 
 
         # self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)

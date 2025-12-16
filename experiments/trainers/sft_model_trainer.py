@@ -6,7 +6,8 @@ from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
 
 
-from experiments.models_v2 import HFModel_SFT
+# from experiments.models_v2 import HFModel_SFT
+from experiments.models import HFModel_SFT
 from experiments.config import SFTConfigBase
 from experiments.datasets import TLDRFilteredDataSFT
 from experiments.logger import Logger
@@ -140,8 +141,8 @@ class SFTTrainer(BaseTrainer):
         with torch.no_grad():
             max_summary_length = TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH
 
-            self.sft = Llama_3p2_1B_SFT(self.config).to(self.device)
-            self.gpt = Llama_3p2_1B_SFT(self.config).to(self.device)
+            self.sft = HFModel_SFT(self.config).to(self.device)
+            self.gpt = HFModel_SFT(self.config).to(self.device)
 
             self.sft.eval()
             self.gpt.eval()
