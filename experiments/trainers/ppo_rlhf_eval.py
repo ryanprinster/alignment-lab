@@ -359,8 +359,8 @@ class PPORLHFEval(BaseTrainer):
         # Plot
         plt.figure(figsize=(12, 7))
         plt.scatter(ppo_centers, ppo_rates, s=80, label='PPO', color='blue', marker='o', zorder=3)
-        plt.scatter(sft_centers, sft_rates, s=80, label='SFT', color='orange', marker='s', zorder=3)
-        plt.scatter(ppr_ppo_centers, ppr_ppo_rates, s=80, label='Paper PPO', color='red', marker='o', zorder=3)
+        plt.scatter(sft_centers, sft_rates, s=80, label='SFT', color='green', marker='s', zorder=3)
+        plt.scatter(ppr_ppo_centers, ppr_ppo_rates, s=80, label='Huang et. al. PPO 1B 77713', color='red', marker='o', zorder=3)
 
         # Fit and plot trendlines
         ppo_fit = np.polyfit(ppo_centers, ppo_rates, 1)
@@ -373,13 +373,13 @@ class PPORLHFEval(BaseTrainer):
         x_range = np.linspace(min(min(ppo_centers), min(sft_centers), min(ppr_ppo_centers)), 
                             max(max(ppo_centers), max(sft_centers), max(ppr_ppo_centers)), 100)
         plt.plot(x_range, ppo_trendline(x_range), '--', linewidth=2, color='blue', alpha=0.6, zorder=2)
-        plt.plot(x_range, sft_trendline(x_range), '--', linewidth=2, color='orange', alpha=0.6, zorder=2)
+        plt.plot(x_range, sft_trendline(x_range), '--', linewidth=2, color='green', alpha=0.6, zorder=2)
         plt.plot(x_range, ppr_ppo_trendline(x_range), '--', linewidth=2, color='red', alpha=0.6, zorder=2)
         plt.axhline(y=0.5, color='gray', linestyle='--', alpha=0.5, label='Random baseline')
         
         plt.xlabel('log(generated_length / reference_length)', fontsize=12)
-        plt.ylabel('Win Rate', fontsize=12)
-        plt.title('Length-Controlled Win Rate: PPO vs SFT', fontsize=14)
+        plt.ylabel('Winrate against reference summaries (according to claude-sonnet-4-20250514)', fontsize=12)
+        plt.title('Length-Controlled Win Rate vs Summary Length Ratio', fontsize=14)
         plt.grid(True, alpha=0.3)
         plt.legend(fontsize=11)
         
@@ -392,6 +392,7 @@ class PPORLHFEval(BaseTrainer):
         #     plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='red')
 
         plt.tight_layout()
+        plt.gca().set_aspect('equal', adjustable='box')
         plt.savefig('length_controlled_winrate_comparison.png', dpi=300)
         plt.show()
         
