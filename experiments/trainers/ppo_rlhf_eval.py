@@ -204,8 +204,16 @@ class PPORLHFEval(BaseTrainer):
         print(f"Submitted comparisons: {batch.id}")
 
     
-    def download_batch_results(self, batch_id="msgbatch_015FEKzjNS8uwW32UExydJkT", output_file="batch_results_my_ppo.jsonl"):
+    def download_batch_results(self, batch_id="msgbatch_015FEKzjNS8uwW32UExydJkT", summaries_file="summaries_msgbatch_015FEKzjNS8uwW32UExydJkT.jsonl", output_file="batch_results_my_ppo.jsonl"):
         """Download batch results and save to file"""
+        
+        # Load summaries from file
+        import json
+        summaries = []
+        with open(summaries_file, 'r') as f:
+            for line in f:
+                summaries.append(json.loads(line))
+        print(f"Loaded {len(summaries)} summary pairs from {summaries_file}")
         
         # Check if batch is complete
         batch = self.client.messages.batches.retrieve(batch_id)
@@ -222,11 +230,9 @@ class PPORLHFEval(BaseTrainer):
         for result in self.client.messages.batches.results(batch_id):
             if result.result.type == "succeeded":
                 response_text = result.result.message.content[0].text
-                pdb.set_trace()
                 
                 idx = int(result.custom_id.split('-')[1])
-                summary_pair = self.summaries[idx] if idx < len(self.summaries) else {}
-
+                summary_pair = summaries[idx] if idx < len(summaries) else {}
 
                 results.append({
                     "custom_id": result.custom_id,
@@ -236,8 +242,6 @@ class PPORLHFEval(BaseTrainer):
                     "reference_summary": summary_pair.get('reference', '')
                 })
 
-
-
             else:
                 results.append({
                     "custom_id": result.custom_id,
@@ -246,7 +250,6 @@ class PPORLHFEval(BaseTrainer):
                 })
         
         # Save to file
-        import json
         with open(output_file, 'w') as f:
             for result in results:
                 f.write(json.dumps(result) + '\n')
