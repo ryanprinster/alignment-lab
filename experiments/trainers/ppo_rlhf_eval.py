@@ -239,7 +239,8 @@ class PPORLHFEval(BaseTrainer):
                     "response": response_text,
                     "status": "success",
                     "generated_summary": summary_pair.get('generated', ''),
-                    "reference_summary": summary_pair.get('reference', '')
+                    "reference_summary": summary_pair.get('reference', ''),
+                    "len_control": summary_pair.get('log(len(gen)/len(ref))', '')
                 })
 
             else:
