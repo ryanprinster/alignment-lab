@@ -244,6 +244,107 @@ class PPORLHFTrainer(BaseTrainer):
             if isinstance(batch[k], torch.Tensor):
                 batch[k] = batch[k].to(self.device)
         return batch
+    
+    @profile
+    def _log(self, loss_ppo, loss_value, k, old_data, ppo_log_data):
+        eos_mask = old_data['states'][:,1:] == self.data.tokenizer.eos_token_id
+        non_eos_mask = (old_data['states'][:,1:] != self.data.tokenizer.eos_token_id) & (old_data['states'][:,1:] != self.data.tokenizer.pad_token_id)
+        clipped_mask = (ppo_log_data['ratios'] > 1 + self.config.eps_policy_clipping) | (ppo_log_data['ratios'] < 1 - self.config.eps_policy_clipping)
+        policy_grads = [p.grad for p in self.policy_model.parameters() if p.grad is not None]
+        value_grads = [p.grad for p in self.value_model.parameters() if p.grad is not None]
+
+        self.logger.log(
+            scalars={
+                "loss_value": loss_value.item(),
+                "loss_ppo": loss_ppo.item(),
+                "global_step": self.global_step,
+                "k": k,
+                # Advantage stats
+                "A_max": old_data['A_raw'].max().item(),
+                "A_min": old_data['A_raw'].min().item(),
+                "A_std": old_data['A_raw'].std().item(),
+                "A_abs_eos": masked_mean(old_data['A_raw'].abs(), eos_mask).item(),
+                "A_abs_non_eos": masked_mean(old_data['A_raw'].abs(), non_eos_mask).item(),
+                "explained_var": 1 - masked_var(old_data['A_raw'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'][:,:-1], old_data['action_pad_mask']).item(), # 1 - var(A) / var(A + V)
+                # State stats
+                "eos_count": eos_mask.float().sum().item(),
+                "eos_pct": (eos_mask.float().sum() / float(eos_mask.size(0))).item(),
+                # Policy stats
+                "pct_clipped": masked_mean(clipped_mask.float(), old_data['action_pad_mask']).item(),
+                "ratio_eos": masked_mean((ppo_log_data['ratios'] - 1.0).abs(), eos_mask).item(),
+                "ratio_non_eos": masked_mean((ppo_log_data['ratios'] - 1.0).abs(), non_eos_mask).item(),
+                "policy_entropy": ppo_log_data['entropy'].item(),
+                "policy_entropy_paper": ppo_log_data['entropy_paper'].item(),
+                # Reward stats
+                "mean_raw_reward": masked_mean(
+                    old_data['raw_rewards'], 
+                    old_data['reward_mask']
+                ).item(),   
+                "mean_rlhf_reward": masked_mean(
+                    (old_data['raw_rewards'] - (self.config.beta * old_data['kl'])), 
+                    old_data['reward_mask']
+                ).item(),
+                # KL stats 
+                "kl": masked_mean(old_data['kl'], old_data['action_pad_mask']).item(),
+                "kl_mean": old_data['kl'].masked_fill(~old_data['action_pad_mask'],0).sum(1).mean().item(),
+                "kl_beta": torch.mean(old_data['kl']).item() * self.config.beta,
+                "approx_kl": ppo_log_data['approx_kl'].item(),
+                "approx_kl_paper": ppo_log_data['approx_kl_paper'].item(),
+                # Returns stats
+                "R": masked_mean(old_data['R'], old_data['action_pad_mask']).item(),
+                # Gradient stats
+                "policy_gradient_norm": torch.nn.utils.clip_grad_norm_(self.policy_model.parameters(), float('inf')).item(),
+                "policy_max_grad": max([g.abs().max().item() for g in policy_grads]) if policy_grads else 0.0,
+                "policy_min_grad": min([g.abs().min().item() for g in policy_grads]) if policy_grads else 0.0,
+                "policy_nan_grads": sum([torch.isnan(g).sum().item() for g in policy_grads]),
+                "policy_inf_grads": sum([torch.isinf(g).sum().item() for g in policy_grads]),
+                "value_gradient_norm": torch.nn.utils.clip_grad_norm_(self.value_model.parameters(), float('inf')).item(),
+                "value_max_grad": max([g.abs().max().item() for g in value_grads]) if value_grads else 0.0,
+                "value_min_grad": min([g.abs().min().item() for g in value_grads]) if value_grads else 0.0,
+                "value_nan_grads": sum([torch.isnan(g).sum().item() for g in value_grads]),
+                "value_inf_grads": sum([torch.isinf(g).sum().item() for g in value_grads]),
+                # Other stats
+                "lr_policy": self.lr_scheduler_policy.get_last_lr()[0],
+                "mean_sequence_length": old_data['action_pad_mask'].float().sum(1).mean().item(),
+                "length_reward_correlation": torch.corrcoef(torch.stack([
+                    old_data['action_pad_mask'].float().sum(1),
+                    old_data['raw_rewards'].sum(1)
+                ]))[0, 1].item(),
+                "unique_tokens_per_response": torch.tensor([len(torch.unique(resp)) for resp in old_data['states']]).float().mean().item(),                                
+            },
+            models=[self.policy_model, self.value_model],
+            samples=
+                {
+                    "max_reward": self.data.tokenizer.decode(
+                        old_data['full_states'][
+                            old_data['raw_rewards'].sum(dim=1).argmax().item()
+                        ]
+                    ),
+                    "min_reward": self.data.tokenizer.decode(
+                        old_data['full_states'][
+                            old_data['raw_rewards'].sum(dim=1).argmin().item()
+                        ]
+                    ),
+                    "max_entropy":
+                    self.data.tokenizer.decode(
+                        old_data['full_states'][
+                            ppo_log_data['entropy_per_sequence'].argmax().item()
+                        ]
+                    ),
+                    "min_entropy":
+                    self.data.tokenizer.decode(
+                        old_data['full_states'][
+                            ppo_log_data['entropy_per_sequence'].argmin().item()
+                        ]
+                    ),
+                    "random": self.data.tokenizer.decode(
+                        old_data['full_states'][
+                            torch.randint(0, old_data['states'].size(0), ())
+                        ]
+                    ),
+                }
+        )
+
 
     @profile
     def train(self):     
@@ -297,104 +398,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                         
                         ### Logging ###
-                        # TODO: move this to another function
-                        eos_mask = old_data['states'][:,1:] == self.data.tokenizer.eos_token_id
-                        non_eos_mask = (old_data['states'][:,1:] != self.data.tokenizer.eos_token_id) & (old_data['states'][:,1:] != self.data.tokenizer.pad_token_id)
-                        clipped_mask = (ppo_log_data['ratios'] > 1 + self.config.eps_policy_clipping) | (ppo_log_data['ratios'] < 1 - self.config.eps_policy_clipping)
-                        policy_grads = [p.grad for p in self.policy_model.parameters() if p.grad is not None]
-                        value_grads = [p.grad for p in self.value_model.parameters() if p.grad is not None]
-
-                        self.logger.log(
-                            scalars={
-                                "loss_value": loss_value.item(),
-                                "loss_ppo": loss_ppo.item(),
-                                "global_step": self.global_step,
-                                "k": k,
-                                # Advantage stats
-                                "A_max": old_data['A_raw'].max().item(),
-                                "A_min": old_data['A_raw'].min().item(),
-                                "A_std": old_data['A_raw'].std().item(),
-                                "A_abs_eos": masked_mean(old_data['A_raw'].abs(), eos_mask).item(),
-                                "A_abs_non_eos": masked_mean(old_data['A_raw'].abs(), non_eos_mask).item(),
-                                "explained_var": 1 - masked_var(old_data['A_raw'], old_data['action_pad_mask']).item() / masked_var(old_data['A'] + old_data['values'][:,:-1], old_data['action_pad_mask']).item(), # 1 - var(A) / var(A + V)
-                                # State stats
-                                "eos_count": eos_mask.float().sum().item(),
-                                "eos_pct": (eos_mask.float().sum() / float(eos_mask.size(0))).item(),
-                                # Policy stats
-                                "pct_clipped": masked_mean(clipped_mask.float(), old_data['action_pad_mask']).item(),
-                                "ratio_eos": masked_mean((ppo_log_data['ratios'] - 1.0).abs(), eos_mask).item(),
-                                "ratio_non_eos": masked_mean((ppo_log_data['ratios'] - 1.0).abs(), non_eos_mask).item(),
-                                "policy_entropy": ppo_log_data['entropy'].item(),
-                                "policy_entropy_paper": ppo_log_data['entropy_paper'].item(),
-                                # Reward stats
-                                "mean_raw_reward": masked_mean(
-                                    old_data['raw_rewards'], 
-                                    old_data['reward_mask']
-                                ).item(),   
-                                "mean_rlhf_reward": masked_mean(
-                                    (old_data['raw_rewards'] - (self.config.beta * old_data['kl'])), 
-                                    old_data['reward_mask']
-                                ).item(),
-                                # KL stats 
-                                "kl": masked_mean(old_data['kl'], old_data['action_pad_mask']).item(),
-                                "kl_mean": old_data['kl'].masked_fill(~old_data['action_pad_mask'],0).sum(1).mean().item(),
-                                "kl_beta": torch.mean(old_data['kl']).item() * self.config.beta,
-                                "approx_kl": ppo_log_data['approx_kl'].item(),
-                                "approx_kl_paper": ppo_log_data['approx_kl_paper'].item(),
-                                # Returns stats
-                                "R": masked_mean(old_data['R'], old_data['action_pad_mask']).item(),
-                                # Gradient stats
-                                "policy_gradient_norm": torch.nn.utils.clip_grad_norm_(self.policy_model.parameters(), float('inf')).item(),
-                                "policy_max_grad": max([g.abs().max().item() for g in policy_grads]) if policy_grads else 0.0,
-                                "policy_min_grad": min([g.abs().min().item() for g in policy_grads]) if policy_grads else 0.0,
-                                "policy_nan_grads": sum([torch.isnan(g).sum().item() for g in policy_grads]),
-                                "policy_inf_grads": sum([torch.isinf(g).sum().item() for g in policy_grads]),
-                                "value_gradient_norm": torch.nn.utils.clip_grad_norm_(self.value_model.parameters(), float('inf')).item(),
-                                "value_max_grad": max([g.abs().max().item() for g in value_grads]) if value_grads else 0.0,
-                                "value_min_grad": min([g.abs().min().item() for g in value_grads]) if value_grads else 0.0,
-                                "value_nan_grads": sum([torch.isnan(g).sum().item() for g in value_grads]),
-                                "value_inf_grads": sum([torch.isinf(g).sum().item() for g in value_grads]),
-                                # Other stats
-                                "lr_policy": self.lr_scheduler_policy.get_last_lr()[0],
-                                "mean_sequence_length": old_data['action_pad_mask'].float().sum(1).mean().item(),
-                                "length_reward_correlation": torch.corrcoef(torch.stack([
-                                    old_data['action_pad_mask'].float().sum(1),
-                                    old_data['raw_rewards'].sum(1)
-                                ]))[0, 1].item(),
-                                "unique_tokens_per_response": torch.tensor([len(torch.unique(resp)) for resp in old_data['states']]).float().mean().item(),                                
-                            },
-                            models=[self.policy_model, self.value_model],
-                            samples=
-                                {
-                                    "max_reward": self.data.tokenizer.decode(
-                                        old_data['full_states'][
-                                            old_data['raw_rewards'].sum(dim=1).argmax().item()
-                                        ]
-                                    ),
-                                    "min_reward": self.data.tokenizer.decode(
-                                        old_data['full_states'][
-                                            old_data['raw_rewards'].sum(dim=1).argmin().item()
-                                        ]
-                                    ),
-                                    "max_entropy":
-                                    self.data.tokenizer.decode(
-                                        old_data['full_states'][
-                                            ppo_log_data['entropy_per_sequence'].argmax().item()
-                                        ]
-                                    ),
-                                    "min_entropy":
-                                    self.data.tokenizer.decode(
-                                        old_data['full_states'][
-                                            ppo_log_data['entropy_per_sequence'].argmin().item()
-                                        ]
-                                    ),
-                                    "random": self.data.tokenizer.decode(
-                                        old_data['full_states'][
-                                            torch.randint(0, old_data['states'].size(0), ())
-                                        ]
-                                    ),
-                                }
-                        )
+                        self._log(loss_ppo, loss_value, k, old_data, ppo_log_data)
 
                         # TODO: could move one scope out
                         self.checkpointer.save_checkpoint(
