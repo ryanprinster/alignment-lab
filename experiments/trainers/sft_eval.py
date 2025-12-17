@@ -32,7 +32,12 @@ class SFTEval(BaseTrainer):
         
         self.data = TLDRFilteredDataSFT(tokenizer=self.sft.tokenizer, batch_size=self.config.batch_size)
 
-    
+    def _to_device(self, batch):
+        for k in batch.keys():
+            if isinstance(batch[k], torch.Tensor):
+                batch[k] = batch[k].to(self.device)
+        return batch
+
     def evaluate(self):
         for _batch_idx, batch in enumerate(self.data.test_loader):
             for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
