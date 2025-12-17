@@ -59,7 +59,7 @@ class HFModel(nn.Module, ABC):
     ### INIT METHODS ###
 
     @classmethod
-    def init_from_hf_pretrained(cls, config, hf_model_name="meta-llama/Llama-3.2-1B"):
+    def init_from_hf_pretrained_llama(cls, config, hf_model_name="meta-llama/Llama-3.2-1B"):
         """ Inits by downloading a pretrained model from HF """
         transformer = cls._get_model_class(hf_model_name)
 
