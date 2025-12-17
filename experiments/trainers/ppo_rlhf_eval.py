@@ -101,6 +101,7 @@ class PPORLHFEval(BaseTrainer):
 
             # Generate summary
             generated = self.generate_summaries(inputs)
+            pdb.set_trace()
 
             # Decode output
             summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
