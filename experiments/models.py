@@ -223,14 +223,16 @@ class HFModel_Classification(HFModel):
 
     def _set_model_weights(self, init_model_path):
         # If we are setting the model weights, also set the the head biases
-        super()._set_model_weights(init_model_path)
 
         # score layer doesn't come with a bias
         if self.transformer.score.bias is None:
             self.transformer.score.bias = nn.Parameter(torch.zeros(self.transformer.score.out_features))
+        
+        super()._set_model_weights(init_model_path)
 
         if self.config.calculated_sft_bias is not None:
             self.init_head_bias(self.config.calculated_sft_bias)
+
 
 
     def _get_score_head(self):
