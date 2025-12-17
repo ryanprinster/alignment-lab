@@ -72,8 +72,7 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         # Checkpointing
         self.save_freq_steps = 100 * self.accumulation_steps
         self.save_interval_min = 60
-        self.sft_model_path = "./checkpoints/checkpoint_best.pt"
-        self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
+        self.sft_model_path = "checkpoints/sft_final_checkpoint.pt"
         self.rm_model_path = "checkpoints/rm_final_checkpoint_v2.pt"
         
         self.keep_last_n=2
