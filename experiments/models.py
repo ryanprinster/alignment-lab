@@ -75,6 +75,11 @@ class HFModel(nn.Module, ABC):
         cls._setup_padding_token(transformer, tokenizer)
         
         return cls(config, transformer, tokenizer, init_model_path=init_model_path)
+
+    @classmethod
+    def init_from_hf_pretrained(cls, config, local_model_path):
+        # TODO: Implement this way so as not to need to download from HF each time
+        pass
     
     ### INIT METHODS ###
     def set_from_local_state_dict(self, init_model_path):

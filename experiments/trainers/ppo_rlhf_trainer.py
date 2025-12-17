@@ -49,13 +49,17 @@ class PPORLHFTrainer(BaseTrainer):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Models
-        self.sft_model = HFModel_SFT.init_from_hf_pretrained(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
-        self.reward_model = HFModel_Reward.init_from_hf_pretrained(self.config, init_model_path=self.config.rm_model_path).to(self.device).requires_grad_(False)
-        self.reward_model.init_head_bias(self.config.calculated_sft_bias)
+        self.sft_model = HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        self.sft_model.set_from_local_state_dict(self.config.sft_model_path)
+        
+        self.reward_model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        self.reward_model.set_from_local_state_dict(self.config.rm_model_path)
 
-        self.policy_model = HFModel_Policy.init_from_hf_pretrained(self.config, init_model_path=self.config.sft_model_path).to(self.device)
-        self.value_model = HFModel_Value.init_from_hf_pretrained(self.config, init_model_path=self.config.rm_model_path).to(self.device)
-        self.value_model.init_head_bias(self.config.calculated_sft_bias)
+        self.policy_model = HFModel_Policy.init_from_hf_pretrained(self.config).to(self.device)
+        self.policy_model.set_from_local_state_dict(self.config.sft_model_path)
+        
+        self.value_model = HFModel_Value.init_from_hf_pretrained(self.config).to(self.device)
+        self.value_model.set_from_local_state_dict(self.config.rm_model_path)
 
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
