@@ -53,18 +53,18 @@ class PPORLHFEval(BaseTrainer):
         self.checkpointer = Checkpointer(self.config)
 
         # Trained PPO Model
-        # self.model = HFModel_Policy.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
-        # self.model.set_from_local_state_dict(self.config.policy_checkpoint_path)
+        self.model = HFModel_Policy.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        self.model.set_from_local_state_dict(self.config.policy_checkpoint_path)
 
         # self.model = HFModel_Policy.from_pretrained(
         #     config=self.config,
         #     model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
         #     revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device)
 
-        self.model = HFModel_Policy.init_from_hf_pretrained(
-            config=self.config,
-            hf_model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
-            revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device)
+        # self.model = HFModel_Policy.init_from_hf_pretrained(
+        #     config=self.config,
+        #     hf_model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
+        #     revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device)
 
 
         # SFT Mode
@@ -73,6 +73,26 @@ class PPORLHFEval(BaseTrainer):
 
         self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         
+
+    def human_generate_summary(self):
+        """Interactive loop: generates summaries for user-provided prompts."""
+        self.model.eval()
+
+        while True:
+            prompt_input = input("Prompt> ")
+            if prompt_input.lower() in ("quit", "exit"):
+                break
+
+            # Encode prompt as a batch for your model
+            input_batch = self.data.tokenizer.encode(prompt_input)
+            input_batch = torch.tensor(input_batch).unsqueeze(0).to(self.device)  # shape [1, seq_len]
+
+            # Generate summary
+            generated = self.generate_summaries(input_batch)
+
+            # Decode output
+            summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
+            print("Generated Summary:", summary_text)
 
     def _to_device(self, batch):
         for k in batch.keys():
