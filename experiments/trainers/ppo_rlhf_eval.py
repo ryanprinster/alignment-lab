@@ -83,6 +83,8 @@ class PPORLHFEval(BaseTrainer):
             prompt_input = input("\nPrompt> ")
             if prompt_input.lower() in ("quit", "exit"):
                 break
+            
+            print("")
 
             prompt_input = self.data.get_query_text("interactive", "Interactive Test", prompt_input)
             inputs = self.data.tokenizer(prompt_input, return_tensors="pt")
