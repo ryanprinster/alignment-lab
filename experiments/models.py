@@ -81,8 +81,7 @@ class HFModel(nn.Module, ABC):
     
     ### INIT METHODS ###
     def set_from_local_state_dict(self, init_model_path):
-        self.init_model_path = init_model_path
-        self._set_model_weights()
+        self._set_model_weights(init_model_path)
 
     @staticmethod
     def _setup_padding_token(model, tokenizer):
