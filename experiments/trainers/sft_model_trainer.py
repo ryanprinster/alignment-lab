@@ -6,7 +6,6 @@ from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
 
 
-# from experiments.models_v2 import HFModel_SFT
 from experiments.models import HFModel_SFT
 from experiments.config import SFTConfigBase
 from experiments.datasets import TLDRFilteredDataSFT
