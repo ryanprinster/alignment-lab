@@ -50,28 +50,46 @@ class MLPSimple(nn.Module):
 class HFModel(nn.Module, ABC):
     HF_MODEL_NAME = "meta-llama/Llama-3.2-1B"
     
-    def __init__(self, config):
+    def __init__(self, config, transformer, tokenizer, **kwargs):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.config = config
-        self.transformer = self._get_model_class()
+        self.transformer = transformer
+        self.tokenizer = tokenizer
+
+    ### INIT METHODS ###
+
+    @classmethod
+    def init_from_hf_pretrained(cls, config, init_model_path):
+        """ Inits by downloading a pretrained model from HF """
+        init_model_path = init_model_path
+        transformer = cls._get_model_class()
+
         if config.enable_gradient_checkpointing:
-            self.transformer.gradient_checkpointing_enable(
+            transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(HFModel.HF_MODEL_NAME)
+        tokenizer = AutoTokenizer.from_pretrained(HFModel.HF_MODEL_NAME)
+
+        cls._setup_padding_token(transformer, tokenizer)
         
+        return cls(config, transformer, tokenizer, init_model_path=init_model_path)
+    
+    ### INIT METHODS ###
+    def set_from_local_state_dict(self, init_model_path):
+        self.init_model_path = init_model_path
+        self._set_model_weights()
+
+    @staticmethod
+    def _setup_padding_token(model, tokenizer):
         # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
-        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
-        self.transformer.resize_token_embeddings(len(self.tokenizer))
+        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        model.config.pad_token_id = tokenizer.pad_token_id
+        model.resize_token_embeddings(len(tokenizer))
 
     @abstractmethod
     def _get_model_class(self):
-        pass
-
-    def _init_model_weights(self):
         pass
 
     @abstractmethod
@@ -86,13 +104,11 @@ class HFModel(nn.Module, ABC):
         return logits.masked_fill_(torch.isinf(logits), 1e-9)
     
     @profile
-    def _init_model_weights(self):
-        if self.init_model_path is None:
-            return 
-        if not os.path.exists(self.init_model_path):
-            raise FileNotFoundError(f"Model not found: {self.init_model_path}")
+    def _set_model_weights(self, init_model_path):
+        if not os.path.exists(init_model_path):
+            raise FileNotFoundError(f"Model not found: {init_model_path}")
 
-        checkpoint = torch.load(self.init_model_path, map_location='cpu')
+        checkpoint = torch.load(init_model_path, map_location='cpu')
 
         if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
             state_dict = checkpoint['model_state_dict']
@@ -102,20 +118,11 @@ class HFModel(nn.Module, ABC):
         self.load_state_dict(state_dict)
 
 
-        self.tokenizer = AutoTokenizer.from_pretrained(HFModel.HF_MODEL_NAME)
-        
-        # Detail 3 (use a special padding token [PAD]; do not use EOS token synonymously as [PAD])
-        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
-        self.transformer.resize_token_embeddings(len(self.tokenizer))
-
 class HFModel_Causal(HFModel):
     def __init__(self, config, init_model_path=None):
         self.init_model_path = init_model_path
         super().__init__(config)
         self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
-
-        self._init_model_weights()
 
     @profile
     def generate(self, inputs, max_length, temp, do_sample=True, max_query_length=None):
@@ -206,21 +213,25 @@ class HFModel_Classification(HFModel):
     def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
         self.init_model_path = init_model_path
         super().__init__(config)
+        
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         
+        # Init head weights when initially loading a pretrained model / untrained head
+        self._init_head_weights()
+        
+
+    def _set_model_weights(self, init_model_path):
+        # If we are setting the model weights, also set the the head biases
+        super()._set_model_weights(init_model_path)
+
         # score layer doesn't come with a bias
         if self.transformer.score.bias is None:
             self.transformer.score.bias = nn.Parameter(torch.zeros(self.transformer.score.out_features))
 
-        if calculated_sft_bias is not None:
-            self.init_head_bias(calculated_sft_bias)
+        if self.config.calculated_sft_bias is not None:
+            self.init_head_bias(self.config.calculated_sft_bias)
 
-        if init_model_path is None:
-            self._init_head_weights()
 
-        self._init_model_weights()
-
-        
     def _get_score_head(self):
         """Get the final classification layer (naming varies by model architecture)"""
         # Add new architectures here as needed
@@ -296,113 +307,4 @@ class HFModel_Reward(HFModel_SequenceClassification):
     pass
 
 class HFModel_Value(HFModel_TokenClassification):
-    pass   
-
-# class HFModel_RM(HFModel):
-#     def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
-#         self.init_model_path = init_model_path
-#         super().__init__(config)
-        
-#         # score layer doesn't come with a bias
-#         if self.transformer.score.bias is None:
-#             self.transformer.score.bias = nn.Parameter(torch.zeros(1))
-
-#         if calculated_sft_bias is not None:
-#             self.init_head_bias(calculated_sft_bias)
-
-#         if init_model_path is None:
-#             self._init_head_weights()
-
-#         self._init_model_weights()
-
-#     def _init_head_weights(self):
-#         # Detail 11 (Reward head initialization)
-#         print("Initializing Head Weights...")
-
-#         d_model = self.transformer.score.in_features
-#         std = 1.0 / (d_model + 1) ** 0.5
-        
-#         init.normal_(self.transformer.score.weight, mean=0, std=std)
-
-#     def init_head_bias(self, calculated_sft_bias):
-#         # Detail 15 (Reward normalization based on SFT demonstrations)
-#         print(f"Initializing Head Bias to {calculated_sft_bias}...")
-#         self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
-
-#     def _get_model_class(self):
-#         return AutoModelForSequenceClassification.from_pretrained(
-#             HFModel.HF_MODEL_NAME, 
-#             num_labels=1
-#         )
-#         # Detail 12 (Extract reward from the EOS token) Done by default
-#         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
-
-#     def forward(self, input_ids, attention_mask=None):
-#         if attention_mask is None:
-#             attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
-
-#         outputs = self.transformer(
-#             input_ids=input_ids,
-#             attention_mask=attention_mask
-#         )
-#         return outputs.logits.squeeze(-1)  # -> (batch, )
-
-
-# class HFModel_Value(HFModel):
-#     def __init__(self, config, init_model_path=None, init_rm_model=None):
-#         self.init_model_path = init_model_path
-#         super().__init__(config)
-#         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
-#         self._init_model_weights()
-#         self._init_head_weights(init_rm_model)
-
-
-#     def _get_model_class(self):
-#         return AutoModelForTokenClassification.from_pretrained(
-#             HFModel.HF_MODEL_NAME,
-#             num_labels=1
-#         )
-    
-#     def init_head_bias(self, calculated_sft_bias):
-#         # Detail 15 (Reward normalization based on SFT demonstrations)
-#         print(f"Initializing Head Bias to {calculated_sft_bias}...")
-#         self.transformer.score.bias.data.fill_(-1.0 * calculated_sft_bias)
-    
-#     def _init_head_weights(self, init_rm_model):
-#         # TODO: cleanup how this is called
-#         if init_rm_model is None:
-#             return 
-#         # if not os.path.exists(self.init_model_path):
-#         #     raise FileNotFoundError(f"Model not found: {self.init_model_path}")
-        
-#         # TODO: Finish properly init the value model
-#         # NOTE: It seems the model does this by default, but 
-#         self.transformer.score.weight.data = init_rm_model.transformer.score.weight.data.clone()
-#         self.transformer.score.bias.data = init_rm_model.transformer.score.bias.data.clone()
-
-#     @profile
-#     def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
-#         # Forward parallel decode
-
-#         # Mask pad tokens
-#         if attention_mask is None:
-#             attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
-
-#         outputs = self.transformer(
-#             input_ids=input_ids.squeeze(-1),
-#             attention_mask=attention_mask.squeeze(-1),
-#         )
-        
-#         if max_query_length_truncate is not None:
-#             return outputs.logits[:,max_query_length_truncate:,:].squeeze(-1)
-        
-#         return outputs.logits.squeeze(-1) # -> (batch, seq_len)
-
-
-#  For some reason, forward in HFModel_Value does not give the same or even close values to forward in HFModel_RM
-# Hypotheses include: 
-# off by one errors in indexing, 
-# some sort of randomness is added, 
-# the models are actually not equivalent for some sort of intialization issue 
-# This could be messing with ppo rlhf training
-# The RM one is not actually returning the reward at EOS token
+    pass
