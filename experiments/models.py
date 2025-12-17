@@ -59,40 +59,40 @@ class HFModel(nn.Module, ABC):
     ### INIT METHODS ###
 
     @classmethod
-    def init_from_hf_pretrained_llama(cls, config, hf_model_name="meta-llama/Llama-3.2-1B"):
+    def init_from_hf_pretrained(cls, config, hf_model_name="meta-llama/Llama-3.2-1B", revision=None):
         """ Inits by downloading a pretrained model from HF """
-        transformer = cls._get_model_class(hf_model_name)
-
-        if config.enable_gradient_checkpointing:
-            transformer.gradient_checkpointing_enable(
-                gradient_checkpointing_kwargs={"use_reentrant": False}
-            )
-
-        tokenizer = AutoTokenizer.from_pretrained(hf_model_name)
-
-        cls._setup_padding_token(transformer, tokenizer)
-        
-        return cls(config, transformer, tokenizer)
-    
-    @classmethod
-    def init_from_hf_pretrained_vwxyzjn(cls, config, hf_model_name, revision, tokenizer_name="EleutherAI/pythia-1b-deduped"):
         transformer = cls._get_model_class(hf_model_name, revision=revision)
 
         if config.enable_gradient_checkpointing:
             transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
-        
+
         tokenizer = AutoTokenizer.from_pretrained(hf_model_name, revision=revision)
 
-
-        # except revision is needed
-        # model = model_class.from_pretrained(model_name, revision=revision, **kwargs)
-
-        # TODO: change how tokenizer works?
         cls._setup_padding_token(transformer, tokenizer)
-
+        
         return cls(config, transformer, tokenizer)
+    
+    # @classmethod
+    # def init_from_hf_pretrained_vwxyzjn(cls, config, hf_model_name, revision=None):
+    #     transformer = cls._get_model_class(hf_model_name, revision=revision)
+
+    #     if config.enable_gradient_checkpointing:
+    #         transformer.gradient_checkpointing_enable(
+    #             gradient_checkpointing_kwargs={"use_reentrant": False}
+    #         )
+        
+    #     tokenizer = AutoTokenizer.from_pretrained(hf_model_name, revision=revision)
+
+
+    #     # except revision is needed
+    #     # model = model_class.from_pretrained(model_name, revision=revision, **kwargs)
+
+    #     # TODO: change how tokenizer works?
+    #     cls._setup_padding_token(transformer, tokenizer)
+
+    #     return cls(config, transformer, tokenizer)
 
     
 
