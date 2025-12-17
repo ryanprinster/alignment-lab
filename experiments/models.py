@@ -119,7 +119,7 @@ class HFModel(nn.Module, ABC):
         else:
             state_dict = checkpoint
 
-        self.load_state_dict(state_dict)
+        self.load_state_dict(state_dict, strict=False)
 
 
 class HFModel_Causal(HFModel):
@@ -226,9 +226,10 @@ class HFModel_Classification(HFModel):
     def _set_model_weights(self, init_model_path):
         # If we are setting the model weights, also set the the head biases
 
+        score_head = self._get_score_head()
         # score layer doesn't come with a bias
-        if self.transformer.score.bias is None:
-            self.transformer.score.bias = nn.Parameter(torch.zeros(self.transformer.score.out_features).to(self.device))
+        if score_head.bias is None:
+            score_head.bias = nn.Parameter(torch.zeros(score_head.out_features).to(self.device))
         
         super()._set_model_weights(init_model_path)
 
