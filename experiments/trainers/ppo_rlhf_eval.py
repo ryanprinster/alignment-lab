@@ -195,7 +195,8 @@ class PPORLHFEval(BaseTrainer):
             del input_batch
 
             self.torch_batch_to_request(prompts, reference_summary_ids, generated_summaries)
-
+    
+        pdb.set_trace()
         print("finished creating batched requests")
         batch = self.client.messages.batches.create(requests=self.requests)
 
