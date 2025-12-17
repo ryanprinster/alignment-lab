@@ -75,7 +75,7 @@ class HFModel(nn.Module, ABC):
         return cls(config, transformer, tokenizer)
 
     @classmethod
-    def init_from_hf_pretrained(cls, config, local_model_path):
+    def init_from_local_hf_pretrained(cls, config, local_model_path):
         # TODO: Implement this way so as not to need to download from HF each time
         pass
     

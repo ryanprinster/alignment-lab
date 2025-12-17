@@ -87,6 +87,7 @@ class PPORLHFTrainer(BaseTrainer):
 
 
         if self.config.resume_from_checkpoint:
+            # TODO: In this case, could remove the loading local state dicts for HF models
             print("Loading initial checkpoint...")
             self._load_from_checkpoint(policy_checkpoint_path=self.config.policy_checkpoint_path, value_checkpoint_path=self.config.value_checkpoint_path)
 
