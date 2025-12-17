@@ -76,3 +76,28 @@ class RMEval(BaseTrainer):
         log_data = {"step": _batch_idx, "cumulative_accuracy": 1.0 * total_correct / total_examples, "timestamp": now}
         with open(f"rm_validation_{now}.jsonl", "a") as f:
             f.write(json.dumps(log_data) + "\n")
+
+
+    def _test_reward_model(self, prompt, with_eos=True):
+
+        if with_eos:
+            prompt += '<|end_of_text|>'
+        x = self.data.tokenizer.encode(prompt)
+        x = torch.tensor(x)
+        x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
+        attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
+        y = self.model.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
+        return y
+
+    def human_test(self):
+        self.model.eval()
+
+        while True:
+            user_input = input("> ")
+            if user_input.lower() in ("quit", "exit"):
+                break
+            output = self._test_reward_model(user_input)
+            print(output)
+
+
+
