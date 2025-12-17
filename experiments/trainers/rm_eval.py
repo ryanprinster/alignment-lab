@@ -93,10 +93,15 @@ class RMEval(BaseTrainer):
         self.model.eval()
 
         while True:
-            user_input = input("> ")
-            if user_input.lower() in ("quit", "exit"):
+            prompt_input = input("Prompt> ")
+            if prompt_input.lower() in ("quit", "exit"):
                 break
-            output = self._test_reward_model(user_input)
+
+            summary_input = input("Summary> ")
+            if summary_input.lower() in ("quit", "exit"):
+                break
+            output = self._test_reward_model(prompt_input + "\n\nTL;DR: " + summary_input)
+            
             print(output)
 
 
