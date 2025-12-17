@@ -77,7 +77,6 @@ class PPORLHFEval(BaseTrainer):
     def human_generate_summary(self):
         """Interactive loop: generates summaries for user-provided prompts."""
         self.model.eval()
-        max_query_length = self.data.__class__.SFT_MAX_QUERY_LENGTH
 
         while True:
             prompt_input = input("\nPrompt> ")
@@ -86,27 +85,70 @@ class PPORLHFEval(BaseTrainer):
             
             print("")
 
-            prompt_input = self.data.get_query_text("interactive", "Interactive Test", prompt_input)
-            inputs = self.data.tokenizer(prompt_input, return_tensors="pt")
-            inputs['input_ids'] = inputs['input_ids'].squeeze()
-            inputs['attention_mask'] = inputs['attention_mask'].squeeze()
-            inputs = self._to_device(inputs)
+            batch_inputs, _ = self.format_batch_for_generation(
+                {
+                    "subreddit": ["interactive"],
+                    "title": ["Interactive Test"],
+                    "post": [prompt_input],
+                    "summary": [""] 
+                } ,  self.data.__class__.SFT_MAX_QUERY_LENGTH)
+            del _
+
+            # prompt_input = self.data.get_query_text("interactive", "Interactive Test", prompt_input)
+            # inputs = self.data.tokenizer(prompt_input, return_tensors="pt")
+            # inputs['input_ids'] = inputs['input_ids'].squeeze()
+            # inputs['attention_mask'] = inputs['attention_mask'].squeeze()
+            # inputs = self._to_device(inputs)
     
 
-            # Pad to max_query_length
-            if inputs['input_ids'].size(0) < max_query_length:
-                inputs['input_ids'] = torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id).unsqueeze(0)
-                inputs['attention_mask'] = torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0).unsqueeze(0)
-            else:
-                inputs['input_ids'] = inputs['input_ids'][-max_query_length:].unsqueeze(0)  # truncate if too long
-                inputs['attention_mask'] = inputs['attention_mask'][-max_query_length:].unsqueeze(0)  # truncate if too long
+            # # Pad to max_query_length
+            # if inputs['input_ids'].size(0) < max_query_length:
+            #     inputs['input_ids'] = torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id).unsqueeze(0)
+            #     inputs['attention_mask'] = torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0).unsqueeze(0)
+            # else:
+            #     inputs['input_ids'] = inputs['input_ids'][-max_query_length:].unsqueeze(0)  # truncate if too long
+            #     inputs['attention_mask'] = inputs['attention_mask'][-max_query_length:].unsqueeze(0)  # truncate if too long
 
             # Generate summary
-            generated = self.generate_summaries(inputs)
+            generated = self.generate_summaries(batch_inputs)
 
             # Decode output
             summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
             print(f"Generated Summary: {summary_text}\n")
+        
+    # def human_generate_summary(self):
+    #     """Interactive loop: generates summaries for user-provided prompts."""
+    #     self.model.eval()
+    #     max_query_length = self.data.__class__.SFT_MAX_QUERY_LENGTH
+
+    #     while True:
+    #         prompt_input = input("\nPrompt> ")
+    #         if prompt_input.lower() in ("quit", "exit"):
+    #             break
+            
+    #         print("")
+
+    #         prompt_input = self.data.get_query_text("interactive", "Interactive Test", prompt_input)
+    #         inputs = self.data.tokenizer(prompt_input, return_tensors="pt")
+    #         inputs['input_ids'] = inputs['input_ids'].squeeze()
+    #         inputs['attention_mask'] = inputs['attention_mask'].squeeze()
+    #         inputs = self._to_device(inputs)
+    
+
+    #         # Pad to max_query_length
+    #         if inputs['input_ids'].size(0) < max_query_length:
+    #             inputs['input_ids'] = torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id).unsqueeze(0)
+    #             inputs['attention_mask'] = torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0).unsqueeze(0)
+    #         else:
+    #             inputs['input_ids'] = inputs['input_ids'][-max_query_length:].unsqueeze(0)  # truncate if too long
+    #             inputs['attention_mask'] = inputs['attention_mask'][-max_query_length:].unsqueeze(0)  # truncate if too long
+
+    #         # Generate summary
+    #         generated = self.generate_summaries(inputs)
+
+    #         # Decode output
+    #         summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
+    #         print(f"Generated Summary: {summary_text}\n")
 
     def _to_device(self, batch):
         for k in batch.keys():
