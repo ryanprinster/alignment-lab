@@ -38,6 +38,14 @@ class RMEval(BaseTrainer):
         return batch
 
     @profile
+    def _forward(self, batch):
+        r_preferred = self.model.forward(input_ids=batch['preferred_input_ids'], 
+                            attention_mask=batch['preferred_attention_mask']) 
+        r_rejected = self.model.forward(input_ids=batch['rejected_input_ids'], 
+                            attention_mask=batch['rejected_attention_mask'])
+        return (r_preferred, r_rejected)
+
+    @profile
     def validation(self):
         print("Starting Validation!")
 
@@ -47,7 +55,6 @@ class RMEval(BaseTrainer):
         total_examples = 0
         with torch.no_grad():                     
             for _batch_idx, batch in enumerate(self.data.validation_loader):
-
                 batch = self._to_device(batch)
                 
                 outputs = self._forward(batch)
@@ -62,9 +69,7 @@ class RMEval(BaseTrainer):
                 total_examples += correct.size(0)
 
                 print(f"\n\nPreferred (reward: {r_preferred[0]})\n ", self.model.tokenizer.decode(batch['preferred_input_ids'][0]), "\n\n")
-                
                 print(f"\n\nRejected: (reward: {r_rejected[0]})\n ", self.model.tokenizer.decode(batch['rejected_input_ids'][0]), "\n\n")                
-                
                 print(f"step: {_batch_idx}, cumulative accuracy: {1.0 * total_correct / total_examples}")
             
         now = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
