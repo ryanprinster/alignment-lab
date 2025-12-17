@@ -26,7 +26,6 @@ from experiments.profiler import profile
 from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
 from experiments.util import masked_mean, masked_var, masked_whiten, masked_log_softmax, whiten
 
-# from experiments.models_v2 import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_Reward
 from experiments.models import HFModel_Policy, HFModel_Value, HFModel_SFT, HFModel_Reward
 
 from experiments.trajectory import Trajectory, TrajectorySet

@@ -9,7 +9,6 @@ import pdb
 from datetime import datetime
 import json
 
-from experiments.models_v2 import HFModel_SequenceClassification, HFModel_TokenClassification
 from experiments.models import HFModel_Reward, HFModel_TokenClassification
 from experiments.config import RMConfigBase
 from experiments.datasets import OpenAIPreferenceData, TLDRFilteredDataSFT
