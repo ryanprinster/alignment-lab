@@ -48,7 +48,6 @@ class MLPSimple(nn.Module):
         return x
 
 class HFModel(nn.Module, ABC):
-    HF_MODEL_NAME = "meta-llama/Llama-3.2-1B"
     
     def __init__(self, config, transformer, tokenizer, **kwargs):
         super().__init__()
@@ -60,21 +59,20 @@ class HFModel(nn.Module, ABC):
     ### INIT METHODS ###
 
     @classmethod
-    def init_from_hf_pretrained(cls, config, init_model_path):
+    def init_from_hf_pretrained(cls, config, hf_model_name="meta-llama/Llama-3.2-1B"):
         """ Inits by downloading a pretrained model from HF """
-        init_model_path = init_model_path
-        transformer = cls._get_model_class()
+        transformer = cls._get_model_class(hf_model_name)
 
         if config.enable_gradient_checkpointing:
             transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
 
-        tokenizer = AutoTokenizer.from_pretrained(HFModel.HF_MODEL_NAME)
+        tokenizer = AutoTokenizer.from_pretrained(hf_model_name)
 
         cls._setup_padding_token(transformer, tokenizer)
         
-        return cls(config, transformer, tokenizer, init_model_path=init_model_path)
+        return cls(config, transformer, tokenizer)
 
     @classmethod
     def init_from_hf_pretrained(cls, config, local_model_path):
@@ -94,7 +92,7 @@ class HFModel(nn.Module, ABC):
         model.resize_token_embeddings(len(tokenizer))
 
     @abstractmethod
-    def _get_model_class(self):
+    def _get_model_class(self, hf_model_name):
         pass
 
     @abstractmethod
@@ -204,8 +202,8 @@ class HFModel_Causal(HFModel):
             return outputs.logits / (self.config.generation_temperature + 1e-7 ), outputs.loss
         return outputs.logits, outputs.loss
 
-    def _get_model_class(self):
-        return AutoModelForCausalLM.from_pretrained(HFModel.HF_MODEL_NAME)
+    def _get_model_class(self, hf_model_name):
+        return AutoModelForCausalLM.from_pretrained(hf_model_name)
 
 
 class HFModel_SFT(HFModel_Causal):
@@ -268,8 +266,8 @@ class HFModel_Classification(HFModel):
 
 class HFModel_SequenceClassification(HFModel_Classification):
     @classmethod
-    def _get_model_class(cls):
-        return AutoModelForSequenceClassification.from_pretrained(HFModel.HF_MODEL_NAME, num_labels=1)
+    def _get_model_class(cls, hf_model_name):
+        return AutoModelForSequenceClassification.from_pretrained(hf_model_name, num_labels=1)
         # Detail 12 (Extract reward from the EOS token) Done by default for Llama models
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
@@ -286,8 +284,8 @@ class HFModel_SequenceClassification(HFModel_Classification):
 class HFModel_TokenClassification(HFModel_Classification):
 
     @classmethod
-    def _get_model_class(cls):
-        return AutoModelForTokenClassification.from_pretrained(HFModel.HF_MODEL_NAME, num_labels=1)
+    def _get_model_class(cls, hf_model_name):
+        return AutoModelForTokenClassification.from_pretrained(hf_model_name, num_labels=1)
 
     @profile
     def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
