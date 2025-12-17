@@ -74,27 +74,6 @@ class HFModel(nn.Module, ABC):
         
         return cls(config, transformer, tokenizer)
     
-    # @classmethod
-    # def init_from_hf_pretrained_vwxyzjn(cls, config, hf_model_name, revision=None):
-    #     transformer = cls._get_model_class(hf_model_name, revision=revision)
-
-    #     if config.enable_gradient_checkpointing:
-    #         transformer.gradient_checkpointing_enable(
-    #             gradient_checkpointing_kwargs={"use_reentrant": False}
-    #         )
-        
-    #     tokenizer = AutoTokenizer.from_pretrained(hf_model_name, revision=revision)
-
-
-    #     # except revision is needed
-    #     # model = model_class.from_pretrained(model_name, revision=revision, **kwargs)
-
-    #     # TODO: change how tokenizer works?
-    #     cls._setup_padding_token(transformer, tokenizer)
-
-    #     return cls(config, transformer, tokenizer)
-
-    
 
     @classmethod
     def init_from_local_hf_pretrained(cls, config, local_model_path):
