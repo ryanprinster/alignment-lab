@@ -8,6 +8,7 @@ from contextlib import nullcontext
 import pdb
 
 from experiments.models_v2 import HFModel_SequenceClassification, HFModel_TokenClassification
+from experiments.models import HFModel_Reward, HFModel_TokenClassification
 from experiments.config import RMConfigBase
 from experiments.datasets import OpenAIPreferenceData, TLDRFilteredDataSFT
 from experiments.logger import Logger
@@ -21,9 +22,7 @@ class RMTrainer(BaseTrainer):
         self.config = config
         self.checkpointer = Checkpointer(self.config)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model = HFModel_SequenceClassification(self.config,
-                                                    hf_model_name=self.config.hf_rm_model_name,
-                                                    hf_model_revision=self.config.hf_rm_model_revision).to(self.device)
+        self.model = HFModel_Reward(self.config).to(self.device)
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
         self.data = OpenAIPreferenceData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         self.optimizer = optim.AdamW(self.model.parameters(), 
@@ -205,7 +204,8 @@ class RMTrainer(BaseTrainer):
         print("Starting Validation!")
         self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
 
-        self.model_full = HFModel_TokenClassification(self.config, init_model_path=self.config.rm_model_path).to(self.device)
+        self.model_full = HFModel_Reward(self.config).to(self.device)
+        self.model_full.set_from_local_state_dict(self.config.rm_model_path)
         
         self.model.init_head_bias(self.config.calculated_sft_bias)
         self.model_full.init_head_bias(self.config.calculated_sft_bias)

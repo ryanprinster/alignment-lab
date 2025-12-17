@@ -75,10 +75,7 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.load_checkpoint_path = "./checkpoints/checkpoint_best.pt"
         self.rm_model_path = "checkpoints/rm_final_checkpoint_v2.pt"
         
-        self.hf_rm_model_name = "meta-llama/Llama-3.2-1B"
-        self.hf_sft_model_name = "meta-llama/Llama-3.2-1B"
-        self.hf_sft_model_revision = "main"
-        self.hf_rm_model_revision = "main"
+        self.keep_last_n=2
 
         # Logging
         # self.log_weights_freq=None
@@ -93,6 +90,7 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.calculated_sft_bias = 4.6745805740356
 
         # TODO: Could move optimizer, lr scheduler, data to config
+
 
         # Detail 7 (Disable dropout) aka there is no dropout
         # Detail 8 (Tech stack) Differences from the paper thus far:
