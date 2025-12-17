@@ -80,7 +80,7 @@ class PPORLHFEval(BaseTrainer):
         max_query_length = self.data.__class__.SFT_MAX_QUERY_LENGTH
 
         while True:
-            prompt_input = input("Prompt> ")
+            prompt_input = input("\nPrompt> ")
             if prompt_input.lower() in ("quit", "exit"):
                 break
 
@@ -104,7 +104,7 @@ class PPORLHFEval(BaseTrainer):
 
             # Decode output
             summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
-            print("Generated Summary:", summary_text)
+            print(f"Generated Summary: {summary_text}\n")
 
     def _to_device(self, batch):
         for k in batch.keys():
