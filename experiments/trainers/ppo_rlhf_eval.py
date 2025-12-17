@@ -99,7 +99,6 @@ class PPORLHFEval(BaseTrainer):
                 inputs['input_ids'] = inputs['input_ids'][-max_query_length:].unsqueeze(0)  # truncate if too long
                 inputs['attention_mask'] = inputs['attention_mask'][-max_query_length:].unsqueeze(0)  # truncate if too long
 
-            pdb.set_trace()
             # Generate summary
             generated = self.generate_summaries(inputs)
 
