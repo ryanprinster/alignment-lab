@@ -74,8 +74,6 @@ class RMTrainer(BaseTrainer):
                 for _batch_idx, batch in enumerate(sft_data.train_loader):
                     total_reward = process_batch(total_reward, _batch_idx, batch)
              
-
-
     @profile
     def _to_device(self, batch):
         batch['preferred_input_ids'] = batch['preferred_input_ids'].to(self.device)
