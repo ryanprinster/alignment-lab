@@ -42,7 +42,7 @@ class Logger():
     
     ### Logging Entrypoint    
     
-    def log(self, scalars, models, samples, log_file_name=None):
+    def log(self, scalars, models, samples=None, log_file_name=None):
         if not self._closed:
             self.log_to_tensorboard(models, scalars)
             self.log_to_terminal(scalars, samples)
@@ -61,7 +61,7 @@ class Logger():
         print(log_str)
 
         # Log samples
-        if hasattr(self.config, 'log_samples_freq'):
+        if hasattr(self.config, 'log_samples_freq') and samples is not None:
             if scalars['global_step'] % self.config.log_samples_freq == 0 and scalars['k']==0: 
                 print(f"SAMPLES AT {scalars['global_step']} STEPS")
                 for k, v in samples.items():
