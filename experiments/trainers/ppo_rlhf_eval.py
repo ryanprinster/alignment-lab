@@ -46,8 +46,6 @@ import matplotlib.pyplot as plt
 
 class PPORLHFEval(BaseTrainer):
     
-
-
     @profile
     def __init__(self, config: PPOConfigBase):
         self.config = config
@@ -55,9 +53,10 @@ class PPORLHFEval(BaseTrainer):
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.checkpointer = Checkpointer(self.config)
 
-        # Model that we want to evaluate vs reference summaries
-        # self.model = HFModel_Policy(self.config, init_model_path=self.config.policy_checkpoint_path).to(self.device)
-
+        # Trained PPO Model
+        # self.model = HFModel_Policy.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        # self.model.set_from_local_state_dict(self.config.policy_checkpoint_path)
+        # TODO: Can we skip the load_checkpoint?
         # self.checkpointer.load_checkpoint(
         #         self.config.policy_checkpoint_path,
         #         self.model,
@@ -69,10 +68,11 @@ class PPORLHFEval(BaseTrainer):
         #     model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
         #     revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device)
 
-        # self.model = HFModel_SFT(self.config, init_model_path=self.config.sft_model_path).to(self.device).requires_grad_(False)
+        # SFT Mode
+        self.model = HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        self.model.set_from_local_state_dict(self.config.sft_model_path)
 
-
-        # self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
+        self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         
 
     def _to_device(self, batch):
