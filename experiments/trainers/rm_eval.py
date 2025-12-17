@@ -30,6 +30,13 @@ class RMEval(BaseTrainer):
 
         self.data = OpenAIPreferenceData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
 
+    def _to_device(self, batch):
+        batch['preferred_input_ids'] = batch['preferred_input_ids'].to(self.device)
+        batch['preferred_attention_mask'] = batch['preferred_attention_mask'].to(self.device)
+        batch['rejected_input_ids'] = batch['rejected_input_ids'].to(self.device)
+        batch['rejected_attention_mask'] = batch['rejected_attention_mask'].to(self.device)
+        return batch
+
     @profile
     def validation(self):
         print("Starting Validation!")
