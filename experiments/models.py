@@ -73,6 +73,21 @@ class HFModel(nn.Module, ABC):
         cls._setup_padding_token(transformer, tokenizer)
         
         return cls(config, transformer, tokenizer)
+    
+    @classmethod
+    def init_from_hf_pretrained_vwxyzjn(cls, config, hf_model_name, revision, tokenizer_name="EleutherAI/pythia-1b-deduped"):
+        transformer = cls._get_model_class(hf_model_name)
+
+        if config.enable_gradient_checkpointing:
+            transformer.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
+        
+        from transformers import GPTNeoXTokenizerFast
+        tokenizer = GPTNeoXTokenizerFast.from_pretrained(tokenizer_name)
+
+        
+    
 
     @classmethod
     def init_from_local_hf_pretrained(cls, config, local_model_path):

@@ -73,6 +73,7 @@ class HFModel(nn.Module, ABC):
         # Download model + tokenizer from HF
         model_class = cls._get_model_class()
 
+        pdb.set_trace()
         # Try loading tokenizer
         try:
             tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
