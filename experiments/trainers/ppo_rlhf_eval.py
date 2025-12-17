@@ -83,26 +83,25 @@ class PPORLHFEval(BaseTrainer):
             prompt_input = input("Prompt> ")
             if prompt_input.lower() in ("quit", "exit"):
                 break
-                
-            # Encode prompt
-            input_ids = self.data.tokenizer.encode(prompt_input, add_special_tokens=True)
-            input_tensor = torch.tensor(input_ids).to(self.device)
+
+
+            inputs = self.data.tokenizer(prompt_input, return_tensors="pt")
+            inputs['input_ids'] = inputs['input_ids'].squeeze()
+            inputs['attention_mask'] = inputs['attention_mask'].squeeze()
+            inputs = self._to_device(inputs)
+    
 
             # Pad to max_query_length
-            if input_tensor.size(0) < max_query_length:
-                input_tensor = torch.nn.functional.pad(
-                    input_tensor, 
-                    (max_query_length - input_tensor.size(0), 0), 
-                    value=self.data.tokenizer.pad_token_id
-                )
+            if inputs['input_ids'].size(0) < max_query_length:
+                torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id).unsqueeze(0)
+                torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0).unsqueeze(0)
+            
             else:
-                input_tensor = input_tensor[-max_query_length:]  # truncate if too long
-
-            # Add batch dimension
-            input_batch = input_tensor.unsqueeze(0)
+                inputs['input_ids'] = inputs['input_ids'][-max_query_length:]  # truncate if too long
+                inputs['attention_mask'] = inputs['attention_mask'][-max_query_length:]  # truncate if too long
 
             # Generate summary
-            generated = self.generate_summaries(input_batch)
+            generated = self.generate_summaries(inputs)
 
             # Decode output
             summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
