@@ -145,7 +145,6 @@ class HFModel_Causal(HFModel):
         sequences = generation_obj.sequences
         scores = generation_obj.scores
         del generation_obj
-        # torch.cuda.empty_cache()
 
         # NOTE on Detail 23.1 (PPO Training -> “EOS trick” to ensure scores from the RM is valid -> Always sample a fixed amount of tokens) 
         # It is observed that forcing the model to continue to produce more after EOS token via min_length parameter
