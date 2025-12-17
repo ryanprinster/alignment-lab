@@ -76,17 +76,24 @@ class HFModel(nn.Module, ABC):
     
     @classmethod
     def init_from_hf_pretrained_vwxyzjn(cls, config, hf_model_name, revision, tokenizer_name="EleutherAI/pythia-1b-deduped"):
-        transformer = cls._get_model_class(hf_model_name)
+        transformer = cls._get_model_class(hf_model_name, revision=revision)
 
         if config.enable_gradient_checkpointing:
             transformer.gradient_checkpointing_enable(
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
         
-        from transformers import GPTNeoXTokenizerFast
-        tokenizer = GPTNeoXTokenizerFast.from_pretrained(tokenizer_name)
+        tokenizer = AutoTokenizer.from_pretrained(hf_model_name, revision=revision)
 
-        
+
+        # except revision is needed
+        # model = model_class.from_pretrained(model_name, revision=revision, **kwargs)
+
+        # TODO: change how tokenizer works?
+        cls._setup_padding_token(transformer, tokenizer)
+
+        return cls(config, transformer, tokenizer)
+
     
 
     @classmethod
@@ -106,7 +113,7 @@ class HFModel(nn.Module, ABC):
         model.resize_token_embeddings(len(tokenizer))
 
     @abstractmethod
-    def _get_model_class(cls, hf_model_name):
+    def _get_model_class(cls, hf_model_name, revision=None):
         pass
 
     @abstractmethod
@@ -217,8 +224,8 @@ class HFModel_Causal(HFModel):
         return outputs.logits, outputs.loss
 
     @classmethod
-    def _get_model_class(cls, hf_model_name):
-        return AutoModelForCausalLM.from_pretrained(hf_model_name)
+    def _get_model_class(cls, hf_model_name, revision=None):
+        return AutoModelForCausalLM.from_pretrained(hf_model_name, revision=revision)
 
 
 class HFModel_SFT(HFModel_Causal):
@@ -282,8 +289,8 @@ class HFModel_Classification(HFModel):
 
 class HFModel_SequenceClassification(HFModel_Classification):
     @classmethod
-    def _get_model_class(cls, hf_model_name):
-        return AutoModelForSequenceClassification.from_pretrained(hf_model_name, num_labels=1)
+    def _get_model_class(cls, hf_model_name, revision=None):
+        return AutoModelForSequenceClassification.from_pretrained(hf_model_name, revision=revision, num_labels=1)
         # Detail 12 (Extract reward from the EOS token) Done by default for Llama models
         # https://github.com/huggingface/transformers/blob/v4.41.0/src/transformers/models/llama/modeling_llama.py#L1299
 
@@ -300,8 +307,8 @@ class HFModel_SequenceClassification(HFModel_Classification):
 class HFModel_TokenClassification(HFModel_Classification):
 
     @classmethod
-    def _get_model_class(cls, hf_model_name):
-        return AutoModelForTokenClassification.from_pretrained(hf_model_name, num_labels=1)
+    def _get_model_class(cls, hf_model_name, revision=None):
+        return AutoModelForTokenClassification.from_pretrained(hf_model_name, revision=revision, num_labels=1)
 
     @profile
     def forward(self, input_ids, attention_mask=None, max_query_length_truncate=None):
