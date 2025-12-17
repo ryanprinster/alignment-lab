@@ -92,7 +92,7 @@ class HFModel(nn.Module, ABC):
         model.resize_token_embeddings(len(tokenizer))
 
     @abstractmethod
-    def _get_model_class(self, hf_model_name):
+    def _get_model_class(hf_model_name):
         pass
 
     @abstractmethod
@@ -202,7 +202,8 @@ class HFModel_Causal(HFModel):
             return outputs.logits / (self.config.generation_temperature + 1e-7 ), outputs.loss
         return outputs.logits, outputs.loss
 
-    def _get_model_class(self, hf_model_name):
+    @classmethod
+    def _get_model_class(hf_model_name):
         return AutoModelForCausalLM.from_pretrained(hf_model_name)
 
 
