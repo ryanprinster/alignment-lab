@@ -242,6 +242,8 @@ class HFModel_Classification(HFModel):
         # Add new architectures here as needed
         if hasattr(self.transformer, 'score'):
             return self.transformer.score
+        elif hasattr(self.transformer, 'lm_head'):
+            return self.transformer.lm_head
         elif hasattr(self.transformer, 'classifier'):
             return self.transformer.classifier
         else:
