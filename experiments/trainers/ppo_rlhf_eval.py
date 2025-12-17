@@ -77,15 +77,29 @@ class PPORLHFEval(BaseTrainer):
     def human_generate_summary(self):
         """Interactive loop: generates summaries for user-provided prompts."""
         self.model.eval()
+        max_query_length = self.data.__class__.SFT_MAX_QUERY_LENGTH
 
         while True:
             prompt_input = input("Prompt> ")
             if prompt_input.lower() in ("quit", "exit"):
                 break
+                
+            # Encode prompt
+            input_ids = self.data.tokenizer.encode(prompt_input, add_special_tokens=True)
+            input_tensor = torch.tensor(input_ids).to(self.device)
 
-            # Encode prompt as a batch for your model
-            input_batch = self.data.tokenizer.encode(prompt_input)
-            input_batch = torch.tensor(input_batch).unsqueeze(0).to(self.device)  # shape [1, seq_len]
+            # Pad to max_query_length
+            if input_tensor.size(0) < max_query_length:
+                input_tensor = torch.nn.functional.pad(
+                    input_tensor, 
+                    (max_query_length - input_tensor.size(0), 0), 
+                    value=self.data.tokenizer.pad_token_id
+                )
+            else:
+                input_tensor = input_tensor[-max_query_length:]  # truncate if too long
+
+            # Add batch dimension
+            input_batch = input_tensor.unsqueeze(0)
 
             # Generate summary
             generated = self.generate_summaries(input_batch)
