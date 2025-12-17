@@ -105,7 +105,8 @@ class SFTTrainer(BaseTrainer):
                     self.optimizer,
                     self.global_step,
                     epoch,
-                    loss.item()
+                    loss.item(),
+                    checkpoint_prefix="sft_",
                 )
 
                 self.logger.log(
