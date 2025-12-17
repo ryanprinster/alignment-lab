@@ -84,7 +84,7 @@ class PPORLHFEval(BaseTrainer):
             if prompt_input.lower() in ("quit", "exit"):
                 break
 
-
+            prompt_input = self.data.get_query_text("interactive", "Interactive Test", prompt_input)
             inputs = self.data.tokenizer(prompt_input, return_tensors="pt")
             inputs['input_ids'] = inputs['input_ids'].squeeze()
             inputs['attention_mask'] = inputs['attention_mask'].squeeze()
