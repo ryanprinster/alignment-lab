@@ -50,18 +50,16 @@ class RMEval(BaseTrainer):
 
                 batch = self._to_device(batch)
                 
-                # FP32 --> FP16 for mixed precision 
-                with self.mixed_precision_context: 
-                    outputs = self._forward(batch)
-                    
-                    # Logits are scalar rewards
-                    r_preferred = outputs[0]
-                    r_rejected = outputs[1]
+                outputs = self._forward(batch)
+                
+                # Logits are scalar rewards
+                r_preferred = outputs[0]
+                r_rejected = outputs[1]
 
-                    correct = (r_preferred > r_rejected).float()
-                    
-                    total_correct += correct.sum().item()
-                    total_examples += correct.size(0)
+                correct = (r_preferred > r_rejected).float()
+                
+                total_correct += correct.sum().item()
+                total_examples += correct.size(0)
 
                 print(f"\n\nPreferred (reward: {r_preferred[0]})\n ", self.model.tokenizer.decode(batch['preferred_input_ids'][0]), "\n\n")
                 
