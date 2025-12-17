@@ -180,7 +180,7 @@ class RMTrainer(BaseTrainer):
         import json
         print("Starting Validation!")
 
-        self.model = HFModel_Reward(self.config).to(self.device)
+        self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device)
         self.model.set_from_local_state_dict(self.config.rm_model_path)
         
         self.model.eval()
