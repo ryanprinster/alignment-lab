@@ -129,6 +129,7 @@ class SFTTrainer(BaseTrainer):
                     self.global_step,
                     epoch,
                     loss.item(),
+                    checkpoint_prefix="sft_",
                     final_checkpoint=True
                 )
                             
@@ -138,14 +139,13 @@ class SFTTrainer(BaseTrainer):
         with torch.no_grad():
             max_summary_length = TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH
 
-            self.sft = HFModel_SFT(self.config).to(self.device)
-            self.gpt = HFModel_SFT(self.config).to(self.device)
+            self.sft = HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device)
+            self.sft.set_from_local_state_dict(self.config.sft_model_path)
+            self.gpt = HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device)
 
             self.sft.eval()
             self.gpt.eval()
-            
-            self.checkpointer.load_model(self.config.load_checkpoint_path, self.sft, self.device)
-        
+                    
             for _batch_idx, batch in enumerate(self.data.test_loader):
                 for subreddit, title, post, summary in zip(batch["subreddit"], batch["title"], batch["post"], batch["summary"]):
 
@@ -155,8 +155,6 @@ class SFTTrainer(BaseTrainer):
 
                     sft_gen_ids, _ = self.sft.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)
                     gpt_gen_ids, _ = self.gpt.generate(inputs, max_summary_length, self.config.generation_temperature, do_sample=False)
-
-                    pdb.set_trace()
 
                     gpt_text = self.data.tokenizer.decode(gpt_gen_ids[0]).split('TL;DR:')[-1]
                     sft_text = self.data.tokenizer.decode(sft_gen_ids[0]).split('TL;DR:')[-1]

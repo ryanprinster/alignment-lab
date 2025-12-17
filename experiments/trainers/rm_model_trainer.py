@@ -6,6 +6,8 @@ from torch.amp import GradScaler, autocast
 from torch.utils.data import Dataset, DataLoader
 from contextlib import nullcontext
 import pdb
+from datetime import datetime
+import json
 
 from experiments.models_v2 import HFModel_SequenceClassification, HFModel_TokenClassification
 from experiments.models import HFModel_Reward, HFModel_TokenClassification
@@ -17,13 +19,16 @@ from experiments.profiler import profile
 from experiments.monitor import detect_nans
 from experiments.trainers.base_trainer import BaseTrainer
 
+
 class RMTrainer(BaseTrainer):
     def __init__(self, config: RMConfigBase):
         self.config = config
         self.checkpointer = Checkpointer(self.config)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model = HFModel_Reward(self.config).to(self.device)
-        self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
+        
+        self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device)
+        self.model.set_from_local_state_dict(self.config.sft_model_path).to(self.device)
+
         self.data = OpenAIPreferenceData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         self.optimizer = optim.AdamW(self.model.parameters(), 
                                     lr = self.config.lr)
@@ -38,9 +43,6 @@ class RMTrainer(BaseTrainer):
         self.scaler = GradScaler("cuda") 
 
     def compute_model_bias(self):
-        from datetime import datetime
-        import json
-
         self.model.eval()
         with torch.no_grad():
 
@@ -72,20 +74,7 @@ class RMTrainer(BaseTrainer):
 
                 for _batch_idx, batch in enumerate(sft_data.train_loader):
                     total_reward = process_batch(total_reward, _batch_idx, batch)
-                    
-                    # test
-                    # for seq in batch['preferred_input_ids'][:5]:
-                    #     decoded = self.model.tokenizer.decode(seq)
-                    #     print(f"Pad token Id: {self.model.tokenizer.pad_token_id}")
-                    #     print(f"EOS token Id: {self.model.tokenizer.eos_token_id}")
-                    #     print(f"Last token id: {seq[-1]}")
-                    #     print(f"Ends with EOS: {seq[-1] == self.model.tokenizer.eos_token_id or (seq == self.model.tokenizer.eos_token_id).any()}")
-                    #     print(f"Model's pad_token_id: {self.model.transformer.config.pad_token_id}")
-                    #     print(f"Tokenizer EOS token: '{self.model.tokenizer.eos_token}' -> {self.model.tokenizer.eos_token_id}")
-                    #     print(f"Tokenizer PAD token: '{self.model.tokenizer.pad_token}' -> {self.model.tokenizer.pad_token_id}")
-                    #     print(f"Last 10 tokens: {seq[-10:]}")
-
-                    
+             
 
 
     @profile
@@ -94,17 +83,14 @@ class RMTrainer(BaseTrainer):
         batch['preferred_attention_mask'] = batch['preferred_attention_mask'].to(self.device)
         batch['rejected_input_ids'] = batch['rejected_input_ids'].to(self.device)
         batch['rejected_attention_mask'] = batch['rejected_attention_mask'].to(self.device)
-
         return batch
 
     @profile
     def _forward(self, batch):
-        r_preferred = preferred_logits = self.model.forward(input_ids=batch['preferred_input_ids'], 
+        r_preferred = self.model.forward(input_ids=batch['preferred_input_ids'], 
                             attention_mask=batch['preferred_attention_mask']) 
-        
-        r_rejected = rejected_logits = self.model.forward(input_ids=batch['rejected_input_ids'], 
+        r_rejected = self.model.forward(input_ids=batch['rejected_input_ids'], 
                             attention_mask=batch['rejected_attention_mask'])
-
         return (r_preferred, r_rejected)
 
     @detect_nans
@@ -114,19 +100,10 @@ class RMTrainer(BaseTrainer):
 
     @profile
     def _backward(self, loss):
-        # if self.config.enable_mixed_precision_training:
-        #     # Loss scaling for mixed precision training
-        #     # Note: do this only in backward pass, because otherwise we are logging with a scaled loss 
-        #     loss = self.scaler.scale(loss)
         loss.backward()
     
     @profile
     def _update_weights(self):
-        # if self.config.enable_mixed_precision_training:
-        #     # Unscale gradient, take optimizer step, and update scale factor
-        #     self.scaler.step(self.optimizer)
-        #     self.scaler.update()
-        # else:
         self.optimizer.step()
         self.lr_scheduler.step()
     
@@ -167,7 +144,8 @@ class RMTrainer(BaseTrainer):
                     self.optimizer,
                     self.global_step,
                     epoch,
-                    loss.item()
+                    loss.item(),
+                    checkpoint_prefix="reward_"
                 )
 
                 self.logger.log(
@@ -202,16 +180,11 @@ class RMTrainer(BaseTrainer):
         from datetime import datetime
         import json
         print("Starting Validation!")
-        self.checkpointer.load_model(self.config.load_checkpoint_path, self.model, self.device)
 
-        self.model_full = HFModel_Reward(self.config).to(self.device)
-        self.model_full.set_from_local_state_dict(self.config.rm_model_path)
+        self.model = HFModel_Reward(self.config).to(self.device)
+        self.model.set_from_local_state_dict(self.config.rm_model_path)
         
-        self.model.init_head_bias(self.config.calculated_sft_bias)
-        self.model_full.init_head_bias(self.config.calculated_sft_bias)
-
         self.model.eval()
-        self.model_full.eval()
 
         total_correct = 0
         total_examples = 0
@@ -220,79 +193,13 @@ class RMTrainer(BaseTrainer):
 
                 batch = self._to_device(batch)
                 
-                # FP32 --> FP16 for mixed precision training
+                # FP32 --> FP16 for mixed precision 
                 with self.mixed_precision_context: 
                     outputs = self._forward(batch)
-                    outputs_value = self.model_full.forward(batch['preferred_input_ids'], attention_mask=batch['preferred_attention_mask'])
                     
-                    # rewards = outputs[0]
-                    # values = outputs_value
-                    # tokens = batch['preferred_input_ids']
-                    # eos_id = self.data.tokenizer.eos_token_id
-
-                    def test_value_model(prompt, with_eos=True):
-
-                        if with_eos:
-                            prompt += '<|end_of_text|>'
-                        x = self.data.tokenizer.encode(prompt)
-                        x = torch.tensor(x)
-                        x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
-                        attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
-                        
-                        # Move to device
-                        x_padded_gpu = x_padded.unsqueeze(0).to(self.device)
-                        attn_mask_gpu = attn_mask.unsqueeze(0).to(self.device)
-                        
-                        values = self.model_full.forward(input_ids=x_padded_gpu, attention_mask=attn_mask_gpu)
-
-                        # Find EOS in the PADDED sequence (on GPU)
-                        eos_positions = (x_padded_gpu[0] == self.data.tokenizer.eos_token_id).nonzero(as_tuple=True)[0]
-                        
-                        if len(eos_positions) > 0:
-                            # Use the first EOS token position
-                            position = eos_positions[0]
-                        else:
-                            # No EOS found, use the last non-pad position
-                            non_pad_positions = (x_padded_gpu[0] != self.data.tokenizer.pad_token_id).nonzero(as_tuple=True)[0]
-                            position = non_pad_positions[-1]  # Last non-pad token
-                        
-                        # Index correctly with batch dimension
-                        eos_reward = values[0, position]
-
-                        return eos_reward
-
-                    def test_reward_model(prompt, with_eos=True):
-
-                        if with_eos:
-                            prompt += '<|end_of_text|>'
-                        x = self.data.tokenizer.encode(prompt)
-                        x = torch.tensor(x)
-                        x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
-                        attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
-                        y = self.model.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
-                        return y
-                    
-
-
-                    test = ''
-                    pdb.set_trace()
-
-                    test_value_model(test)
-
-                    # import pprint; pprint.pp(list(zip(values[i].tolist(), tokens[i].tolist())))
-                    # import torch.nn.functional as F
-                    # self.data.tokenizer.decode(tokens[i])
-                    # x = torch.tensor(x)
-                    # x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
-                    # attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
-                    # y = self.model.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
-
-
-                
                     # Logits are scalar rewards
                     r_preferred = outputs[0]
                     r_rejected = outputs[1]
-
 
                     correct = (r_preferred > r_rejected).float()
                     
@@ -310,6 +217,16 @@ class RMTrainer(BaseTrainer):
         with open(f"rm_validation_{now}.jsonl", "a") as f:
             f.write(json.dumps(log_data) + "\n")
 
-        
+
+    # def test_reward_model(prompt, with_eos=True):
+
+    #     if with_eos:
+    #         prompt += '<|end_of_text|>'
+    #     x = self.data.tokenizer.encode(prompt)
+    #     x = torch.tensor(x)
+    #     x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)
+    #     attn_mask = (x_padded != self.data.tokenizer.pad_token_id).long()
+    #     y = self.model.forward(input_ids=x_padded.unsqueeze(0).to(self.device), attention_mask=attn_mask.unsqueeze(0).to(self.device))
+    #     return y
     
      
