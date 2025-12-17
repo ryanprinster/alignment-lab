@@ -76,6 +76,7 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.rm_model_path = "checkpoints/rm_final_checkpoint_v2.pt"
         
         self.keep_last_n=2
+        self.temperature_scale_logits = False
 
         # Logging
         # self.log_weights_freq=None
