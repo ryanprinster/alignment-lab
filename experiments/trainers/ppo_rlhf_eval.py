@@ -93,8 +93,8 @@ class PPORLHFEval(BaseTrainer):
 
             # Pad to max_query_length
             if inputs['input_ids'].size(0) < max_query_length:
-                torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id)
-                torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0)
+                inputs['input_ids'] = torch.nn.functional.pad(inputs['input_ids'], (max_query_length - inputs['input_ids'].size(0), 0), value=self.data.tokenizer.pad_token_id)
+                inputs['attention_mask'] = torch.nn.functional.pad(inputs['attention_mask'], (max_query_length - inputs['attention_mask'].size(0), 0), value=0)
             
             else:
                 inputs['input_ids'] = inputs['input_ids'][-max_query_length:]  # truncate if too long
