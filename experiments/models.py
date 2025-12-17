@@ -107,6 +107,7 @@ class HFModel(nn.Module, ABC):
     
     @profile
     def _set_model_weights(self, init_model_path):
+        print("Setting model weights...")
         if not os.path.exists(init_model_path):
             raise FileNotFoundError(f"Model not found: {init_model_path}")
 
@@ -226,7 +227,7 @@ class HFModel_Classification(HFModel):
 
         # score layer doesn't come with a bias
         if self.transformer.score.bias is None:
-            self.transformer.score.bias = nn.Parameter(torch.zeros(self.transformer.score.out_features))
+            self.transformer.score.bias = nn.Parameter(torch.zeros(self.transformer.score.out_features)).to(self.device)
         
         super()._set_model_weights(init_model_path)
 
