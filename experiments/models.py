@@ -122,9 +122,8 @@ class HFModel(nn.Module, ABC):
 
 
 class HFModel_Causal(HFModel):
-    def __init__(self, config, init_model_path=None):
-        self.init_model_path = init_model_path
-        super().__init__(config)
+    def __init__(self, config, transformer, tokenizer):
+        super().__init__(config, transformer, tokenizer)
         self.transformer.generation_config.pad_token_id = self.tokenizer.pad_token_id
 
     @profile
@@ -214,9 +213,8 @@ class HFModel_Policy(HFModel_Causal):
     pass   
     
 class HFModel_Classification(HFModel):
-    def __init__(self, config, init_model_path=None, calculated_sft_bias=None):
-        self.init_model_path = init_model_path
-        super().__init__(config)
+    def __init__(self, config, transformer, tokenizer):
+        super().__init__(config, transformer, tokenizer)
         
         self.transformer.config.pad_token_id = self.tokenizer.pad_token_id
         
