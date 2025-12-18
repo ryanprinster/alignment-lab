@@ -349,6 +349,7 @@ class PPORLHFEval(BaseTrainer):
             #         len_control = np.log(len(gen_tokens) / len(ref_tokens))
             #         length_ratios.append(len_control)
 
+        print("Recomputing length ratio...")
         gen_tokens = self.data.tokenizer.encode(result['generated_summary'])
         ref_tokens = self.data.tokenizer.encode(result['reference_summary'])
         if len(ref_tokens) > 0:
