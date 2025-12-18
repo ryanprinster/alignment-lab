@@ -337,18 +337,24 @@ class PPORLHFEval(BaseTrainer):
             else:
                 continue  # Skip unclear
             
-            # Get length ratio
-            len_control = result.get('len_control', None)
-            if len_control is not None and len_control != '':
-                length_ratios.append(len_control)
-            else:
-                # Fallback: calculate from summaries if not stored
-                gen_tokens = self.data.tokenizer.encode(result['generated_summary'])
-                ref_tokens = self.data.tokenizer.encode(result['reference_summary'])
-                if len(ref_tokens) > 0:
-                    len_control = np.log(len(gen_tokens) / len(ref_tokens))
-                    length_ratios.append(len_control)
-        
+            # # Get length ratio
+            # len_control = result.get('len_control', None)
+            # if len_control is not None and len_control != '':
+            #     length_ratios.append(len_control)
+            # else:
+            #     # Fallback: calculate from summaries if not stored
+            #     gen_tokens = self.data.tokenizer.encode(result['generated_summary'])
+            #     ref_tokens = self.data.tokenizer.encode(result['reference_summary'])
+            #     if len(ref_tokens) > 0:
+            #         len_control = np.log(len(gen_tokens) / len(ref_tokens))
+            #         length_ratios.append(len_control)
+
+        gen_tokens = self.data.tokenizer.encode(result['generated_summary'])
+        ref_tokens = self.data.tokenizer.encode(result['reference_summary'])
+        if len(ref_tokens) > 0:
+            len_control = np.log(len(gen_tokens) / len(ref_tokens))
+            length_ratios.append(len_control)
+
         length_ratios = np.array(length_ratios)
         wins = np.array(wins)
         
