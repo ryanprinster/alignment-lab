@@ -61,12 +61,6 @@ class PPORLHFEval(BaseTrainer):
             hf_model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
             revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device).requires_grad_(False)
 
-        # self.model = HFModel_Policy.init_from_hf_pretrained(
-        #     config=self.config,
-        #     hf_model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
-        #     revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device)
-
-
         # SFT Mode
         # self.model = HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
         # self.model.set_from_local_state_dict(self.config.sft_model_path)
@@ -188,6 +182,8 @@ class PPORLHFEval(BaseTrainer):
                 'prompt': prompt_text,
                 'log(len(gen)/len(ref))': math.log(gen_sum_ids.size(0)/ref_sum_ids.size(0))
             })
+
+            print("generated_summary_text: f{generated_summary_text}\n")
         print("\n\n\n", PPORLHFEval._judge_prompt(prompt_text, generated_summary_text, reference_summary_text), "\n\n\n")
 
     def generate_summaries(self, input_batch):
@@ -216,6 +212,7 @@ class PPORLHFEval(BaseTrainer):
             generated_summaries = self.generate_summaries(input_batch)
             del input_batch
 
+            pdb.set_trace()
             self.torch_batch_to_request(prompts, reference_summary_ids, generated_summaries)
     
         pdb.set_trace()
@@ -337,23 +334,17 @@ class PPORLHFEval(BaseTrainer):
             else:
                 continue  # Skip unclear
             
-            # # Get length ratio
-            # len_control = result.get('len_control', None)
-            # if len_control is not None and len_control != '':
-            #     length_ratios.append(len_control)
-            # else:
-            #     # Fallback: calculate from summaries if not stored
-            #     gen_tokens = self.data.tokenizer.encode(result['generated_summary'])
-            #     ref_tokens = self.data.tokenizer.encode(result['reference_summary'])
-            #     if len(ref_tokens) > 0:
-            #         len_control = np.log(len(gen_tokens) / len(ref_tokens))
-            #         length_ratios.append(len_control)
-
-            gen_tokens = self.data.tokenizer.encode(result['generated_summary'])
-            ref_tokens = self.data.tokenizer.encode(result['reference_summary'])
-            if len(ref_tokens) > 0:
-                len_control = np.log(len(gen_tokens) / len(ref_tokens))
+            # Get length ratio
+            len_control = result.get('len_control', None)
+            if len_control is not None and len_control != '':
                 length_ratios.append(len_control)
+            else:
+                # Fallback: calculate from summaries if not stored
+                gen_tokens = self.data.tokenizer.encode(result['generated_summary'])
+                ref_tokens = self.data.tokenizer.encode(result['reference_summary'])
+                if len(ref_tokens) > 0:
+                    len_control = np.log(len(gen_tokens) / len(ref_tokens))
+                    length_ratios.append(len_control)
 
         length_ratios = np.array(length_ratios)
         wins = np.array(wins)
