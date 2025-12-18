@@ -269,10 +269,7 @@ class RLHFEnvironment(BaseEnvironment):
             # Apply EOS trick
             rewards_2d, reward_mask = \
                 self._set_reward_for_no_eos(rewards_2d, reward_mask, action_pad_mask)
-            
-            
-            # TODO: check all tensors are on the right devices
-        
+                    
             kl_per_action = Trajectory.compute_kl(policy_logits, sft_policy_logits, action_pad_mask)
             del sft_policy_logits
 
@@ -281,8 +278,6 @@ class RLHFEnvironment(BaseEnvironment):
 
             # NOTE: Ordering to reflect the following implementation
             # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
-
-            # TODO: Should I maintain other states for tracking? (rewards before kl, after whitening, etc)
 
 
             # 1. Apply KL to rewards
@@ -320,27 +315,8 @@ class RLHFEnvironment(BaseEnvironment):
             tj.kl = kl_per_action.masked_fill(~action_pad_mask, 0)
             tj.A = A.masked_fill(~value_pad_mask, 0)
             tj.A_raw = A_raw.masked_fill(~value_pad_mask, 0)
-            # tj.R = R
             tj.R = (A_raw + values[:,:-1]).masked_fill(~value_pad_mask, 0)
-
-            # tj = self._create_trajectory(
-            #     states,
-            #     full_states,
-            #     values.masked_fill(~pad_mask, 0),
-            #     value_pad_mask,
-            #     pad_mask,
-            #     actions.masked_fill(~action_pad_mask, 0),
-            #     action_pad_mask,
-            #     log_probs.masked_fill(~action_pad_mask, 0),
-            #     raw_rewards.masked_fill(~action_pad_mask, 0),
-            #     rewards_2d.masked_fill(~action_pad_mask, 0),
-            #     reward_mask,
-            #     kl_per_action.masked_fill(~action_pad_mask, 0),
-            #     A.masked_fill(~pad_mask[:, :-1], 0),
-            #     R.masked_fill(~action_pad_mask, 0)
-            # )
-
-                         
+                      
         policy_model.train()
         value_model.train()
 

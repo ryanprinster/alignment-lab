@@ -90,8 +90,6 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         # RM 
         self.calculated_sft_bias = 4.6745805740356
 
-        # TODO: Could move optimizer, lr scheduler, data to config
-
 
         # Detail 7 (Disable dropout) aka there is no dropout
         # Detail 8 (Tech stack) Differences from the paper thus far:
