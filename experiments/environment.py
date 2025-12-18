@@ -87,7 +87,6 @@ class RLHFEnvironment(BaseEnvironment):
         self._closed = True
 
     def _find_first_token_position(self, states, token_id):
-        """Find the position of the first occurrence of token_id in each sequence."""
         token_mask = (states == token_id)
         first_token_pos = torch.where(
             token_mask.any(dim=1),
@@ -115,7 +114,6 @@ class RLHFEnvironment(BaseEnvironment):
         return states
 
     def construct_pad_mask(self, states):
-        """Constructs a boolean mask where True indicates valid tokens before the first padding token."""
         first_pad_pos = self._find_first_token_position(states, self.tokenizer.pad_token_id)
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         return ~(pos >= first_pad_pos.unsqueeze(1))
@@ -124,17 +122,14 @@ class RLHFEnvironment(BaseEnvironment):
         return (states == self.tokenizer.eos_token_id)
          
     def _set_models_to_eval(self, *models):
-        """Set all models to evaluation mode."""
         for model in models:
             model.eval()
 
     def _set_models_to_train(self, *models):
-        """Set all models to training mode."""
         for model in models:
             model.train()
 
     def _generate_and_compute_outputs(self, batch, policy_model, value_model, sft_model, reward_model, temp):
-        """Generate sequences and compute all model outputs."""
         full_states, _ = policy_model.generate(
             batch,
             self.max_sequence_length,

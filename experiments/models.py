@@ -74,15 +74,22 @@ class HFModel(nn.Module, ABC):
         
         return cls(config, transformer, tokenizer)
     
+    ### SET METHODS ###
 
-    @classmethod
-    def init_from_local_hf_pretrained(cls, config, local_model_path):
-        # TODO: Implement this way so as not to need to download from HF each time
-        pass
-    
-    ### INIT METHODS ###
     def set_from_local_state_dict(self, init_model_path):
         self._set_model_weights(init_model_path)
+    
+
+    # NOTE and TODO: Generally there is a decent amount of inefficiency around how models are loaded.
+    # There is likely opportunity save buy-in runtime for each script by downloading the model to disk
+    # but with different save formats having different loading speeds, doing the initial downloads, 
+    # dealing with tokenizers, etc I am putting this off.
+
+    # Example:
+    # def init_from_local_hf_pretrained(cls, ...):
+    #   # Load model and weights directly from local, 
+    #   # instead of down loading the model and its weights, then setting weights with a local state dict
+
 
     @staticmethod
     def _setup_padding_token(model, tokenizer):
@@ -98,13 +105,6 @@ class HFModel(nn.Module, ABC):
     @abstractmethod
     def forward(self, input_ids, attention_mask, labels):
         pass
-
-    def generate(self, inputs, max_length, temp):
-        pass
-
-    def clean_logits(self, logits):
-        # clean scores, -inf --> 1e-9
-        return logits.masked_fill_(torch.isinf(logits), 1e-9)
     
     @profile
     def _set_model_weights(self, init_model_path):
@@ -174,7 +174,9 @@ class HFModel_Causal(HFModel):
             (0, 0, 0, max_length - policy_logits.size(1)),
             value= -float('inf')
         )
-        policy_logits = self.clean_logits(policy_logits)
+
+        # clean logit scores, -inf --> 1e-9
+        policy_logits = policy_logits.masked_fill_(torch.isinf(policy_logits), 1e-9)
 
         return padded_tokens, policy_logits
 

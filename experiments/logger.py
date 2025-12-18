@@ -70,7 +70,7 @@ class Logger():
     def _get_memory_usage_info(self):
         mem_usage_info_str = ""
         if torch.cuda.is_available():
-            # / 1024**3 is Bytes --> GB
+            # for my small brain: recall that / 1024**3 is Bytes --> GB
             gpu_mem_used = torch.cuda.memory_allocated() / 1024**3 
             gpu_mem_reserved = torch.cuda.memory_reserved() / 1024**3
             gpu_mem_total = torch.cuda.get_device_properties(0).total_memory / 1024**3 
