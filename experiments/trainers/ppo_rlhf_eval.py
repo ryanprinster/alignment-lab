@@ -59,7 +59,7 @@ class PPORLHFEval(BaseTrainer):
         self.model = HFModel_Policy.init_from_hf_pretrained(
             config=self.config,
             model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
-            revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device)
+            revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device).requires_grad_(False)
 
         # self.model = HFModel_Policy.init_from_hf_pretrained(
         #     config=self.config,
