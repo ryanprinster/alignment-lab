@@ -183,7 +183,7 @@ class PPORLHFEval(BaseTrainer):
                 'log(len(gen)/len(ref))': math.log(gen_sum_ids.size(0)/ref_sum_ids.size(0))
             })
 
-            print("generated_summary_text: f{generated_summary_text}\n")
+            print(f"generated_summary_text: {generated_summary_text}\n")
         print("\n\n\n", PPORLHFEval._judge_prompt(prompt_text, generated_summary_text, reference_summary_text), "\n\n\n")
 
     def generate_summaries(self, input_batch):
@@ -215,7 +215,6 @@ class PPORLHFEval(BaseTrainer):
             self.torch_batch_to_request(prompts, reference_summary_ids, generated_summaries)
     
         print("finished creating batched requests")
-        pdb.set_trace()
         batch = self.client.messages.batches.create(requests=self.requests)
 
         with open(f'summaries_{batch.id}.jsonl', 'w') as f:
