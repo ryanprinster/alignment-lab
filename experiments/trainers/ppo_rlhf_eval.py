@@ -223,7 +223,7 @@ class PPORLHFEval(BaseTrainer):
         print(f"Submitted comparisons: {batch.id}")
 
     
-    def download_batch_results(self, batch_id="msgbatch_01UXjx1KEoyTdJ2RTK8EVgkf", summaries_file="summaries_msgbatch_01UXjx1KEoyTdJ2RTK8EVgkf.jsonl", output_file="batch_results_paper_ppo.jsonl"):
+    def download_batch_results(self, batch_id="msgbatch_01AhfkjK4M3996M5wbuSepU4", summaries_file="summaries_msgbatch_01AhfkjK4M3996M5wbuSepU4.jsonl", output_file="batch_results_paper_ppo_v2.jsonl"):
         """Download batch results and save to file"""
         
         # Load summaries from file
