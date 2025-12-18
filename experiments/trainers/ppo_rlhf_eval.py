@@ -171,7 +171,7 @@ class PPORLHFEval(BaseTrainer):
             ref_sum_ids = self.trim_tensor(summary_ids[i])
 
             prompt_text = self.data.tokenizer.decode(prompt_ids)
-            generated_summary_text = self.data.tokenizer.decode(gen_sum_ids)
+            generated_summary_text = self.data.tokenizer.decode(gen_sum_ids, skip_special_tokens=True)
             reference_summary_text = self.data.tokenizer.decode(ref_sum_ids)
             request = PPORLHFEval._claude_request_json(len(self.requests), prompt_text, generated_summary_text, reference_summary_text)
             self.requests.append(request)
@@ -212,11 +212,10 @@ class PPORLHFEval(BaseTrainer):
             generated_summaries = self.generate_summaries(input_batch)
             del input_batch
 
-            pdb.set_trace()
             self.torch_batch_to_request(prompts, reference_summary_ids, generated_summaries)
     
-        pdb.set_trace()
         print("finished creating batched requests")
+        pdb.set_trace()
         batch = self.client.messages.batches.create(requests=self.requests)
 
         with open(f'summaries_{batch.id}.jsonl', 'w') as f:
