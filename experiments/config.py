@@ -180,7 +180,8 @@ class RLFHPPOConfig(PPOConfigBase):
 
         # Eval
         self.batch_id = "msgbatch_01AhfkjK4M3996M5wbuSepU4"
-        self.batch_results_file_name = "batch_results_paper_ppo_v2.jsonl"
+        self.batch_results_file_name = "batch_results_paper_ppo_v3.jsonl"
+        self.plot_name = "length_controlled_winrate_comparison_v3.png"
 
         self.compile()
 
