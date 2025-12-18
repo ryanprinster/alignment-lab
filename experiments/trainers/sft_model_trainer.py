@@ -29,13 +29,12 @@ class SFTTrainer(BaseTrainer):
                                     lr = self.config.lr)
         self.lr_scheduler = CosineAnnealingLR(self.optimizer, 
                                               T_max=len(self.data.dataset["train"]) / self.config._virtual_batch_size,
-                                            #   self.config.num_epochs, # might end up not doing anything, need to do based on global steps
                                               eta_min=self.config.lr_final_ratio * self.config.lr)
         self.checkpointer = Checkpointer(self.config)
         self.logger = Logger(self.config)
 
         # Mixed precision training
-        self.mixed_precision_context = autocast("cuda") if self.config.enable_mixed_precision_training else nullcontext()
+        self.mixed_precision_context = autocast("cuda",  dtype=torch.bfloat16) if self.config.enable_mixed_precision_training else nullcontext()
         self.scaler = GradScaler("cuda") 
 
     @profile
@@ -52,20 +51,11 @@ class SFTTrainer(BaseTrainer):
 
     @profile
     def _backward(self, loss):
-        if self.config.enable_mixed_precision_training:
-            # Loss scaling for mixed precision training
-            # Note: do this only in backward pass, because otherwise we are logging with a scaled loss 
-            loss = self.scaler.scale(loss)
         loss.backward()
     
     @profile
     def _update_weights(self):
-        if self.config.enable_mixed_precision_training:
-            # Unscale gradient, take optimizer step, and update scale factor
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
-        else:
-            self.optimizer.step()
+        self.optimizer.step()
         self.lr_scheduler.step()
     
     @profile
