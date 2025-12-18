@@ -83,7 +83,6 @@ class PPORLHFTrainer(BaseTrainer):
         # Mixed precision training
         self.mixed_precision_context = autocast("cuda", dtype=torch.bfloat16) if self.config.enable_mixed_precision_training else nullcontext()
 
-
         if self.config.resume_from_checkpoint:
             # TODO: In this case, could remove the loading local state dicts for HF models
             print("Loading initial checkpoint...")
@@ -294,7 +293,6 @@ class PPORLHFTrainer(BaseTrainer):
         loss_ppo = torch.min(ratios * A, torch.clamp(ratios, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
         loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
 
-
         ### For logging ###
         with torch.no_grad():
             entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
@@ -345,8 +343,6 @@ class PPORLHFTrainer(BaseTrainer):
                 batch[k] = batch[k].to(self.device)
         return batch
     
-
-
     @profile
     def train(self):     
         self.policy_model.train()
@@ -381,7 +377,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                         self._zero_grad(self.optimizer_policy, self.optimizer_value)
 
-                        # FP32 --> FP16 for mixed precision training
+                        # FP32 --> BF16 for mixed precision training
                         with self.mixed_precision_context:
                             new_values, new_policy_logits = self._forward(old_data['full_states'])
 

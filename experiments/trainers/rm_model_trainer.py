@@ -124,7 +124,7 @@ class RMTrainer(BaseTrainer):
 
                 batch = self._to_device(batch)
                 
-                # FP32 --> FP16 for mixed precision training
+                # FP32 --> BF16 for mixed precision training
                 with self.mixed_precision_context: 
                     r_preferred, r_rejected = self._forward(batch)
                     loss = self._loss(r_preferred, r_rejected)

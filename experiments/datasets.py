@@ -148,7 +148,7 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
         return tokenizer(
             texts,
             truncation=False, # Already did ~clever truncation~
-            padding="max_length", # Should use tokenizer.pad_token_id
+            padding="max_length", # This should use tokenizer.pad_token_id
             max_length=TLDRFilteredDataBase.SFT_MAX_INPUT_LENGTH,
             return_tensors="pt"
         )
@@ -189,7 +189,7 @@ class OpenAIPreferenceData():
     
     @profile
     def __init__(self, tokenizer, batch_size, subset="comparisons"):
-        # openai/summarize_from_feedback is not really supported by hf anymore
+        # openai/summarize_from_feedback is not really supported by hf anymore, using this instead
         self.dataset = load_dataset("HuggingFaceH4/summarize-from-feedback")
 
         self.tokenizer = tokenizer

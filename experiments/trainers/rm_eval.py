@@ -78,10 +78,11 @@ class RMEval(BaseTrainer):
             f.write(json.dumps(log_data) + "\n")
 
 
-    def _test_reward_model(self, prompt, with_eos=True):
-
+    def _test_reward_model(self, prompt, with_eos=True, with_prefix=False):
         if with_eos:
             prompt += '<|end_of_text|>'
+        if with_prefix:
+            prompt = "SUBREDDIT: r/interactive\n\nTITLE: Interactive Test\n\nPOST: " + prompt
         x = self.data.tokenizer.encode(prompt)
         x = torch.tensor(x)
         x_padded = F.pad(x, (0, self.data.RM_MAX_INPUT_LENGTH - x.size(0)), value=self.data.tokenizer.pad_token_id)

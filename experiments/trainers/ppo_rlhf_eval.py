@@ -53,19 +53,21 @@ class PPORLHFEval(BaseTrainer):
         self.checkpointer = Checkpointer(self.config)
 
         # Trained PPO Model
-        # self.model = HFModel_Policy.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
-        # self.model.set_from_local_state_dict(self.config.policy_checkpoint_path)
+        self.model = HFModel_Policy.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        self.model.set_from_local_state_dict(self.config.policy_checkpoint_path)
+
+        # SFT Model
+        # self.model = HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        # self.model.set_from_local_state_dict(self.config.sft_model_path)
+
 
         # self.model = HFModel_Policy.init_from_hf_pretrained(
         #     config=self.config,
         #     hf_model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
         #     revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device).requires_grad_(False)
 
-        # SFT Mode
-        # self.model = HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
-        # self.model.set_from_local_state_dict(self.config.sft_model_path)
 
-        # self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
+        self.data = TLDRFilteredDataPPO(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         
 
     def human_generate_summary(self):
@@ -377,7 +379,7 @@ class PPORLHFEval(BaseTrainer):
         ppo_results_file = self.config.ppo_results_file or ppo_results_file
         sft_results_file = self.config.sft_results_file or sft_results_file
         paper_ppo_results_file = self.config.paper_ppo_results_file or paper_ppo_results_file
-        
+
         ppo_centers, ppo_rates, ppo_counts = self.load_and_bin_results(ppo_results_file)
         sft_centers, sft_rates, sft_counts = self.load_and_bin_results(sft_results_file)
         ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts = self.load_and_bin_results(paper_ppo_results_file)

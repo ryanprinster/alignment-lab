@@ -35,10 +35,6 @@ class Checkpointer:
 
         model.load_state_dict(checkpoint['model_state_dict'], strict=False)
 
-    @profile
-    def load_checkpoint(self, checkpoint_path, model, device, optimizer=None):
-        pass
-
     def _should_save_checkpoint(self, global_step, loss, checkpoint_prefix, final_checkpoint):
         should_save_checkpoint = False
         path = None
@@ -62,6 +58,7 @@ class Checkpointer:
         if global_step % self.save_freq_steps == 0 and global_step != 0:
             path = os.path.join(self.checkpoint_dir, f"{checkpoint_prefix}_checkpoint_step_{global_step}.pt")
             should_save_checkpoint = True
+        
         # elif time.time() - self.last_save_time >= self.save_interval_secs:
         #     path = os.path.join(self.checkpoint_dir, f"checkpoint_at_{datetime.now().isoformat()}.pt")
         #     self.last_save_time = time.time()
@@ -107,25 +104,12 @@ class Checkpointer:
 
     @profile
     def load_checkpoint(self, checkpoint_path, model, device, optimizer=None):
-        """
-        Load a checkpoint and return the training state.
-        
-        Args:
-            checkpoint_path: Path to the checkpoint file
-            model: Model to load weights into
-            device: Device to map tensors to
-            optimizer: Optional optimizer to load state into
-            
-        Returns:
-            dict: Training state containing global_step, epoch, loss, etc.
-        """
         if not os.path.exists(checkpoint_path):
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
         
         print(f"Loading checkpoint from: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location=device)
         
-        # Load model state
         model.load_state_dict(checkpoint['model_state_dict'], strict=False)
         print(f"Loaded model state from step {checkpoint.get('global_step', 'unknown')}")
         

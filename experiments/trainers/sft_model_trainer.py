@@ -75,7 +75,7 @@ class SFTTrainer(BaseTrainer):
 
                 batch = self._to_device(batch)
                 
-                # FP32 --> FP16 for mixed precision training
+                # FP32 --> BF16 for mixed precision training
                 with self.mixed_precision_context: 
                     _, loss = self.model.forward(input_ids=batch['input_ids'], 
                                         attention_mask=batch['attention_mask'], 
