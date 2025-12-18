@@ -225,6 +225,10 @@ class PPORLHFEval(BaseTrainer):
     
     def download_batch_results(self, batch_id="msgbatch_01AhfkjK4M3996M5wbuSepU4", summaries_file="summaries_msgbatch_01AhfkjK4M3996M5wbuSepU4.jsonl", output_file="batch_results_paper_ppo_v2.jsonl"):
         """Download batch results and save to file"""
+
+        batch_id = self.config.batch_id or batch_id
+        summaries_file = self.config.summaries_file or summaries_file
+        output_file = self.config.batch_results_file_name or output_file
         
         # Load summaries from file
         import json

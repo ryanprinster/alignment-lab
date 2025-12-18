@@ -178,6 +178,10 @@ class RLFHPPOConfig(PPOConfigBase):
         self.enable_mixed_precision_training = True
         self.pre_compute_rm_scores = True
 
+        # Eval
+        self.batch_id = "msgbatch_01AhfkjK4M3996M5wbuSepU4"
+        self.batch_results_file_name = "batch_results_paper_ppo_v2.jsonl"
+
         self.compile()
 
     def compile(self):
@@ -191,6 +195,8 @@ class RLFHPPOConfig(PPOConfigBase):
         assert(self._mini_batch_size % self.mini_batch_accumulation_steps == 0)
         self._virtual_mini_batch_size = int(self._mini_batch_size / self.mini_batch_accumulation_steps) # Batch size that is actually getting trained, and hence is in memory
 
+        assert(self.batch_id) is not None
+        self.summaries_file = f"summaries_{self.batch_id}.jsonl"
 
 
 class CartPoleConfig():
