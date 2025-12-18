@@ -143,8 +143,6 @@ class RLFHPPOConfig(PPOConfigBase):
         self.whiten_A = True
         self.whiten_rewards = True
 
-        self.top_p_generation = 0.9
-
         self.hf_rm_model_name = "meta-llama/Llama-3.2-1B"
         self.hf_sft_model_name = "meta-llama/Llama-3.2-1B"
         self.hf_sft_model_revision = "main"
