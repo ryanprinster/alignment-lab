@@ -374,6 +374,10 @@ class PPORLHFEval(BaseTrainer):
 
     def plot_length_controlled_winrates(self, ppo_results_file="batch_results_my_ppo.jsonl", sft_results_file="batch_results_my_sft.jsonl", paper_ppo_results_file="batch_results_paper_ppo_v2.jsonl"):
         # Load and bin both models
+        ppo_results_file = self.config.ppo_results_file or ppo_results_file
+        sft_results_file = self.config.sft_results_file or sft_results_file
+        paper_ppo_results_file = self.config.paper_ppo_results_file or paper_ppo_results_file
+        
         ppo_centers, ppo_rates, ppo_counts = self.load_and_bin_results(ppo_results_file)
         sft_centers, sft_rates, sft_counts = self.load_and_bin_results(sft_results_file)
         ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts = self.load_and_bin_results(paper_ppo_results_file)
@@ -415,7 +419,7 @@ class PPORLHFEval(BaseTrainer):
 
         plt.tight_layout()
         plt.axis('equal')
-        plt.savefig('length_controlled_winrate_comparison_v2.png', dpi=300)
+        plt.savefig(self.config.plot_name, dpi=300)
         plt.show()
         
         # Print statistics
