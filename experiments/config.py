@@ -54,6 +54,7 @@ class SFTConfig1(SFTConfigBase):
 
 
 class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
+    # Used for both SFT and RM training
     def __init__(self):
         # Based on https://arxiv.org/pdf/2403.17031
 
@@ -90,15 +91,11 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         # RM 
         self.calculated_sft_bias = 4.6745805740356
 
-
-        # Detail 7 (Disable dropout) aka there is no dropout
+        # Detail 7 (Disable dropout) aka there is no dropout, this is done 
         # Detail 8 (Tech stack) Differences from the paper thus far:
-        # --> Smaller model
         # --> Not using accelerate
-        # --> No mixed precision training (yet)
         # --> No ZeRO Stage 2 (yet)
-        # --> No ZeRO Stage 2 (yet)
-        # --> Initial plan to use 1xH100 with gradient accumulation to trade training time for
+        # --> Initial plan to use 1xH200 with gradient accumulation to trade training time for
         #     Memory and implementation time of ZeRO
     
     def compile(self):

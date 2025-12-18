@@ -129,7 +129,9 @@ class HFModel_Causal(HFModel):
 
     @profile
     def generate(self, inputs, max_length, temp, do_sample=True, max_query_length=None):
-        # NOTE: generation currently does top_p = 0.9 by default. Pros and cons to this as a design choice.
+        # NOTE: generation currently does top_p = 0.9 by default, vs 1.0 in the paper. 
+        # As this is not used for any loss / advantage computation, the impact to training is limited.
+        # There are pros and cons to this as a design choice, but this may contribute to a lower entropy.
         generation_obj = self.transformer.generate(
             input_ids=inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
@@ -165,7 +167,7 @@ class HFModel_Causal(HFModel):
             policy_logits = policy_logits[:,-respose_length:,:]
 
         del scores
-        policy_logits = policy_logits.half() # float32 -> float16
+        policy_logits = policy_logits.half() # float32 -> float16 to save memory
 
         policy_logits = torch.nn.functional.pad(
             policy_logits,

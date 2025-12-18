@@ -48,7 +48,8 @@ class Checkpointer:
         if hasattr(self.config, 'save_interval_min'):
             self.save_interval_secs = self.config.save_interval_min * 60
         
-        
+        # TODO: Build in more robust/smarter best loss/reward based and time based checkpointing
+
         # Don't save so frequently at the beginning, slowing things down
         # if (loss < self.best_loss) and (global_step > self.save_freq_steps):
         #     self.best_loss = loss

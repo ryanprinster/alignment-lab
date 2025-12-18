@@ -108,12 +108,7 @@ class TLDRFilteredDataBase(ABC):
                 # In the rare case that a single paragraph has too many tokens, 
                 # naively truncate that paragraph to the last period instead
                 truncate_char = '.'
-                # print("Post: ", 
-                #       repr(self._format_query(subreddit, title, post)),
-                #       tokenizer(self._format_query(subreddit, title, post), return_tensors="pt")['input_ids'].shape[1])
                 continue
-                raise RuntimeError("All paragraphs removed, post will be empty")
-                
             
             post = post[:last_newline]
             test_query = self._format_query(subreddit, title, post)
@@ -139,7 +134,7 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
             full_text = formatted_query + summary
             texts.append(full_text)
 
-            # Note: Detail 4 (Dataset -> SFT and preference datasets have different tokenization length)
+            # Detail 4 (Dataset -> SFT and preference datasets have different tokenization length)
             #   --> TODO: add check to ensure that full_text is <= SFT_MAX_INPUT_LENGTH
             #   --> TODO: when extending to preference dataset, double cehck summary max token lengths
 
@@ -236,7 +231,6 @@ class OpenAIPreferenceData():
             # Detail 14 (Minor numerical differences between extracting reward with
             #   left and right padded queries) 
             # Note that tokenizer right pads by default
-            # TODO: verify padding with doing PPO/RL training, and that every sequence has an EOS token
             preferred_tokens = self.tokenizer(
                     preferred_text,
                     truncation=True,
@@ -291,12 +285,7 @@ class OpenAIPreferenceData():
                 # In the rare case that a single paragraph has too many tokens, 
                 # naively truncate that paragraph to the last period instead
                 truncate_char = '.'
-                # print("Post: ", 
-                #       repr(self._format_query(subreddit, title, post)),
-                #       tokenizer(self._format_query(subreddit, title, post), return_tensors="pt")['input_ids'].shape[1])
-                continue
-                raise RuntimeError("All paragraphs removed, post will be empty")
-                
+                continue                
             
             post = post[:last_newline]
             test_query = self._format_query(subreddit, title, post)
