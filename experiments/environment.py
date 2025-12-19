@@ -326,7 +326,7 @@ class RLHFEnvironment(BaseEnvironment):
             tj.actions = data['actions'].masked_fill(~data['action_pad_mask'], 0)
             tj.action_pad_mask = data['action_pad_mask']
             tj.log_probs = log_probs.masked_fill(~data['action_pad_mask'], 0)
-            tj.rewards = data['rlhf_rewards'].masked_fill(~data['action_pad_mask'], 0)
+            tj.rlhf_rewards = data['rlhf_rewards'].masked_fill(~data['action_pad_mask'], 0)
             tj.raw_rewards = data['raw_rewards'].masked_fill(~data['action_pad_mask'], 0)
             tj.reward_mask = data['reward_mask']
             tj.kl = kl_per_action.masked_fill(~data['action_pad_mask'], 0)
