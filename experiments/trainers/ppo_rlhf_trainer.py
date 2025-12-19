@@ -261,6 +261,7 @@ class PPORLHFTrainer(BaseTrainer):
         new_policy_logits = new_policy_logits[:, :-1, :] # slice to action indexing
         return new_values, new_policy_logits
 
+    @detect_nans
     def _compute_value_loss_mse(self, R, new_values, old_values, value_pad_mask):
         old_values = old_values[:, :-1].masked_fill(~value_pad_mask, 0)
         new_values = new_values[:, :-1].masked_fill(~value_pad_mask, 0)
