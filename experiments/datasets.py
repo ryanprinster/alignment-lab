@@ -35,9 +35,10 @@ class TLDRFilteredDataBase(ABC):
         dataset = self.dataset.map(preprocess_func, batched=True)
         dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
         
-        self.dataset["train"] = Dataset(dataset["train"])
-        self.dataset["validation"] = Dataset(self.dataset["validation"])
-        self.dataset["test"] = Dataset(self.dataset["test"])
+        pdb.set_trace()
+        self.dataset["train"] = dataset["train"]
+        self.dataset["validation"] = self.dataset["validation"]
+        self.dataset["test"] = self.dataset["test"]
 
         self.train_loader = DataLoader(self.dataset["train"], collate_fn=default_collate, batch_size=batch_size, shuffle=True, num_workers=0)
         self.validation_loader = DataLoader(self.dataset["validation"], collate_fn=default_collate, batch_size=batch_size, shuffle=True, num_workers=0)
@@ -163,8 +164,7 @@ class OpenAIPreferenceData():
                                         'train': './.cache/processed_preference_train.arrow',
                                         'validation': './.cache/processed_preference_validation.arrow', 
                                     })
-        
-        c = self.dataset["train"].column_names
+pdb        
         dataset.set_format(type="torch", columns=["preferred_input_ids", "preferred_attention_mask",
                                                   "rejected_input_ids", "rejected_attention_mask"])
 
