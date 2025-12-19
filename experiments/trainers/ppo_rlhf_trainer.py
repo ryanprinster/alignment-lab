@@ -61,6 +61,13 @@ class PPORLHFTrainer(BaseTrainer):
 
         self.old_policy_state_dict = self.policy_model.state_dict()
         self.old_value_state_dict = self.value_model.state_dict()
+
+        if self.config.disable_dropout:
+            self.value_model.disable_dropout()
+            self.policy_model.disable_dropout()
+
+
+        
         
         # Optimizers + LR Schedulers
         self.optimizer_policy = optim.AdamW(self.policy_model.parameters(), lr = self.config.alpha, eps=self.config.eps_adam)

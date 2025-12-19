@@ -140,6 +140,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.clip_value_func_loss = True
         self.generation_temperature = 0.7 # Sampling temp
         self.temperature_scale_logits = True
+        self.disable_dropout = True
 
         self.whiten_A = True
         self.whiten_rewards = True
