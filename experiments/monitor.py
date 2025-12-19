@@ -7,18 +7,26 @@ def detect_nans(func):
     def wrapper(*args, **kwargs):
         result = func(*args, **kwargs)
         
-        if isinstance(result, torch.Tensor):
-            if torch.isnan(result).any():
-                raise ValueError(f"NaN detected in {func.__name__}")
-            if torch.isinf(result).any():
-                raise ValueError(f"Inf detected in {func.__name__}")
-                
-        if isinstance(result, CausalLMOutputWithPast):
-            item = result.logits
-            if torch.isnan(item).any():
-                raise ValueError(f"NaN detected in {func.__name__}")
-            if torch.isinf(item).any():
-                raise ValueError(f"Inf detected in {func.__name__}")
+        def check_value(value, name):
+            if isinstance(value, torch.Tensor):
+                if torch.isnan(value).any():
+                    raise ValueError(f"NaN detected in {name}")
+                if torch.isinf(value).any():
+                    raise ValueError(f"Inf detected in {name}")
+            elif isinstance(value, CausalLMOutputWithPast):
+                if torch.isnan(value.logits).any():
+                    raise ValueError(f"NaN detected in {name}")
+                if torch.isinf(value.logits).any():
+                    raise ValueError(f"Inf detected in {name}")
+        
+        if isinstance(result, (torch.Tensor, CausalLMOutputWithPast)):
+            check_value(result, func.__name__)
+        elif isinstance(result, (tuple, list)):
+            for i, item in enumerate(result):
+                check_value(item, f"{func.__name__}[{i}]")
+        elif isinstance(result, dict):
+            for key, value in result.items():
+                check_value(value, f"{func.__name__}['{key}']")
         
         return result
     return wrapper

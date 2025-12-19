@@ -278,6 +278,7 @@ class PPORLHFTrainer(BaseTrainer):
         
         return masked_mean(loss_value * self.config.c1, value_pad_mask)
 
+    @detect_nans
     def _compute_policy_loss_ppo(self, old_actions, old_log_probs, A, new_policy_logits, action_pad_mask):
 
         old_log_probs = old_log_probs.detach()
@@ -292,6 +293,8 @@ class PPORLHFTrainer(BaseTrainer):
         # Compute ppo loss
         loss_ppo = torch.min(ratios * A, torch.clamp(ratios, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
         loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
+
+        pdb.set_trace()
 
         ### For logging ###
         with torch.no_grad():
