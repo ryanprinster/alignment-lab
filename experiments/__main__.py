@@ -10,7 +10,6 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = (
 import argparse
 import importlib
 import inspect
-import subprocess
 import sys
 import traceback
 import typing
@@ -18,8 +17,6 @@ from datetime import datetime
 from pathlib import Path
 
 from experiments.runpod_utils import stop_runpod
-from experiments.trainers.rm_model_trainer import RMTrainer
-from experiments.trainers.sft_model_trainer import SFTTrainer
 
 
 def create_config_parser(config_class):

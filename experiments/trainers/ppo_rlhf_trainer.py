@@ -1,28 +1,16 @@
 # Standard library imports
-import os
-import pdb
 from contextlib import nullcontext
-from datetime import datetime
-from functools import reduce
 
-import anthropic
 # Third-party imports
-import gymnasium as gym
-import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-from gymnasium.wrappers import RecordEpisodeStatistics, RecordVideo
-from torch.amp import GradScaler, autocast
+from torch.amp import autocast
 from torch.optim.lr_scheduler import LinearLR
-from torch.utils.data import DataLoader, Dataset
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader
 
 from experiments.checkpointer import Checkpointer
 from experiments.config import PPOConfigBase
-from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
-from experiments.debug import DEBUG
+from experiments.datasets import TLDRFilteredDataPPO
 from experiments.environment import RLHFEnvironment
 from experiments.logger import Logger
 from experiments.models import (HFModel_Policy, HFModel_Reward, HFModel_SFT,
@@ -30,9 +18,8 @@ from experiments.models import (HFModel_Policy, HFModel_Reward, HFModel_SFT,
 from experiments.monitor import detect_nans
 from experiments.profiler import profile
 from experiments.trainers.base_trainer import BaseTrainer
-from experiments.trajectory import Trajectory, TrajectorySet
-from experiments.util import (masked_log_softmax, masked_mean, masked_var,
-                              masked_whiten, whiten)
+from experiments.trajectory import TrajectorySet
+from experiments.util import (masked_log_softmax, masked_mean, masked_var)
 
 
 class PPORLHFTrainer(BaseTrainer):

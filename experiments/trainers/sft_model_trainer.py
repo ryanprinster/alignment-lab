@@ -5,7 +5,6 @@ import torch
 import torch.optim as optim
 from torch.amp import GradScaler, autocast
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data import DataLoader, Dataset
 
 from experiments.checkpointer import Checkpointer
 from experiments.config import SFTConfigBase
