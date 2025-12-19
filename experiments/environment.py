@@ -277,7 +277,7 @@ class RLHFEnvironment(BaseEnvironment):
                 )
             
             # 2. Format trajectory data
-            data = self._format_trajectory_data()
+            data = self._format_trajectory_data(full_states, policy_logits, sft_policy_logits, values, rewards)
 
             # 3. Apply EOS trick
             data['rewards_2d'], data['reward_mask'] = \
@@ -286,10 +286,12 @@ class RLHFEnvironment(BaseEnvironment):
             # 4. Compute KL        
             kl_per_action = Trajectory.compute_kl(data['policy_logits'], data['sft_policy_logits'],  data['action_pad_mask'])
             del data['sft_policy_logits']
+            del sft_policy_logits
 
             # 5. Compute log probs
             log_probs = Trajectory.compute_log_probs(data['actions'], data['policy_logits'],  data['action_pad_mask'])
             del data['policy_logits']
+            del policy_logits
 
             # NOTE: Ordering to reflect the following implementation
             # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
