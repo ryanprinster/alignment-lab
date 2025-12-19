@@ -37,8 +37,8 @@ class TLDRFilteredDataBase(ABC):
         
         pdb.set_trace()
         self.dataset["train"] = dataset["train"]
-        self.dataset["validation"] = self.dataset["validation"]
-        self.dataset["test"] = self.dataset["test"]
+        self.dataset["validation"] = dataset["validation"]
+        self.dataset["test"] = dataset["test"]
 
         self.train_loader = DataLoader(self.dataset["train"], collate_fn=default_collate, batch_size=batch_size, shuffle=True, num_workers=0)
         self.validation_loader = DataLoader(self.dataset["validation"], collate_fn=default_collate, batch_size=batch_size, shuffle=True, num_workers=0)
