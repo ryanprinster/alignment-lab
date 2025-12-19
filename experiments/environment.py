@@ -257,6 +257,25 @@ class RLHFEnvironment(BaseEnvironment):
                 'reward_mask': reward_mask,
             }
 
+    def _create_trajectory(self, data):
+        tj = Trajectory(batch_size=data['states'].size(0))
+        tj.states = data['states']
+        tj.full_states = data['full_states']
+        tj.values = data['values'].masked_fill(~data['pad_mask'], 0)
+        tj.value_pad_mask = data['value_pad_mask']
+        tj.pad_mask = data['pad_mask']
+        tj.actions = data['actions'].masked_fill(~data['action_pad_mask'], 0)
+        tj.action_pad_mask = data['action_pad_mask']
+        tj.log_probs = data['log_probs'].masked_fill(~data['action_pad_mask'], 0)
+        tj.rlhf_rewards = data['rlhf_rewards'].masked_fill(~data['action_pad_mask'], 0)
+        tj.raw_rewards = data['raw_rewards'].masked_fill(~data['action_pad_mask'], 0)
+        tj.reward_mask = data['reward_mask']
+        tj.kl = data['kl_per_action'].masked_fill(~data['action_pad_mask'], 0)
+        tj.A = data['A'].masked_fill(~data['value_pad_mask'], 0)
+        tj.A_raw = data['A_raw'].masked_fill(~data['value_pad_mask'], 0)
+        tj.R = (data['R']).masked_fill(~data['value_pad_mask'], 0)
+
+        return 
     
     @profile
     def generate_trajectory(self, 
@@ -284,12 +303,12 @@ class RLHFEnvironment(BaseEnvironment):
                 self._set_reward_for_no_eos(data['raw_rewards'], data['reward_mask'], data['action_pad_mask'])
                     
             # 4. Compute KL        
-            kl_per_action = Trajectory.compute_kl(data['policy_logits'], data['sft_policy_logits'],  data['action_pad_mask'])
+            data['kl_per_action'] = Trajectory.compute_kl(data['policy_logits'], data['sft_policy_logits'],  data['action_pad_mask'])
             del data['sft_policy_logits']
             del sft_policy_logits
 
             # 5. Compute log probs
-            log_probs = Trajectory.compute_log_probs(data['actions'], data['policy_logits'],  data['action_pad_mask'])
+            data['log_probs'] = Trajectory.compute_log_probs(data['actions'], data['policy_logits'],  data['action_pad_mask'])
             del data['policy_logits']
             del policy_logits
 
@@ -297,7 +316,7 @@ class RLHFEnvironment(BaseEnvironment):
             # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
 
             # 6. Apply KL to rewards
-            data['rlhf_rewards'] = (data['raw_rewards'] - (self.config.beta * kl_per_action)).masked_fill(~data['action_pad_mask'], 0)
+            data['rlhf_rewards'] = (data['raw_rewards'] - (self.config.beta * data['kl_per_action'])).masked_fill(~data['action_pad_mask'], 0)
 
             # 7. Whiten rewards
             if self.config.whiten_rewards:
@@ -311,30 +330,16 @@ class RLHFEnvironment(BaseEnvironment):
                 # NOTE: shift mean here to keep 
                 # A > 0 to be "action better than expected", 
                 # A < 0 to be "action worse than expected"
-                A = masked_whiten(data['A_raw'], data['value_pad_mask'])
+                data['A'] = masked_whiten(data['A_raw'], data['value_pad_mask'])
             
-            # 10. Compute returns/rewards-to-go
-            R = Trajectory.compute_R(gamma=self.config.gamma, r=data['rlhf_rewards'], action_pad_mask=data['action_pad_mask'])
+            # 10. Compute returns
+            data['R'] = data['A_raw'] + data['values'][:,:-1]
+            # Not using this definition of returns (discounted rewards-to-go)
+            # data['R'] = Trajectory.compute_R(gamma=self.config.gamma, r=data['rlhf_rewards'], action_pad_mask=data['action_pad_mask'])
 
             # 11. Create trajectory and set data
-            tj = Trajectory(batch_size=data['states'].size(0))
-            tj.states = data['states']
-            tj.full_states = full_states
-            tj.values = data['values'].masked_fill(~data['pad_mask'], 0)
-            tj.value_pad_mask = data['value_pad_mask']
-            tj.pad_mask = data['pad_mask']
-            tj.actions = data['actions'].masked_fill(~data['action_pad_mask'], 0)
-            tj.action_pad_mask = data['action_pad_mask']
-            tj.log_probs = log_probs.masked_fill(~data['action_pad_mask'], 0)
-            tj.rlhf_rewards = data['rlhf_rewards'].masked_fill(~data['action_pad_mask'], 0)
-            tj.raw_rewards = data['raw_rewards'].masked_fill(~data['action_pad_mask'], 0)
-            tj.reward_mask = data['reward_mask']
-            tj.kl = kl_per_action.masked_fill(~data['action_pad_mask'], 0)
-            tj.A = A.masked_fill(~data['value_pad_mask'], 0)
-            tj.A_raw = data['A_raw'].masked_fill(~data['value_pad_mask'], 0)
-            tj.R = (data['A_raw'] + data['values'][:,:-1]).masked_fill(~data['value_pad_mask'], 0)
-                      
-        policy_model.train()
-        value_model.train()
+            tj = self._create_trajectory(data)
+
+        self._set_models_to_train(policy_model, value_model)             
 
         return tj
