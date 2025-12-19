@@ -319,7 +319,6 @@ class PPORLHFTrainer(BaseTrainer):
 
             }
 
-        pdb.set_trace()
         return loss_ppo, log_data
     
     @profile
