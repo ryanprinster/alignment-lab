@@ -21,7 +21,7 @@ class Trajectory():
             'states': self.states,
             'full_states': self.full_states,
             'actions': self.actions,
-            'rewards': self.rewards,
+            'rlhf_rewards': self.rlhf_rewards,
             'raw_rewards': self.raw_rewards,
             'values': self.values,
             'log_probs': self.log_probs,
@@ -127,7 +127,7 @@ class TrajectorySet(Dataset):
         return {
             'states': self._tjs.states[idx, :],
             'actions': self._tjs.actions[idx, :],
-            'rewards': self._tjs.rewards[idx, :],
+            'rlhf_rewards': self._tjs.rlhf_rewards[idx, :],
             'raw_rewards': self._tjs.raw_rewards[idx, :],
             'values': self._tjs.values[idx, :],
             'log_probs': self._tjs.log_probs[idx, :],
