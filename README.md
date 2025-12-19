@@ -18,12 +18,3 @@ Run with `python3 -m experiments`
 
 Show tensorboard with `tensorboard --logdir=./runs`
 
-
-
-TODO:
-
-SFT
-- Extend profiler to be able to log more statistics for function calls
-    - Memory usage
-    - Overall call count, time spent
-    - Track I/O as a limitation

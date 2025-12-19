@@ -20,27 +20,28 @@ from typing import Any, Tuple
 import warnings
 import torch.nn.functional as F
 
+
 class BaseEnvironment(ABC):
     def __init__(self):
-        ### Cleanup 
+        ### Cleanup
         # Thanks to Claude here:
         self._closed = False
         atexit.register(self.close)  # Normal exit
         signal.signal(signal.SIGTERM, self._cleanup_signal)  # Pod termination
-        signal.signal(signal.SIGINT, self._cleanup_signal)   # Ctrl+C
+        signal.signal(signal.SIGINT, self._cleanup_signal)  # Ctrl+C
 
     # Cleanup handling
-        
-    def _cleanup_signal(self, signum, frame): # Thanks to Claude here
+
+    def _cleanup_signal(self, signum, frame):  # Thanks to Claude here
         print(f"Received signal {signum}, cleaning up...")
         self.close()
         sys.exit(0)
 
     def __del__(self):
         self.close()
-    
+
     def close(self):
-        if not self._closed and hasattr(self, 'env'):
+        if not self._closed and hasattr(self, "env"):
             self._close()
             self._closed = True
             print("Env closed")
@@ -61,14 +62,12 @@ class GymEnvironment(BaseEnvironment):
 
     def _close(self):
         self.env.close()
-    
+
     def reset(self):
         return self.env.reset()
 
     def step(self, action):
         return self.env.step(action)
-    
-
 
 
 class RLHFEnvironment(BaseEnvironment):
@@ -87,11 +86,11 @@ class RLHFEnvironment(BaseEnvironment):
         self._closed = True
 
     def _find_first_token_position(self, states, token_id):
-        token_mask = (states == token_id)
+        token_mask = states == token_id
         first_token_pos = torch.where(
             token_mask.any(dim=1),
             token_mask.int().argmax(dim=1),
-            torch.full((states.size(0),), states.size(1), device=states.device)
+            torch.full((states.size(0),), states.size(1), device=states.device),
         )
         return first_token_pos
 
@@ -101,26 +100,32 @@ class RLHFEnvironment(BaseEnvironment):
         Sets all tokens after the first EOS or PAD token to PAD token.
         Detail 23.2: Truncate and pad after EOS to ensure valid RM scores
         """
-        first_eos_pos = self._find_first_token_position(states, self.tokenizer.eos_token_id)
-        first_pad_pos = self._find_first_token_position(states, self.tokenizer.pad_token_id)
-        
+        first_eos_pos = self._find_first_token_position(
+            states, self.tokenizer.eos_token_id
+        )
+        first_pad_pos = self._find_first_token_position(
+            states, self.tokenizer.pad_token_id
+        )
+
         first_termination_pos = torch.min(first_eos_pos, first_pad_pos)
-        
+
         # Set everything after to pad
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         after_termination_mask = pos > first_termination_pos.unsqueeze(1)
         states[after_termination_mask] = self.tokenizer.pad_token_id
-        
+
         return states
 
     def _construct_pad_mask(self, states):
-        first_pad_pos = self._find_first_token_position(states, self.tokenizer.pad_token_id)
+        first_pad_pos = self._find_first_token_position(
+            states, self.tokenizer.pad_token_id
+        )
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         return ~(pos >= first_pad_pos.unsqueeze(1))
-    
+
     def _construct_reward_mask(self, states):
-        return (states == self.tokenizer.eos_token_id)
-         
+        return states == self.tokenizer.eos_token_id
+
     def _set_models_to_eval(self, *models):
         for model in models:
             model.eval()
@@ -129,7 +134,9 @@ class RLHFEnvironment(BaseEnvironment):
         for model in models:
             model.train()
 
-    def _generate_and_compute_outputs(self, batch, policy_model, value_model, sft_model, reward_model, temp):
+    def _generate_and_compute_outputs(
+        self, batch, policy_model, value_model, sft_model, reward_model, temp
+    ):
         full_states, _ = policy_model.generate(
             batch,
             self.max_sequence_length,
@@ -147,22 +154,26 @@ class RLHFEnvironment(BaseEnvironment):
         sft_policy_logits, _ = sft_model.forward(full_states)
         values = value_model.forward(full_states)
         rewards = reward_model.forward(full_states)
-        
+
         return full_states, policy_logits, sft_policy_logits, values, rewards
 
-    def _truncate_to_response(self, states, values, policy_logits, sft_policy_logits, response_length):
+    def _truncate_to_response(
+        self, states, values, policy_logits, sft_policy_logits, response_length
+    ):
         states = states[:, -response_length:]
         values = values[:, -response_length:]
         policy_logits = policy_logits[:, -response_length:, :]
         sft_policy_logits = sft_policy_logits[:, -response_length:, :]
-        
+
         return states, values, policy_logits, sft_policy_logits
-    
+
     def _create_masks(self, states):
         # Note: _construct_pad_mask would not work for full_states
         return self._construct_pad_mask(states), self._construct_reward_mask(states)
-    
-    def _align_to_action_space(self, states, policy_logits, sft_policy_logits, rewards, pad_mask, reward_mask):
+
+    def _align_to_action_space(
+        self, states, policy_logits, sft_policy_logits, rewards, pad_mask, reward_mask
+    ):
         """
         Create the following alignment
 
@@ -191,15 +202,25 @@ class RLHFEnvironment(BaseEnvironment):
 
         ### Action Indexing ###
         actions = states[:, 1:]
-        policy_logits = policy_logits[:, :-1, :] 
+        policy_logits = policy_logits[:, :-1, :]
         sft_policy_logits = sft_policy_logits[:, :-1, :]
         reward_mask = reward_mask[:, 1:]
         rewards_2d = rewards.unsqueeze(1) * reward_mask
         action_pad_mask = pad_mask[:, 1:]
 
-        return actions, policy_logits, sft_policy_logits, rewards_2d, reward_mask, action_pad_mask, value_pad_mask
+        return (
+            actions,
+            policy_logits,
+            sft_policy_logits,
+            rewards_2d,
+            reward_mask,
+            action_pad_mask,
+            value_pad_mask,
+        )
 
-    def _set_reward_for_no_eos(self, rewards, reward_mask, action_pad_mask, penalty=-1.0):
+    def _set_reward_for_no_eos(
+        self, rewards, reward_mask, action_pad_mask, penalty=-1.0
+    ):
         """
         Applies EOS trick (pt 2)
         Detail 23.3: set -1 reward for missing EOS (penalty defaults to -1.0)
@@ -207,153 +228,180 @@ class RLHFEnvironment(BaseEnvironment):
         """
 
         has_eos = reward_mask.any(dim=1)
-        
+
         # For sequences without EOS, set the last valid position to True in the mask
         if (~has_eos).any():
-            last_valid_idx = action_pad_mask.sum(dim=1) - 1  # Get last non-padded position
-            batch_idx = torch.arange(action_pad_mask.size(0), device=action_pad_mask.device)
+            last_valid_idx = (
+                action_pad_mask.sum(dim=1) - 1
+            )  # Get last non-padded position
+            batch_idx = torch.arange(
+                action_pad_mask.size(0), device=action_pad_mask.device
+            )
             reward_mask[batch_idx[~has_eos], last_valid_idx[~has_eos]] = True
-        
+
         # Set penalty reward for sequences without EOS
         rewards = rewards.clone()
         rewards[~has_eos] = penalty
-        
+
         return rewards, reward_mask
-    
-    def _format_trajectory_data(self, full_states, policy_logits, sft_policy_logits, values, raw_rewards):
-            # full_states may not be at max response length, but the query will be at max
-            response_length = full_states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH 
-            
-            # 1. Truncating to response portion 
-            states, values, policy_logits, sft_policy_logits = \
-                self._truncate_to_response(
-                    full_states, 
-                    values, 
-                    policy_logits, 
-                    sft_policy_logits, 
-                    # we need the last token of the prompt because the policy here dictates 
-                    # the action taken == the token generated at the beginning of the response
-                    response_length+1 
-                )
-            
-            # 2. Enforce padding and create masks
-            states = self._enforce_padding(states)
-            pad_mask, reward_mask = self._create_masks(states)
-                        
-            # 3. Align tensors such that same index computation is correct and reflects PPO / GAE equations
-            actions, policy_logits, sft_policy_logits, raw_rewards_2d, reward_mask, action_pad_mask, value_pad_mask = \
-                self._align_to_action_space(
-                    states, 
-                    policy_logits, 
-                    sft_policy_logits, 
-                    raw_rewards,
-                    pad_mask,
-                    reward_mask,
-                )
-            
-            return {
-                'states': states,
-                'full_states': full_states,
-                'actions': actions,
-                'policy_logits': policy_logits,
-                'sft_policy_logits': sft_policy_logits,
-                'raw_rewards': raw_rewards_2d,
-                'values': values,
-                'pad_mask': pad_mask,
-                'action_pad_mask': action_pad_mask,
-                'value_pad_mask': value_pad_mask,
-                'reward_mask': reward_mask,
-            }
+
+    def _format_trajectory_data(
+        self, full_states, policy_logits, sft_policy_logits, values, raw_rewards
+    ):
+        # full_states may not be at max response length, but the query will be at max
+        response_length = full_states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH
+
+        # 1. Truncating to response portion
+        states, values, policy_logits, sft_policy_logits = self._truncate_to_response(
+            full_states,
+            values,
+            policy_logits,
+            sft_policy_logits,
+            # we need the last token of the prompt because the policy here dictates
+            # the action taken == the token generated at the beginning of the response
+            response_length + 1,
+        )
+
+        # 2. Enforce padding and create masks
+        states = self._enforce_padding(states)
+        pad_mask, reward_mask = self._create_masks(states)
+
+        # 3. Align tensors such that same index computation is correct and reflects PPO / GAE equations
+        (
+            actions,
+            policy_logits,
+            sft_policy_logits,
+            raw_rewards_2d,
+            reward_mask,
+            action_pad_mask,
+            value_pad_mask,
+        ) = self._align_to_action_space(
+            states,
+            policy_logits,
+            sft_policy_logits,
+            raw_rewards,
+            pad_mask,
+            reward_mask,
+        )
+
+        return {
+            "states": states,
+            "full_states": full_states,
+            "actions": actions,
+            "policy_logits": policy_logits,
+            "sft_policy_logits": sft_policy_logits,
+            "raw_rewards": raw_rewards_2d,
+            "values": values,
+            "pad_mask": pad_mask,
+            "action_pad_mask": action_pad_mask,
+            "value_pad_mask": value_pad_mask,
+            "reward_mask": reward_mask,
+        }
 
     def _create_trajectory(self, data):
-        tj = Trajectory(batch_size=data['states'].size(0))
-        tj.states = data['states']
-        tj.full_states = data['full_states']
-        tj.values = data['values'].masked_fill(~data['pad_mask'], 0)
-        tj.value_pad_mask = data['value_pad_mask']
-        tj.pad_mask = data['pad_mask']
-        tj.actions = data['actions'].masked_fill(~data['action_pad_mask'], 0)
-        tj.action_pad_mask = data['action_pad_mask']
-        tj.log_probs = data['log_probs'].masked_fill(~data['action_pad_mask'], 0)
-        tj.rlhf_rewards = data['rlhf_rewards'].masked_fill(~data['action_pad_mask'], 0)
-        tj.raw_rewards = data['raw_rewards'].masked_fill(~data['action_pad_mask'], 0)
-        tj.reward_mask = data['reward_mask']
-        tj.kl = data['kl_per_action'].masked_fill(~data['action_pad_mask'], 0)
-        tj.A = data['A'].masked_fill(~data['value_pad_mask'], 0)
-        tj.A_raw = data['A_raw'].masked_fill(~data['value_pad_mask'], 0)
-        tj.R = (data['R']).masked_fill(~data['value_pad_mask'], 0)
+        tj = Trajectory(batch_size=data["states"].size(0))
+        tj.states = data["states"]
+        tj.full_states = data["full_states"]
+        tj.values = data["values"].masked_fill(~data["pad_mask"], 0)
+        tj.value_pad_mask = data["value_pad_mask"]
+        tj.pad_mask = data["pad_mask"]
+        tj.actions = data["actions"].masked_fill(~data["action_pad_mask"], 0)
+        tj.action_pad_mask = data["action_pad_mask"]
+        tj.log_probs = data["log_probs"].masked_fill(~data["action_pad_mask"], 0)
+        tj.rlhf_rewards = data["rlhf_rewards"].masked_fill(~data["action_pad_mask"], 0)
+        tj.raw_rewards = data["raw_rewards"].masked_fill(~data["action_pad_mask"], 0)
+        tj.reward_mask = data["reward_mask"]
+        tj.kl = data["kl_per_action"].masked_fill(~data["action_pad_mask"], 0)
+        tj.A = data["A"].masked_fill(~data["value_pad_mask"], 0)
+        tj.A_raw = data["A_raw"].masked_fill(~data["value_pad_mask"], 0)
+        tj.R = (data["R"]).masked_fill(~data["value_pad_mask"], 0)
 
         return tj
-    
+
     @profile
-    def generate_trajectory(self, 
-                            batch, 
-                            policy_model, 
-                            value_model, 
-                            sft_model,
-                            temp,
-                            reward_model = None):
+    def generate_trajectory(
+        self, batch, policy_model, value_model, sft_model, temp, reward_model=None
+    ):
         with torch.no_grad():
             self._set_models_to_eval(policy_model, value_model, sft_model)
 
             # 1. Get raw model outputs
             #   1.1 Generate states with policy model
-            #   1.2 Forward parallel decode on generates states with policy model 
+            #   1.2 Forward parallel decode on generates states with policy model
             #       (crucially does not use probs from generation)
-            #   1.3 Forward parallel decode on generates states with sft model 
+            #   1.3 Forward parallel decode on generates states with sft model
             #   1.4 Forward with value model
             #   1.5 Forward with reward model
-            full_states, policy_logits, sft_policy_logits, values, raw_rewards = \
+            full_states, policy_logits, sft_policy_logits, values, raw_rewards = (
                 self._generate_and_compute_outputs(
-                    batch, policy_model, value_model, sft_model, 
-                    reward_model, temp
+                    batch, policy_model, value_model, sft_model, reward_model, temp
                 )
-            
+            )
+
             # 2. Format trajectory data
-            data = self._format_trajectory_data(full_states, policy_logits, sft_policy_logits, values, raw_rewards)
+            data = self._format_trajectory_data(
+                full_states, policy_logits, sft_policy_logits, values, raw_rewards
+            )
 
             # 3. Apply EOS trick
-            data['raw_rewards'], data['reward_mask'] = \
-                self._set_reward_for_no_eos(data['raw_rewards'], data['reward_mask'], data['action_pad_mask'])
-                    
-            # 4. Compute KL        
-            data['kl_per_action'] = Trajectory.compute_kl(data['policy_logits'], data['sft_policy_logits'],  data['action_pad_mask'])
-            del data['sft_policy_logits']
+            data["raw_rewards"], data["reward_mask"] = self._set_reward_for_no_eos(
+                data["raw_rewards"], data["reward_mask"], data["action_pad_mask"]
+            )
+
+            # 4. Compute KL
+            data["kl_per_action"] = Trajectory.compute_kl(
+                data["policy_logits"],
+                data["sft_policy_logits"],
+                data["action_pad_mask"],
+            )
+            del data["sft_policy_logits"]
             del sft_policy_logits
 
             # 5. Compute log probs
-            data['log_probs'] = Trajectory.compute_log_probs(data['actions'], data['policy_logits'],  data['action_pad_mask'])
-            del data['policy_logits']
+            data["log_probs"] = Trajectory.compute_log_probs(
+                data["actions"], data["policy_logits"], data["action_pad_mask"]
+            )
+            del data["policy_logits"]
             del policy_logits
 
             # NOTE: Ordering to reflect the following implementation
             # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
 
             # 6. Apply KL to rewards
-            data['rlhf_rewards'] = (data['raw_rewards'] - (self.config.beta * data['kl_per_action'])).masked_fill(~data['action_pad_mask'], 0)
+            data["rlhf_rewards"] = (
+                data["raw_rewards"] - (self.config.beta * data["kl_per_action"])
+            ).masked_fill(~data["action_pad_mask"], 0)
 
             # 7. Whiten rewards
             if self.config.whiten_rewards:
-                data['rlhf_rewards'] = masked_whiten(data['rlhf_rewards'], data['action_pad_mask'], shift_mean=False)
+                data["rlhf_rewards"] = masked_whiten(
+                    data["rlhf_rewards"], data["action_pad_mask"], shift_mean=False
+                )
 
             # 8. Compute advantages
-            data['A_raw'] = Trajectory.compute_gae(data['values'], data['rlhf_rewards'], data['value_pad_mask'], self.config.gamma, self.config.lam)
-            
+            data["A_raw"] = Trajectory.compute_gae(
+                data["values"],
+                data["rlhf_rewards"],
+                data["value_pad_mask"],
+                self.config.gamma,
+                self.config.lam,
+            )
+
             # 9. Whiten advantages
             if self.config.whiten_A:
-                # NOTE: shift mean here to keep 
-                # A > 0 to be "action better than expected", 
+                # NOTE: shift mean here to keep
+                # A > 0 to be "action better than expected",
                 # A < 0 to be "action worse than expected"
-                data['A'] = masked_whiten(data['A_raw'], data['value_pad_mask'])
-            
+                data["A"] = masked_whiten(data["A_raw"], data["value_pad_mask"])
+
             # 10. Compute returns
-            data['R'] = data['A_raw'] + data['values'][:,:-1]
+            data["R"] = data["A_raw"] + data["values"][:, :-1]
             # Not using this definition of returns (discounted rewards-to-go)
             # data['R'] = Trajectory.compute_R(gamma=self.config.gamma, r=data['rlhf_rewards'], action_pad_mask=data['action_pad_mask'])
 
             # 11. Create trajectory and set data
             tj = self._create_trajectory(data)
 
-        self._set_models_to_train(policy_model, value_model)             
+        self._set_models_to_train(policy_model, value_model)
 
         return tj
