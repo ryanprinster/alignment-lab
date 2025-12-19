@@ -267,7 +267,8 @@ class RLHFEnvironment(BaseEnvironment):
             }
 
     def _create_trajectory(self, data):
-        tj = Trajectory(batch_size=data['states'].size(0))
+        tj = Trajectory()
+        tj.batch_size = data['states'].size(0)
         tj.states = data['states']
         tj.full_states = data['full_states']
         tj.values = data['values'].masked_fill(~data['pad_mask'], 0)
@@ -284,7 +285,7 @@ class RLHFEnvironment(BaseEnvironment):
         tj.A_raw = data['A_raw'].masked_fill(~data['value_pad_mask'], 0)
         tj.R = (data['R']).masked_fill(~data['value_pad_mask'], 0)
 
-        return 
+        return tj
     
     @profile
     def generate_trajectory(self, 
