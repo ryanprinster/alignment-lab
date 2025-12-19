@@ -120,6 +120,11 @@ class HFModel(nn.Module, ABC):
             state_dict = checkpoint
 
         self.load_state_dict(state_dict, strict=False)
+    
+    def disable_dropout(self):
+        self.transformer.config.attention_dropout = 0.0
+        self.transformer.config.hidden_dropout = 0.0
+        self.transformer.config.resid_dropout = 0.0
 
 
 class HFModel_Causal(HFModel):

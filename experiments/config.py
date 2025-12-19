@@ -69,6 +69,7 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.accumulation_steps = 1
 
         self.generation_temperature = 0.7
+        self.disable_dropout = True
 
         # Checkpointing
         self.save_freq_steps = 100 * self.accumulation_steps
