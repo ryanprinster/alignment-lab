@@ -74,14 +74,18 @@ class Checkpointer:
         self._cleanup_old_checkpoints()
 
     def _build_checkpoint(self, model, optimizer, global_step, epoch, loss):
-        return {
+        checkpoint = {
             'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
             'global_step': global_step,
             'epoch': epoch,
             'loss': loss,
             'timestamp': datetime.now().isoformat()
         }
+        
+        if optimizer is not None:
+            checkpoint['optimizer_state_dict'] = optimizer.state_dict()
+        
+        return checkpoint
 
     def _cleanup_old_checkpoints(self):
         checkpoints = [f for f in os.listdir(self.checkpoint_dir) 

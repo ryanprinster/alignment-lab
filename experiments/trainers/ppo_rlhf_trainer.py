@@ -439,7 +439,7 @@ class PPORLHFTrainer(BaseTrainer):
         # Final checkpoint
         self.checkpointer.save_checkpoint(
                 self.policy_model,
-                self.optimizer_policy,
+                None, # No optimizer needed
                 self.global_step,
                 epoch,
                 loss=self.loss_ppo,

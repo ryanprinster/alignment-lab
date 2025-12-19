@@ -119,7 +119,7 @@ class SFTTrainer(BaseTrainer):
         # Final checkpoint
         self.checkpointer.save_checkpoint(
                     self.model,
-                    self.optimizer,
+                    None, # No optimizer needed
                     self.global_step,
                     epoch,
                     loss.item(),
