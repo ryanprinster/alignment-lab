@@ -11,7 +11,7 @@ def stop_runpod():
             print("Pod stopped!")
         else:
             print(f"Runpod stop failed: {result.stderr}, trying fallback stop methods...")
-            
+
             
             sys.exit(1)
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):

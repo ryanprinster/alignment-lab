@@ -215,26 +215,8 @@ class RLHFEnvironment(BaseEnvironment):
         rewards[~has_eos] = penalty
         
         return rewards, reward_mask
-
     
-    @profile
-    def generate_trajectory(self, 
-                            batch, 
-                            policy_model, 
-                            value_model, 
-                            sft_model,
-                            temp,
-                            reward_model = None):
-        with torch.no_grad():
-            self._set_models_to_eval(policy_model, value_model, sft_model)
-
-            # Raw model output
-            full_states, policy_logits, sft_policy_logits, values, rewards = \
-                self._generate_and_compute_outputs(
-                    batch, policy_model, value_model, sft_model, 
-                    reward_model, temp
-                )
-            
+    def _format_trajectory_data(self, full_states, policy_logits, sft_policy_logits, values, rewards):
             # full_states may not be at max response length, but the query will be at max
             response_length = full_states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH 
             states, values, policy_logits, sft_policy_logits = \
@@ -260,57 +242,92 @@ class RLHFEnvironment(BaseEnvironment):
                     pad_mask,
                     reward_mask,
                 )
+            
+            return {
+                'states': states,
+                'full_states': full_states,
+                'actions': actions,
+                'policy_logits': policy_logits,
+                'sft_policy_logits': sft_policy_logits,
+                'rewards': rewards_2d,
+                'values': values,
+                'pad_mask': pad_mask,
+                'action_pad_mask': action_pad_mask,
+                'value_pad_mask': value_pad_mask,
+                'reward_mask': reward_mask,
+            }
+
+    
+    @profile
+    def generate_trajectory(self, 
+                            batch, 
+                            policy_model, 
+                            value_model, 
+                            sft_model,
+                            temp,
+                            reward_model = None):
+        with torch.no_grad():
+            self._set_models_to_eval(policy_model, value_model, sft_model)
+
+            # Raw model output
+            full_states, policy_logits, sft_policy_logits, values, rewards = \
+                self._generate_and_compute_outputs(
+                    batch, policy_model, value_model, sft_model, 
+                    reward_model, temp
+                )
+            
+            data = self._format_trajectory_data()
 
             # Apply EOS trick
-            rewards_2d, reward_mask = \
-                self._set_reward_for_no_eos(rewards_2d, reward_mask, action_pad_mask)
+            data['rewards_2d'], data['reward_mask'] = \
+                self._set_reward_for_no_eos(data['rewards_2d'], data['reward_mask'], data['action_pad_mask'])
                     
-            kl_per_action = Trajectory.compute_kl(policy_logits, sft_policy_logits, action_pad_mask)
-            del sft_policy_logits
+            kl_per_action = Trajectory.compute_kl(data['policy_logits'], data['sft_policy_logits'],  data['action_pad_mask'])
+            del data['sft_policy_logits']
 
-            log_probs = Trajectory.compute_log_probs(actions, policy_logits, action_pad_mask)
-            del policy_logits
+            log_probs = Trajectory.compute_log_probs(data['actions'], data['policy_logits'],  data['action_pad_mask'])
+            del data['policy_logits']
 
             # NOTE: Ordering to reflect the following implementation
             # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
 
 
             # 1. Apply KL to rewards
-            raw_rewards = rewards_2d
-            rewards_2d = (rewards_2d - (self.config.beta * kl_per_action)).masked_fill(~action_pad_mask, 0)
+            raw_rewards = data['rewards_2d']
+            data['rewards_2d'] = (data['rewards_2d'] - (self.config.beta * kl_per_action)).masked_fill(~data['action_pad_mask'], 0)
 
             # 2. Whiten rewards
             if self.config.whiten_rewards:
-                rewards_2d = masked_whiten(rewards_2d, action_pad_mask, shift_mean=False)
+                data['rewards_2d'] = masked_whiten(data['rewards_2d'], data['action_pad_mask'], shift_mean=False)
 
             # 3. Compute advantages
-            A_raw = Trajectory.compute_gae(values, rewards_2d, value_pad_mask, self.config.gamma, self.config.lam)
+            data['A_raw'] = Trajectory.compute_gae(data['values'], data['rewards_2d'], data['value_pad_mask'], self.config.gamma, self.config.lam)
             if self.config.whiten_A:
                 # NOTE: shift mean here to keep 
                 # A > 0 to be "action better than expected", 
                 # A < 0 to be "action worse than expected"
-                A = masked_whiten(A_raw, value_pad_mask) # TODO: double check
+                A = masked_whiten(data['A_raw'], data['value_pad_mask'])
             
             # 4. Compute returns/rewards-to-go
-            R = Trajectory.compute_R(gamma=self.config.gamma, r=rewards_2d, action_pad_mask=action_pad_mask)
+            R = Trajectory.compute_R(gamma=self.config.gamma, r=data['rewards_2d'], action_pad_mask=data['action_pad_mask'])
 
             # 5. Create trajectory and set data
-            tj = Trajectory(batch_size=states.size(0))
-            tj.states = states
+            tj = Trajectory(batch_size=data['states'].size(0))
+            tj.states = data['states']
             tj.full_states = full_states
-            tj.values = values.masked_fill(~pad_mask, 0)
-            tj.value_pad_mask = value_pad_mask
-            tj.pad_mask = pad_mask
-            tj.actions = actions.masked_fill(~action_pad_mask, 0)
-            tj.action_pad_mask = action_pad_mask
-            tj.log_probs = log_probs.masked_fill(~action_pad_mask, 0)
-            tj.rewards = rewards_2d.masked_fill(~action_pad_mask, 0)
-            tj.raw_rewards = raw_rewards.masked_fill(~action_pad_mask, 0)
-            tj.reward_mask = reward_mask
-            tj.kl = kl_per_action.masked_fill(~action_pad_mask, 0)
-            tj.A = A.masked_fill(~value_pad_mask, 0)
-            tj.A_raw = A_raw.masked_fill(~value_pad_mask, 0)
-            tj.R = (A_raw + values[:,:-1]).masked_fill(~value_pad_mask, 0)
+            tj.values = data['values'].masked_fill(~data['pad_mask'], 0)
+            tj.value_pad_mask = data['value_pad_mask']
+            tj.pad_mask = data['pad_mask']
+            tj.actions = data['actions'].masked_fill(~data['action_pad_mask'], 0)
+            tj.action_pad_mask = data['action_pad_mask']
+            tj.log_probs = log_probs.masked_fill(~data['action_pad_mask'], 0)
+            tj.rewards = data['rewards_2d'].masked_fill(~data['action_pad_mask'], 0)
+            tj.raw_rewards = raw_rewards.masked_fill(~data['action_pad_mask'], 0)
+            tj.reward_mask = data['reward_mask']
+            tj.kl = kl_per_action.masked_fill(~data['action_pad_mask'], 0)
+            tj.A = A.masked_fill(~data['value_pad_mask'], 0)
+            tj.A_raw = data['A_raw'].masked_fill(~data['value_pad_mask'], 0)
+            tj.R = (data['A_raw'] + data['values'][:,:-1]).masked_fill(~data['value_pad_mask'], 0)
                       
         policy_model.train()
         value_model.train()
