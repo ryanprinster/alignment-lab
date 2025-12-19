@@ -89,8 +89,8 @@ class Trajectory():
         return A
 
     def compute_log_probs(actions, policy_logits, action_pad_mask):
-        # NOTE: Mask value here can't be the logically correct large negative number, 
-        # as the will cause infs in backward gradient computation later
+        # NOTE: Mask value as the logically correct large negative number 
+        # sometimes will cause infs in backward gradient computation later
         return torch.gather(masked_log_softmax(policy_logits, action_pad_mask.unsqueeze(2), mask_value=0, dim=-1), dim=-1, index=actions.long().unsqueeze(-1)).squeeze(-1)
     
     def compute_kl(policy_logits, sft_policy_logits, action_pad_mask):
