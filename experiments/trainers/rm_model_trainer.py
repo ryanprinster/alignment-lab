@@ -26,7 +26,9 @@ class RMTrainer(BaseTrainer):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device)
-        self.model.set_from_local_state_dict(self.config.sft_model_path) # we
+        self.model.set_from_local_state_dict(self.config.sft_model_path)
+        if self.config.disable_dropout:
+            self.model.disable_dropout()
 
         self.data = OpenAIPreferenceData(tokenizer=self.model.tokenizer, batch_size=self.config.batch_size)
         self.optimizer = optim.AdamW(self.model.parameters(), 
