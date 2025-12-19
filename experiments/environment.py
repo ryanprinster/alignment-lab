@@ -268,7 +268,6 @@ class RLHFEnvironment(BaseEnvironment):
 
     def _create_trajectory(self, data):
         tj = Trajectory(batch_size=data['states'].size(0))
-        # tj.batch_size = data['states'].size(0)
         tj.states = data['states']
         tj.full_states = data['full_states']
         tj.values = data['values'].masked_fill(~data['pad_mask'], 0)
