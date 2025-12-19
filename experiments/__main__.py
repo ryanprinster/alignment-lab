@@ -129,14 +129,10 @@ def get_config_class(trainer_class, config_name):
     available_configs = base_config_class.__subclasses__()
 
     if not available_configs:
-        raise ValueError(
-            f"No concrete config classes found for {base_config_class.__name__}"
-        )
+        raise ValueError(f"No concrete config classes found for {base_config_class.__name__}")
 
     # Get the config_class corresponding to config_name
-    config_class = next(
-        (c for c in available_configs if c.__name__ == config_name), None
-    )
+    config_class = next((c for c in available_configs if c.__name__ == config_name), None)
     if config_class is None:
         raise ValueError(
             f"Unknown config '{config_name}'. Available: {[c.__name__ for c in available_configs]}"
@@ -168,13 +164,9 @@ def create_and_configure(config_class, config_args):
 def get_method(trainer, method_name):
     if not hasattr(trainer, method_name) or method_name.startswith("_"):
         available = [
-            m
-            for m in dir(trainer)
-            if not m.startswith("_") and callable(getattr(trainer, m))
+            m for m in dir(trainer) if not m.startswith("_") and callable(getattr(trainer, m))
         ]
-        raise ValueError(
-            f"Method '{method_name}' not available. Available: {available}"
-        )
+        raise ValueError(f"Method '{method_name}' not available. Available: {available}")
 
     return getattr(trainer, method_name)
 
@@ -185,9 +177,7 @@ def main():
         trainer_name, method_name, config_name, config_args = parse_cli_args()
 
         trainer_class = get_trainer_class(trainer_name)
-        config = create_and_configure(
-            get_config_class(trainer_class, config_name), config_args
-        )
+        config = create_and_configure(get_config_class(trainer_class, config_name), config_args)
 
         method = get_method(trainer_class(config), method_name)
 

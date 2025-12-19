@@ -73,9 +73,7 @@ class RMTrainer(BaseTrainer):
                     total_reward += torch.sum(reward_logit)
 
                     running_reward_bias = (
-                        (total_reward / ((_batch_idx + 1) * self.config.batch_size))
-                        .cpu()
-                        .item()
+                        (total_reward / ((_batch_idx + 1) * self.config.batch_size)).cpu().item()
                     )
 
                     log_data = {
@@ -85,9 +83,7 @@ class RMTrainer(BaseTrainer):
                     }
                     f.write(json.dumps(log_data) + "\n")
 
-                    print(
-                        f"running_reward_bias {running_reward_bias}, batch_idx {_batch_idx}"
-                    )
+                    print(f"running_reward_bias {running_reward_bias}, batch_idx {_batch_idx}")
 
                     return total_reward
 
@@ -97,13 +93,9 @@ class RMTrainer(BaseTrainer):
     @profile
     def _to_device(self, batch):
         batch["preferred_input_ids"] = batch["preferred_input_ids"].to(self.device)
-        batch["preferred_attention_mask"] = batch["preferred_attention_mask"].to(
-            self.device
-        )
+        batch["preferred_attention_mask"] = batch["preferred_attention_mask"].to(self.device)
         batch["rejected_input_ids"] = batch["rejected_input_ids"].to(self.device)
-        batch["rejected_attention_mask"] = batch["rejected_attention_mask"].to(
-            self.device
-        )
+        batch["rejected_attention_mask"] = batch["rejected_attention_mask"].to(self.device)
         return batch
 
     @profile

@@ -90,12 +90,8 @@ class RLHFEnvironment(BaseEnvironment):
         Sets all tokens after the first EOS or PAD token to PAD token.
         Detail 23.2: Truncate and pad after EOS to ensure valid RM scores
         """
-        first_eos_pos = self._find_first_token_position(
-            states, self.tokenizer.eos_token_id
-        )
-        first_pad_pos = self._find_first_token_position(
-            states, self.tokenizer.pad_token_id
-        )
+        first_eos_pos = self._find_first_token_position(states, self.tokenizer.eos_token_id)
+        first_pad_pos = self._find_first_token_position(states, self.tokenizer.pad_token_id)
 
         first_termination_pos = torch.min(first_eos_pos, first_pad_pos)
 
@@ -107,9 +103,7 @@ class RLHFEnvironment(BaseEnvironment):
         return states
 
     def _construct_pad_mask(self, states):
-        first_pad_pos = self._find_first_token_position(
-            states, self.tokenizer.pad_token_id
-        )
+        first_pad_pos = self._find_first_token_position(states, self.tokenizer.pad_token_id)
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         return ~(pos >= first_pad_pos.unsqueeze(1))
 
@@ -208,9 +202,7 @@ class RLHFEnvironment(BaseEnvironment):
             value_pad_mask,
         )
 
-    def _set_reward_for_no_eos(
-        self, rewards, reward_mask, action_pad_mask, penalty=-1.0
-    ):
+    def _set_reward_for_no_eos(self, rewards, reward_mask, action_pad_mask, penalty=-1.0):
         """
         Applies EOS trick (pt 2)
         Detail 23.3: set -1 reward for missing EOS (penalty defaults to -1.0)
@@ -221,12 +213,8 @@ class RLHFEnvironment(BaseEnvironment):
 
         # For sequences without EOS, set the last valid position to True in the mask
         if (~has_eos).any():
-            last_valid_idx = (
-                action_pad_mask.sum(dim=1) - 1
-            )  # Get last non-padded position
-            batch_idx = torch.arange(
-                action_pad_mask.size(0), device=action_pad_mask.device
-            )
+            last_valid_idx = action_pad_mask.sum(dim=1) - 1  # Get last non-padded position
+            batch_idx = torch.arange(action_pad_mask.size(0), device=action_pad_mask.device)
             reward_mask[batch_idx[~has_eos], last_valid_idx[~has_eos]] = True
 
         # Set penalty reward for sequences without EOS

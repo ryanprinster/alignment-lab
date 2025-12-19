@@ -62,10 +62,7 @@ class Logger:
 
         # Log samples
         if hasattr(self.config, "log_samples_freq") and samples is not None:
-            if (
-                scalars["global_step"] % self.config.log_samples_freq == 0
-                and scalars["k"] == 0
-            ):
+            if scalars["global_step"] % self.config.log_samples_freq == 0 and scalars["k"] == 0:
                 print(f"SAMPLES AT {scalars['global_step']} STEPS")
                 for k, v in samples.items():
                     print(f"\n{k}: {v}\n")
@@ -90,7 +87,9 @@ class Logger:
             cpu_mem_pct = 100.0 * cpu_mem_used / cpu_mem_total
             cpu_mem_pct_real = cpu_mem.percent
             cpu_mem_used_real = cpu_mem_pct_real * cpu_mem_total / 100
-            cpu_info = f"CPU Mem Used: {cpu_mem_used:.1f}/{cpu_mem_total:.1f}GB ({cpu_mem_pct:.1f}%) "
+            cpu_info = (
+                f"CPU Mem Used: {cpu_mem_used:.1f}/{cpu_mem_total:.1f}GB ({cpu_mem_pct:.1f}%) "
+            )
             cpu_info += f"CPU Mem Unavailable: {cpu_mem_used_real:.1f}/{cpu_mem_total:.1f}GB ({cpu_mem_pct_real:.1f}%) "
             mem_usage_info_str = cpu_info
 
@@ -109,9 +108,7 @@ class Logger:
 
         if hasattr(self.config, "log_weights_freq"):
             if scalars["global_step"] % self.config.log_weights_freq == 0:
-                self._log_weights_and_grads_to_tensorboard(
-                    models, scalars["global_step"]
-                )
+                self._log_weights_and_grads_to_tensorboard(models, scalars["global_step"])
         if hasattr(self.config, "log_scalars_freq"):
             if scalars["global_step"] % self.config.log_scalars_freq == 0:
                 self._log_scalars_to_tensorboard(scalars, scalars["global_step"])
@@ -151,9 +148,7 @@ class Logger:
             log_data[key] = scalars[key]
             log_data["timestamp"] = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 
-        log_file_name = (
-            log_file_name or getattr(self.config, "log_file_name", None) or "log_at"
-        )
+        log_file_name = log_file_name or getattr(self.config, "log_file_name", None) or "log_at"
 
         with open(f"{log_file_name}_{self.init_time}.jsonl", "a") as f:
             f.write(json.dumps(log_data) + "\n")

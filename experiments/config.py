@@ -1,5 +1,3 @@
-
-
 class ConfigBase:
     def __init__(self):
         raise NotImplementedError("Use a concrete config subclass")

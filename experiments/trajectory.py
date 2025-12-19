@@ -44,13 +44,9 @@ class Trajectory:
 
         # Get discounts
         discounts_rev = torch.ones_like(r, device=r.device) * gamma
-        discounts_rev = discounts_rev.masked_fill(
-            ~action_pad_mask.flip(dims=[time_dim]), 1
-        )
+        discounts_rev = discounts_rev.masked_fill(~action_pad_mask.flip(dims=[time_dim]), 1)
         discounts_rev = torch.cumprod(discounts_rev, dim=time_dim) / gamma
-        discounts_rev = discounts_rev.masked_fill(
-            ~action_pad_mask.flip(dims=[time_dim]), 0
-        )
+        discounts_rev = discounts_rev.masked_fill(~action_pad_mask.flip(dims=[time_dim]), 0)
 
         # Calculate
         r_rev = torch.flip(r, dims=[time_dim])
@@ -95,9 +91,7 @@ class Trajectory:
         # NOTE: Mask value as the logically correct large negative number sometimes will
         # cause infs in masked positions in backward gradient computation later, hence 0 mask
         return torch.gather(
-            masked_log_softmax(
-                policy_logits, action_pad_mask.unsqueeze(2), mask_value=0, dim=-1
-            ),
+            masked_log_softmax(policy_logits, action_pad_mask.unsqueeze(2), mask_value=0, dim=-1),
             dim=-1,
             index=actions.long().unsqueeze(-1),
         ).squeeze(-1)
@@ -114,9 +108,9 @@ class Trajectory:
         #       Code pointer here: https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L798C1
 
         pad_mask_3d = action_pad_mask.unsqueeze(2)
-        log_P = masked_log_softmax(
-            policy_logits, pad_mask_3d, mask_value=0, dim=-1
-        ).masked_fill(~pad_mask_3d, 0)
+        log_P = masked_log_softmax(policy_logits, pad_mask_3d, mask_value=0, dim=-1).masked_fill(
+            ~pad_mask_3d, 0
+        )
         P = torch.exp(log_P).masked_fill(~pad_mask_3d, 0)
         log_Q = masked_log_softmax(
             sft_policy_logits, pad_mask_3d, mask_value=0, dim=-1
@@ -125,9 +119,7 @@ class Trajectory:
         )  # sft
 
         # Sum over policy dim
-        kl_div_per_action = torch.sum(
-            (P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=-1
-        )
+        kl_div_per_action = torch.sum((P * (log_P - log_Q)).masked_fill(~pad_mask_3d, 0), dim=-1)
         del pad_mask_3d
 
         return kl_div_per_action

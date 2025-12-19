@@ -214,9 +214,7 @@ class OpenAIPreferenceData:
         rejected_attention_mask = []
         queries = []
 
-        for meta, responses, label in zip(
-            batch["meta"], batch["responses"], batch["label"]
-        ):
+        for meta, responses, label in zip(batch["meta"], batch["responses"], batch["label"]):
             post = meta["post"]
             subreddit = meta["subreddit"]
             title = meta["title"]
@@ -226,12 +224,8 @@ class OpenAIPreferenceData:
             query_text = self._truncate_post(subreddit, title, post, tokenizer)
             query_text = self._format_query(subreddit, title, post)
 
-            preferred_text = (
-                query_text + " " + preferred_summary + self.tokenizer.eos_token
-            )
-            rejected_text = (
-                query_text + " " + rejected_summary + self.tokenizer.eos_token
-            )
+            preferred_text = query_text + " " + preferred_summary + self.tokenizer.eos_token
+            rejected_text = query_text + " " + rejected_summary + self.tokenizer.eos_token
 
             # Detail 14 (Minor numerical differences between extracting reward with
             #   left and right padded queries)
@@ -253,9 +247,7 @@ class OpenAIPreferenceData:
             )
 
             preferred_input_ids.append(preferred_tokens["input_ids"].squeeze(0))
-            preferred_attention_mask.append(
-                preferred_tokens["attention_mask"].squeeze(0)
-            )
+            preferred_attention_mask.append(preferred_tokens["attention_mask"].squeeze(0))
             rejected_input_ids.append(rejected_tokens["input_ids"].squeeze(0))
             rejected_attention_mask.append(rejected_tokens["attention_mask"].squeeze(0))
             queries.append(query_text)

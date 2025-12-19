@@ -11,9 +11,7 @@ def stop_runpod():
         if result.returncode == 0:
             print("Pod stopped!")
         else:
-            print(
-                f"Runpod stop failed: {result.stderr}, trying fallback stop methods..."
-            )
+            print(f"Runpod stop failed: {result.stderr}, trying fallback stop methods...")
 
             sys.exit(1)
     except (

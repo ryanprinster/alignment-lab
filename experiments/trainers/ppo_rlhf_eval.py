@@ -4,6 +4,7 @@ import math
 import os
 
 import anthropic
+
 # Third-party imports
 import matplotlib.pyplot as plt
 import numpy as np
@@ -69,9 +70,7 @@ class PPORLHFEval(BaseTrainer):
             del _
 
             generated = self.generate_summaries(batch_inputs)
-            summary_text = self.data.tokenizer.decode(
-                generated[0], skip_special_tokens=True
-            )
+            summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
             print(f"Generated Summary: {summary_text}\n")
 
     def _to_device(self, batch):
@@ -107,9 +106,7 @@ class PPORLHFEval(BaseTrainer):
                 "messages": [
                     {
                         "role": "user",
-                        "content": PPORLHFEval._judge_prompt(
-                            post, summary_a, summary_b
-                        ),
+                        "content": PPORLHFEval._judge_prompt(post, summary_a, summary_b),
                     }
                 ],
             },
@@ -195,18 +192,14 @@ class PPORLHFEval(BaseTrainer):
                     "generated": generated_summary_text,
                     "reference": reference_summary_text,
                     "prompt": prompt_text,
-                    "log(len(gen)/len(ref))": math.log(
-                        gen_sum_ids.size(0) / ref_sum_ids.size(0)
-                    ),
+                    "log(len(gen)/len(ref))": math.log(gen_sum_ids.size(0) / ref_sum_ids.size(0)),
                 }
             )
 
             print(f"generated_summary_text: {generated_summary_text}\n")
         print(
             "\n\n\n",
-            PPORLHFEval._judge_prompt(
-                prompt_text, generated_summary_text, reference_summary_text
-            ),
+            PPORLHFEval._judge_prompt(prompt_text, generated_summary_text, reference_summary_text),
             "\n\n\n",
         )
 
@@ -238,9 +231,7 @@ class PPORLHFEval(BaseTrainer):
             generated_summaries = self.generate_summaries(input_batch)
             del input_batch
 
-            self.torch_batch_to_request(
-                prompts, reference_summary_ids, generated_summaries
-            )
+            self.torch_batch_to_request(prompts, reference_summary_ids, generated_summaries)
 
         print("finished creating batched requests")
         batch = self.client.messages.batches.create(requests=self.requests)
@@ -401,9 +392,7 @@ class PPORLHFEval(BaseTrainer):
         for i in range(n_bins):
             mask = (length_ratios >= bin_edges[i]) & (length_ratios < bin_edges[i + 1])
             if i == n_bins - 1:  # Include right edge in last bin
-                mask = (length_ratios >= bin_edges[i]) & (
-                    length_ratios <= bin_edges[i + 1]
-                )
+                mask = (length_ratios >= bin_edges[i]) & (length_ratios <= bin_edges[i + 1])
 
             if mask.sum() > 0:
                 bin_centers.append((bin_edges[i] + bin_edges[i + 1]) / 2)
@@ -421,9 +410,7 @@ class PPORLHFEval(BaseTrainer):
         # Load and bin both models
         ppo_results_file = self.config.ppo_results_file or ppo_results_file
         sft_results_file = self.config.sft_results_file or sft_results_file
-        paper_ppo_results_file = (
-            self.config.paper_ppo_results_file or paper_ppo_results_file
-        )
+        paper_ppo_results_file = self.config.paper_ppo_results_file or paper_ppo_results_file
 
         ppo_centers, ppo_rates, ppo_counts = self.load_and_bin_results(ppo_results_file)
         sft_centers, sft_rates, sft_counts = self.load_and_bin_results(sft_results_file)
@@ -501,9 +488,7 @@ class PPORLHFEval(BaseTrainer):
             alpha=0.6,
             zorder=2,
         )
-        plt.axhline(
-            y=0.5, color="gray", linestyle="--", alpha=0.5, label="Random baseline"
-        )
+        plt.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5, label="Random baseline")
 
         plt.xlabel("log(generated_length / reference_length)", fontsize=12)
         plt.ylabel(
@@ -529,15 +514,11 @@ class PPORLHFEval(BaseTrainer):
 
         # Print statistics
         print("\n=== PPO Model ===")
-        for i, (center, rate, count) in enumerate(
-            zip(ppo_centers, ppo_rates, ppo_counts)
-        ):
+        for i, (center, rate, count) in enumerate(zip(ppo_centers, ppo_rates, ppo_counts)):
             print(f"Bin {i+1}: log_ratio={center:.3f}, win_rate={rate:.3f}, n={count}")
 
         print("\n=== SFT Model ===")
-        for i, (center, rate, count) in enumerate(
-            zip(sft_centers, sft_rates, sft_counts)
-        ):
+        for i, (center, rate, count) in enumerate(zip(sft_centers, sft_rates, sft_counts)):
             print(f"Bin {i+1}: log_ratio={center:.3f}, win_rate={rate:.3f}, n={count}")
 
         print("\n=== Paper PPO Model ===")

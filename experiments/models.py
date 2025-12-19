@@ -4,9 +4,12 @@ from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
 import torch.nn.init as init
-from transformers import (AutoModelForCausalLM,
-                          AutoModelForSequenceClassification,
-                          AutoModelForTokenClassification, AutoTokenizer)
+from transformers import (
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+    AutoModelForTokenClassification,
+    AutoTokenizer,
+)
 
 from experiments.profiler import profile
 
@@ -166,9 +169,7 @@ class HFModel_Causal(HFModel):
         if labels is not None:
             labels = labels.squeeze(-1)
         if attention_mask is None:
-            attention_mask = torch.ones_like(input_ids) * (
-                input_ids != self.tokenizer.pad_token_id
-            )
+            attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
 
         # Forward parallel decode
         outputs = self.transformer(
@@ -218,9 +219,7 @@ class HFModel_Classification(HFModel):
         score_head = self._get_score_head()
         # score layer doesn't come with a bias
         if score_head.bias is None:
-            score_head.bias = nn.Parameter(
-                torch.zeros(score_head.out_features).to(self.device)
-            )
+            score_head.bias = nn.Parameter(torch.zeros(score_head.out_features).to(self.device))
 
         super()._set_model_weights(init_model_path)
 
@@ -270,9 +269,7 @@ class HFModel_SequenceClassification(HFModel_Classification):
 
     def forward(self, input_ids, attention_mask=None):
         if attention_mask is None:
-            attention_mask = torch.ones_like(input_ids) * (
-                input_ids != self.tokenizer.pad_token_id
-            )
+            attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
 
         outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
         return outputs.logits.squeeze(-1)  # -> (batch, )
@@ -292,9 +289,7 @@ class HFModel_TokenClassification(HFModel_Classification):
 
         # Mask pad tokens
         if attention_mask is None:
-            attention_mask = torch.ones_like(input_ids) * (
-                input_ids != self.tokenizer.pad_token_id
-            )
+            attention_mask = torch.ones_like(input_ids) * (input_ids != self.tokenizer.pad_token_id)
 
         outputs = self.transformer(
             input_ids=input_ids.squeeze(-1),

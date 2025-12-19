@@ -13,13 +13,12 @@ from experiments.config import PPOConfigBase
 from experiments.datasets import TLDRFilteredDataPPO
 from experiments.environment import RLHFEnvironment
 from experiments.logger import Logger
-from experiments.models import (HFModel_Policy, HFModel_Reward, HFModel_SFT,
-                                HFModel_Value)
+from experiments.models import HFModel_Policy, HFModel_Reward, HFModel_SFT, HFModel_Value
 from experiments.monitor import detect_nans
 from experiments.profiler import profile
 from experiments.trainers.base_trainer import BaseTrainer
 from experiments.trajectory import TrajectorySet
-from experiments.util import (masked_log_softmax, masked_mean, masked_var)
+from experiments.util import masked_log_softmax, masked_mean, masked_var
 
 
 class PPORLHFTrainer(BaseTrainer):
@@ -33,9 +32,7 @@ class PPORLHFTrainer(BaseTrainer):
 
         # Models
         self.sft_model = (
-            HFModel_SFT.init_from_hf_pretrained(self.config)
-            .to(self.device)
-            .requires_grad_(False)
+            HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
         )
         self.sft_model.set_from_local_state_dict(self.config.sft_model_path)
 
@@ -46,14 +43,10 @@ class PPORLHFTrainer(BaseTrainer):
         )
         self.reward_model.set_from_local_state_dict(self.config.rm_model_path)
 
-        self.policy_model = HFModel_Policy.init_from_hf_pretrained(self.config).to(
-            self.device
-        )
+        self.policy_model = HFModel_Policy.init_from_hf_pretrained(self.config).to(self.device)
         self.policy_model.set_from_local_state_dict(self.config.sft_model_path)
 
-        self.value_model = HFModel_Value.init_from_hf_pretrained(self.config).to(
-            self.device
-        )
+        self.value_model = HFModel_Value.init_from_hf_pretrained(self.config).to(self.device)
         self.value_model.set_from_local_state_dict(self.config.rm_model_path)
 
         self.old_policy_state_dict = self.policy_model.state_dict()
@@ -77,15 +70,13 @@ class PPORLHFTrainer(BaseTrainer):
 
         self.lr_scheduler_policy = LinearLR(
             self.optimizer_policy,
-            total_iters=int(self.config.max_episodes / self.config.batch_size)
-            * self.config.K,
+            total_iters=int(self.config.max_episodes / self.config.batch_size) * self.config.K,
             start_factor=1.0,
             end_factor=self.config.lr_final_ratio,
         )
         self.lr_scheduler_value = LinearLR(
             self.optimizer_value,
-            total_iters=int(self.config.max_episodes / self.config.batch_size)
-            * self.config.K,
+            total_iters=int(self.config.max_episodes / self.config.batch_size) * self.config.K,
             start_factor=1.0,
             end_factor=self.config.lr_final_ratio,
         )
@@ -113,9 +104,7 @@ class PPORLHFTrainer(BaseTrainer):
             )
 
     @profile
-    def _load_from_checkpoint(
-        self, policy_checkpoint_path=None, value_checkpoint_path=None
-    ):
+    def _load_from_checkpoint(self, policy_checkpoint_path=None, value_checkpoint_path=None):
         training_state = {"global_step": 0, "epoch": 0}
 
         # Policy Model
@@ -146,9 +135,7 @@ class PPORLHFTrainer(BaseTrainer):
 
         #  LR schedulers
         if training_state["global_step"] > 0:
-            total_iters = (
-                int(self.config.max_episodes / self.config.batch_size) * self.config.K
-            )
+            total_iters = int(self.config.max_episodes / self.config.batch_size) * self.config.K
 
             self.lr_scheduler_policy = LinearLR(
                 self.optimizer_policy,
@@ -179,18 +166,14 @@ class PPORLHFTrainer(BaseTrainer):
     @profile
     def _log(self, loss_ppo, loss_value, k, old_data, ppo_log_data):
         eos_mask = old_data["states"][:, 1:] == self.data.tokenizer.eos_token_id
-        non_eos_mask = (
-            old_data["states"][:, 1:] != self.data.tokenizer.eos_token_id
-        ) & (old_data["states"][:, 1:] != self.data.tokenizer.pad_token_id)
-        clipped_mask = (
-            ppo_log_data["ratios"] > 1 + self.config.eps_policy_clipping
-        ) | (ppo_log_data["ratios"] < 1 - self.config.eps_policy_clipping)
-        policy_grads = [
-            p.grad for p in self.policy_model.parameters() if p.grad is not None
-        ]
-        value_grads = [
-            p.grad for p in self.value_model.parameters() if p.grad is not None
-        ]
+        non_eos_mask = (old_data["states"][:, 1:] != self.data.tokenizer.eos_token_id) & (
+            old_data["states"][:, 1:] != self.data.tokenizer.pad_token_id
+        )
+        clipped_mask = (ppo_log_data["ratios"] > 1 + self.config.eps_policy_clipping) | (
+            ppo_log_data["ratios"] < 1 - self.config.eps_policy_clipping
+        )
+        policy_grads = [p.grad for p in self.policy_model.parameters() if p.grad is not None]
+        value_grads = [p.grad for p in self.value_model.parameters() if p.grad is not None]
 
         self.logger.log(
             scalars={
@@ -203,9 +186,7 @@ class PPORLHFTrainer(BaseTrainer):
                 "A_min": old_data["A_raw"].min().item(),
                 "A_std": old_data["A_raw"].std().item(),
                 "A_abs_eos": masked_mean(old_data["A_raw"].abs(), eos_mask).item(),
-                "A_abs_non_eos": masked_mean(
-                    old_data["A_raw"].abs(), non_eos_mask
-                ).item(),
+                "A_abs_non_eos": masked_mean(old_data["A_raw"].abs(), non_eos_mask).item(),
                 "explained_var": 1
                 - masked_var(old_data["A_raw"], old_data["action_pad_mask"]).item()
                 / masked_var(
@@ -219,9 +200,7 @@ class PPORLHFTrainer(BaseTrainer):
                 "pct_clipped": masked_mean(
                     clipped_mask.float(), old_data["action_pad_mask"]
                 ).item(),
-                "ratio_eos": masked_mean(
-                    (ppo_log_data["ratios"] - 1.0).abs(), eos_mask
-                ).item(),
+                "ratio_eos": masked_mean((ppo_log_data["ratios"] - 1.0).abs(), eos_mask).item(),
                 "ratio_non_eos": masked_mean(
                     (ppo_log_data["ratios"] - 1.0).abs(), non_eos_mask
                 ).item(),
@@ -252,47 +231,27 @@ class PPORLHFTrainer(BaseTrainer):
                     self.policy_model.parameters(), float("inf")
                 ).item(),
                 "policy_max_grad": (
-                    max([g.abs().max().item() for g in policy_grads])
-                    if policy_grads
-                    else 0.0
+                    max([g.abs().max().item() for g in policy_grads]) if policy_grads else 0.0
                 ),
                 "policy_min_grad": (
-                    min([g.abs().min().item() for g in policy_grads])
-                    if policy_grads
-                    else 0.0
+                    min([g.abs().min().item() for g in policy_grads]) if policy_grads else 0.0
                 ),
-                "policy_nan_grads": sum(
-                    [torch.isnan(g).sum().item() for g in policy_grads]
-                ),
-                "policy_inf_grads": sum(
-                    [torch.isinf(g).sum().item() for g in policy_grads]
-                ),
+                "policy_nan_grads": sum([torch.isnan(g).sum().item() for g in policy_grads]),
+                "policy_inf_grads": sum([torch.isinf(g).sum().item() for g in policy_grads]),
                 "value_gradient_norm": torch.nn.utils.clip_grad_norm_(
                     self.value_model.parameters(), float("inf")
                 ).item(),
                 "value_max_grad": (
-                    max([g.abs().max().item() for g in value_grads])
-                    if value_grads
-                    else 0.0
+                    max([g.abs().max().item() for g in value_grads]) if value_grads else 0.0
                 ),
                 "value_min_grad": (
-                    min([g.abs().min().item() for g in value_grads])
-                    if value_grads
-                    else 0.0
+                    min([g.abs().min().item() for g in value_grads]) if value_grads else 0.0
                 ),
-                "value_nan_grads": sum(
-                    [torch.isnan(g).sum().item() for g in value_grads]
-                ),
-                "value_inf_grads": sum(
-                    [torch.isinf(g).sum().item() for g in value_grads]
-                ),
+                "value_nan_grads": sum([torch.isnan(g).sum().item() for g in value_grads]),
+                "value_inf_grads": sum([torch.isinf(g).sum().item() for g in value_grads]),
                 # Other stats
                 "lr_policy": self.lr_scheduler_policy.get_last_lr()[0],
-                "mean_sequence_length": old_data["action_pad_mask"]
-                .float()
-                .sum(1)
-                .mean()
-                .item(),
+                "mean_sequence_length": old_data["action_pad_mask"].float().sum(1).mean().item(),
                 "length_reward_correlation": torch.corrcoef(
                     torch.stack(
                         [
@@ -311,29 +270,19 @@ class PPORLHFTrainer(BaseTrainer):
             models=[self.policy_model, self.value_model],
             samples={
                 "max_reward": self.data.tokenizer.decode(
-                    old_data["full_states"][
-                        old_data["raw_rewards"].sum(dim=1).argmax().item()
-                    ]
+                    old_data["full_states"][old_data["raw_rewards"].sum(dim=1).argmax().item()]
                 ),
                 "min_reward": self.data.tokenizer.decode(
-                    old_data["full_states"][
-                        old_data["raw_rewards"].sum(dim=1).argmin().item()
-                    ]
+                    old_data["full_states"][old_data["raw_rewards"].sum(dim=1).argmin().item()]
                 ),
                 "max_entropy": self.data.tokenizer.decode(
-                    old_data["full_states"][
-                        ppo_log_data["entropy_per_sequence"].argmax().item()
-                    ]
+                    old_data["full_states"][ppo_log_data["entropy_per_sequence"].argmax().item()]
                 ),
                 "min_entropy": self.data.tokenizer.decode(
-                    old_data["full_states"][
-                        ppo_log_data["entropy_per_sequence"].argmin().item()
-                    ]
+                    old_data["full_states"][ppo_log_data["entropy_per_sequence"].argmin().item()]
                 ),
                 "random": self.data.tokenizer.decode(
-                    old_data["full_states"][
-                        torch.randint(0, old_data["states"].size(0), ())
-                    ]
+                    old_data["full_states"][torch.randint(0, old_data["states"].size(0), ())]
                 ),
             },
         )
@@ -385,9 +334,7 @@ class PPORLHFTrainer(BaseTrainer):
         new_log_probs = torch.gather(
             new_log_policies, dim=-1, index=old_actions.long().unsqueeze(-1)
         ).squeeze(-1)
-        diff_log_probs = (new_log_probs - old_log_probs).masked_fill(
-            ~action_pad_mask, 0
-        )
+        diff_log_probs = (new_log_probs - old_log_probs).masked_fill(~action_pad_mask, 0)
 
         ratios = torch.exp(diff_log_probs)
 
@@ -496,9 +443,7 @@ class PPORLHFTrainer(BaseTrainer):
 
                         # FP32 --> BF16 for mixed precision training
                         with self.mixed_precision_context:
-                            new_values, new_policy_logits = self._forward(
-                                old_data["full_states"]
-                            )
+                            new_values, new_policy_logits = self._forward(old_data["full_states"])
 
                             # 2.1 Compute mse loss for value model
                             self.loss_value = self._compute_value_loss_mse(
@@ -523,9 +468,7 @@ class PPORLHFTrainer(BaseTrainer):
                         self._backward(self.loss_value, self.loss_ppo)
                         self._step(self.optimizer_policy, self.optimizer_value)
 
-                        self._log(
-                            self.loss_ppo, self.loss_value, k, old_data, ppo_log_data
-                        )
+                        self._log(self.loss_ppo, self.loss_value, k, old_data, ppo_log_data)
 
                 self.checkpointer.save_checkpoint(
                     self.policy_model,
@@ -553,15 +496,9 @@ class PPORLHFTrainer(BaseTrainer):
                 self.global_step += 1
 
                 # Break after a total number of episodes (train examples) instead of on training data epochs
-                if (
-                    self.global_step * self.data.train_loader.batch_size
-                    >= self.config.max_episodes
-                ):
+                if self.global_step * self.data.train_loader.batch_size >= self.config.max_episodes:
                     break
-            if (
-                self.global_step * self.data.train_loader.batch_size
-                >= self.config.max_episodes
-            ):
+            if self.global_step * self.data.train_loader.batch_size >= self.config.max_episodes:
                 break
 
         # Final checkpoint

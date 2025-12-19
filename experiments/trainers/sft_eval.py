@@ -1,4 +1,3 @@
-
 import torch
 
 from experiments.config import SFTConfigBase
@@ -13,15 +12,11 @@ class SFTEval(BaseTrainer):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.sft = (
-            HFModel_SFT.init_from_hf_pretrained(self.config)
-            .to(self.device)
-            .requires_grad_(False)
+            HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
         )
         self.sft.set_from_local_state_dict(self.config.sft_model_path)
         self.gpt = (
-            HFModel_SFT.init_from_hf_pretrained(self.config)
-            .to(self.device)
-            .requires_grad_(False)
+            HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
         )
 
         self.sft.eval()
@@ -61,12 +56,8 @@ class SFTEval(BaseTrainer):
                         do_sample=False,
                     )
 
-                gpt_text = self.data.tokenizer.decode(gpt_gen_ids[0]).split("TL;DR:")[
-                    -1
-                ]
-                sft_text = self.data.tokenizer.decode(sft_gen_ids[0]).split("TL;DR:")[
-                    -1
-                ]
+                gpt_text = self.data.tokenizer.decode(gpt_gen_ids[0]).split("TL;DR:")[-1]
+                sft_text = self.data.tokenizer.decode(sft_gen_ids[0]).split("TL;DR:")[-1]
 
                 print(f"Batch #{_batch_idx}\n")
                 print(f"Prompt: {query_text}\n\n")

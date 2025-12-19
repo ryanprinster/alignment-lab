@@ -56,16 +56,12 @@ class Checkpointer:
 
         model.load_state_dict(checkpoint["model_state_dict"], strict=False)
 
-    def _should_save_checkpoint(
-        self, global_step, loss, checkpoint_prefix, final_checkpoint
-    ):
+    def _should_save_checkpoint(self, global_step, loss, checkpoint_prefix, final_checkpoint):
         should_save_checkpoint = False
         path = None
 
         if final_checkpoint:
-            path = os.path.join(
-                self.checkpoint_dir, f"{checkpoint_prefix}_final_checkpoint.pt"
-            )
+            path = os.path.join(self.checkpoint_dir, f"{checkpoint_prefix}_final_checkpoint.pt")
             return True, path
 
         if hasattr(self.config, "save_freq_steps"):
@@ -147,9 +143,7 @@ class Checkpointer:
         checkpoint = torch.load(checkpoint_path, map_location=device)
 
         model.load_state_dict(checkpoint["model_state_dict"], strict=False)
-        print(
-            f"Loaded model state from step {checkpoint.get('global_step', 'unknown')}"
-        )
+        print(f"Loaded model state from step {checkpoint.get('global_step', 'unknown')}")
 
         # Load optimizer state if provided
         if optimizer is not None and "optimizer_state_dict" in checkpoint:

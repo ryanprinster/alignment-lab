@@ -48,26 +48,16 @@ class Profiler:
 
                 elapsed_time = end_time - start_time
                 reserved_mem_added = end_reserved_gpu_mem - start_reserved_gpu_mem
-                cpu_mem_added = (
-                    end_unavailable_cpu_mem_pct - start_unavailable_cpu_mem_pct
-                )
-                peak_allocated_gpu_mem_delta = (
-                    peak_allocated_gpu_mem - start_allocated_gpu_mem
-                )
-                final_allocated_gpu_mem_delta = (
-                    end_allocated_gpu_mem - start_allocated_gpu_mem
-                )
+                cpu_mem_added = end_unavailable_cpu_mem_pct - start_unavailable_cpu_mem_pct
+                peak_allocated_gpu_mem_delta = peak_allocated_gpu_mem - start_allocated_gpu_mem
+                final_allocated_gpu_mem_delta = end_allocated_gpu_mem - start_allocated_gpu_mem
 
                 cls.stats[func_name]["calls"] += 1
                 cls.stats[func_name]["time"] += elapsed_time
                 cls.stats[func_name]["gpu_mem_res"] += reserved_mem_added
                 cls.stats[func_name]["gpu_mem_peak"] += peak_allocated_gpu_mem
-                cls.stats[func_name][
-                    "gpu_mem_peak_delta"
-                ] += peak_allocated_gpu_mem_delta
-                cls.stats[func_name][
-                    "gpu_mem_final_delta"
-                ] += final_allocated_gpu_mem_delta
+                cls.stats[func_name]["gpu_mem_peak_delta"] += peak_allocated_gpu_mem_delta
+                cls.stats[func_name]["gpu_mem_final_delta"] += final_allocated_gpu_mem_delta
                 cls.stats[func_name]["cpu_mem"] += cpu_mem_added
 
                 print(
@@ -87,12 +77,8 @@ class Profiler:
 
         for func, stats in self.stats.items():
             avg_time = stats["time"] / stats["calls"] if stats["calls"] else 0.0
-            avg_gpu_mem = (
-                stats["gpu_mem_res"] / stats["calls"] if stats["calls"] else 0.0
-            )
-            avg_gpu_mem_peak = (
-                stats["gpu_mem_peak"] / stats["calls"] if stats["calls"] else 0.0
-            )
+            avg_gpu_mem = stats["gpu_mem_res"] / stats["calls"] if stats["calls"] else 0.0
+            avg_gpu_mem_peak = stats["gpu_mem_peak"] / stats["calls"] if stats["calls"] else 0.0
             avg_gpu_mem_peak_delta = (
                 stats["gpu_mem_peak_delta"] / stats["calls"] if stats["calls"] else 0.0
             )

@@ -26,13 +26,9 @@ class RMEval(BaseTrainer):
 
     def _to_device(self, batch):
         batch["preferred_input_ids"] = batch["preferred_input_ids"].to(self.device)
-        batch["preferred_attention_mask"] = batch["preferred_attention_mask"].to(
-            self.device
-        )
+        batch["preferred_attention_mask"] = batch["preferred_attention_mask"].to(self.device)
         batch["rejected_input_ids"] = batch["rejected_input_ids"].to(self.device)
-        batch["rejected_attention_mask"] = batch["rejected_attention_mask"].to(
-            self.device
-        )
+        batch["rejected_attention_mask"] = batch["rejected_attention_mask"].to(self.device)
         return batch
 
     @profile
@@ -97,9 +93,7 @@ class RMEval(BaseTrainer):
         if with_eos:
             prompt += "<|end_of_text|>"
         if with_prefix:
-            prompt = (
-                "SUBREDDIT: r/interactive\n\nTITLE: Interactive Test\n\nPOST: " + prompt
-            )
+            prompt = "SUBREDDIT: r/interactive\n\nTITLE: Interactive Test\n\nPOST: " + prompt
         x = self.data.tokenizer.encode(prompt)
         x = torch.tensor(x)
         x_padded = F.pad(
@@ -125,8 +119,6 @@ class RMEval(BaseTrainer):
             summary_input = input("Summary> ")
             if summary_input.lower() in ("quit", "exit"):
                 break
-            output = self._test_reward_model(
-                prompt_input + "\n\nTL;DR: " + summary_input
-            )
+            output = self._test_reward_model(prompt_input + "\n\nTL;DR: " + summary_input)
 
             print(output)
