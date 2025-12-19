@@ -1,51 +1,38 @@
 # Standard library imports
 import os
-from functools import reduce
-from datetime import datetime
 import pdb
 from contextlib import nullcontext
+from datetime import datetime
+from functools import reduce
 
-from experiments.debug import DEBUG
-
+import anthropic
 # Third-party imports
 import gymnasium as gym
-from gymnasium.wrappers import RecordEpisodeStatistics, RecordVideo
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-from torch.utils.tensorboard import SummaryWriter
+from gymnasium.wrappers import RecordEpisodeStatistics, RecordVideo
 from torch.amp import GradScaler, autocast
-
-from experiments.logger import Logger
-from experiments.environment import RLHFEnvironment
-from experiments.profiler import profile
-from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
-from experiments.util import (
-    masked_mean,
-    masked_var,
-    masked_whiten,
-    masked_log_softmax,
-    whiten,
-)
-
-from experiments.models import (
-    HFModel_Policy,
-    HFModel_Value,
-    HFModel_SFT,
-    HFModel_Reward,
-)
-
-from experiments.trajectory import Trajectory, TrajectorySet
-from experiments.config import PPOConfigBase
-from experiments.trainers.base_trainer import BaseTrainer
-from experiments.checkpointer import Checkpointer
 from torch.optim.lr_scheduler import LinearLR
-from experiments.monitor import detect_nans
+from torch.utils.data import DataLoader, Dataset
+from torch.utils.tensorboard import SummaryWriter
 
-import anthropic
+from experiments.checkpointer import Checkpointer
+from experiments.config import PPOConfigBase
+from experiments.datasets import TLDRFilteredDataPPO, TLDRFilteredDataSFT
+from experiments.debug import DEBUG
+from experiments.environment import RLHFEnvironment
+from experiments.logger import Logger
+from experiments.models import (HFModel_Policy, HFModel_Reward, HFModel_SFT,
+                                HFModel_Value)
+from experiments.monitor import detect_nans
+from experiments.profiler import profile
+from experiments.trainers.base_trainer import BaseTrainer
+from experiments.trajectory import Trajectory, TrajectorySet
+from experiments.util import (masked_log_softmax, masked_mean, masked_var,
+                              masked_whiten, whiten)
 
 
 class PPORLHFTrainer(BaseTrainer):

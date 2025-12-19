@@ -1,21 +1,22 @@
-import torch
-import torch.optim as optim
-from torch.optim.lr_scheduler import CosineAnnealingLR
-import torch.nn.functional as F
-from torch.amp import GradScaler, autocast
-from torch.utils.data import Dataset, DataLoader
-from contextlib import nullcontext
-import pdb
-from datetime import datetime
 import json
+import pdb
+from contextlib import nullcontext
+from datetime import datetime
 
-from experiments.models import HFModel_Reward, HFModel_TokenClassification
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.amp import GradScaler, autocast
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.utils.data import DataLoader, Dataset
+
+from experiments.checkpointer import Checkpointer
 from experiments.config import RMConfigBase
 from experiments.datasets import OpenAIPreferenceData, TLDRFilteredDataSFT
 from experiments.logger import Logger
-from experiments.checkpointer import Checkpointer
-from experiments.profiler import profile
+from experiments.models import HFModel_Reward, HFModel_TokenClassification
 from experiments.monitor import detect_nans
+from experiments.profiler import profile
 from experiments.trainers.base_trainer import BaseTrainer
 
 

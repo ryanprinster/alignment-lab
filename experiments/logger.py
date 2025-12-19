@@ -1,11 +1,12 @@
-from datetime import datetime
-import json
-from torch.utils.tensorboard import SummaryWriter
 import atexit
+import json
 import signal
-import torch
 import sys
+from datetime import datetime
+
 import psutil
+import torch
+from torch.utils.tensorboard import SummaryWriter
 
 from experiments.profiler import profile
 

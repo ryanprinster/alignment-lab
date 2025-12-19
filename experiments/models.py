@@ -1,29 +1,25 @@
-from abc import ABC, abstractmethod
 import os
-from functools import reduce
-import gymnasium as gym
-import torch
-import torch.nn.functional as F
-import torch.nn as nn
-import torch.optim as optim
-import numpy as np
-from torch.utils.data import Dataset, DataLoader
-from torch.utils.tensorboard import SummaryWriter
-import torch.nn.init as init
 import pdb
 import warnings
+from abc import ABC, abstractmethod
+from functools import reduce
+
+import gymnasium as gym
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.nn.init as init
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
+from torch.utils.tensorboard import SummaryWriter
+from transformers import (AutoModelForCausalLM,
+                          AutoModelForSequenceClassification,
+                          AutoModelForTokenClassification, AutoTokenizer)
 
 from experiments.debug import DEBUG
-
-
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    AutoModelForSequenceClassification,
-    AutoModelForTokenClassification,
-)
-from experiments.profiler import profile
 from experiments.monitor import detect_nans
+from experiments.profiler import profile
 
 
 class HFModel(nn.Module, ABC):

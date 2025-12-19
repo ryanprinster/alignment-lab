@@ -1,9 +1,10 @@
-from collections import defaultdict
-import time
+import atexit
 import functools
+import time
+from collections import defaultdict
+
 import psutil
 import torch
-import atexit
 
 
 class Profiler:

@@ -1,21 +1,20 @@
-import torch
-import torch.optim as optim
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.amp import GradScaler, autocast
-from torch.utils.data import Dataset, DataLoader
+import pdb
 from contextlib import nullcontext
 
+import torch
+import torch.optim as optim
+from torch.amp import GradScaler, autocast
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.utils.data import DataLoader, Dataset
 
-from experiments.models import HFModel_SFT
+from experiments.checkpointer import Checkpointer
 from experiments.config import SFTConfigBase
 from experiments.datasets import TLDRFilteredDataSFT
 from experiments.logger import Logger
-from experiments.checkpointer import Checkpointer
-from experiments.profiler import profile
+from experiments.models import HFModel_SFT
 from experiments.monitor import detect_nans
+from experiments.profiler import profile
 from experiments.trainers.base_trainer import BaseTrainer
-
-import pdb
 
 
 class SFTEval(BaseTrainer):

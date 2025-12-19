@@ -1,7 +1,8 @@
 import os
-from datetime import datetime
-import torch
 import time
+from datetime import datetime
+
+import torch
 
 from experiments.profiler import profile
 
