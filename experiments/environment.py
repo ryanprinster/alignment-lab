@@ -113,12 +113,12 @@ class RLHFEnvironment(BaseEnvironment):
         
         return states
 
-    def construct_pad_mask(self, states):
+    def _construct_pad_mask(self, states):
         first_pad_pos = self._find_first_token_position(states, self.tokenizer.pad_token_id)
         pos = torch.arange(states.size(1), device=states.device).unsqueeze(0)
         return ~(pos >= first_pad_pos.unsqueeze(1))
     
-    def construct_reward_mask(self, states):
+    def _construct_reward_mask(self, states):
         return (states == self.tokenizer.eos_token_id)
          
     def _set_models_to_eval(self, *models):
@@ -138,6 +138,11 @@ class RLHFEnvironment(BaseEnvironment):
         )
         del _
 
+        # Must do a separate forward pass on generated states instead of using logits calcualted at generation b/c
+        #   - Generation gives a different set of possible actions, due to things like top_p generation and temperature
+        #   - KL between policy_logits and sft_policy_logits would not be on the same distribution
+        #   - Entropy calculation would not be correct either
+        #   - Forward passes at training time would not be consistent with this (rollout time)
         policy_logits, _ = policy_model.forward(full_states)
         sft_policy_logits, _ = sft_model.forward(full_states)
         values = value_model.forward(full_states)
@@ -155,8 +160,8 @@ class RLHFEnvironment(BaseEnvironment):
         return states, values, policy_logits, sft_policy_logits
     
     def _create_masks(self, states):
-        # Note: construct_pad_mask would not work for full_states
-        return self.construct_pad_mask(states), self.construct_reward_mask(states)
+        # Note: _construct_pad_mask would not work for full_states
+        return self._construct_pad_mask(states), self._construct_reward_mask(states)
     
     def _align_to_action_space(self, states, policy_logits, sft_policy_logits, rewards, pad_mask, reward_mask):
         """
@@ -219,6 +224,8 @@ class RLHFEnvironment(BaseEnvironment):
     def _format_trajectory_data(self, full_states, policy_logits, sft_policy_logits, values, raw_rewards):
             # full_states may not be at max response length, but the query will be at max
             response_length = full_states.shape[1] - self.data.SFT_MAX_QUERY_LENGTH 
+            
+            # 1. Truncating to response portion 
             states, values, policy_logits, sft_policy_logits = \
                 self._truncate_to_response(
                     full_states, 
@@ -230,9 +237,11 @@ class RLHFEnvironment(BaseEnvironment):
                     response_length+1 
                 )
             
+            # 2. Enforce padding and create masks
             states = self._enforce_padding(states)
             pad_mask, reward_mask = self._create_masks(states)
                         
+            # 3. Align tensors such that same index computation is correct and reflects PPO / GAE equations
             actions, policy_logits, sft_policy_logits, raw_rewards_2d, reward_mask, action_pad_mask, value_pad_mask = \
                 self._align_to_action_space(
                     states, 
@@ -289,6 +298,12 @@ class RLHFEnvironment(BaseEnvironment):
             self._set_models_to_eval(policy_model, value_model, sft_model)
 
             # 1. Get raw model outputs
+            #   1.1 Generate states with policy model
+            #   1.2 Forward parallel decode on generates states with policy model 
+            #       (crucially does not use probs from generation)
+            #   1.3 Forward parallel decode on generates states with sft model 
+            #   1.4 Forward with value model
+            #   1.5 Forward with reward model
             full_states, policy_logits, sft_policy_logits, values, raw_rewards = \
                 self._generate_and_compute_outputs(
                     batch, policy_model, value_model, sft_model, 
