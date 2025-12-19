@@ -18,40 +18,6 @@ class PPOConfigBase(ConfigBase):
     def __init__(self):
         raise NotImplementedError("Use a concrete config subclass")
 
-class PPOConfig(PPOConfigBase):
-    def __init__(self):
-        self.eps = 0.2 
-        self.N = 32 # parallel actors
-        self.K = 10 # epochs
-        self.M = 64 # minibatch
-        self.num_train_iter = 75 
-        self.beta = 0.01 # entropy regularization
-
-        self.gamma = 0.99 # GAE gamma
-        self.alpha = 3e-4 # lr
-        self.lam = 0.95 # GAE lambda
-
-        self.gymnasium_env_name = 'CartPole-v1'
-        self.max_env_steps = 1e6 # Original paper benchmarks at 1 million steps
-        self.video_folder_name = 'cartpole-ppo-videos'
-
-
-
-class SFTConfig1(SFTConfigBase):
-    def __init__(self):
-        # Based on https://arxiv.org/pdf/2203.02155 (See Section C)
-
-        # Adam W Optimizer
-        self.beta_1 = 0.9
-        self.beta_2 = 0.95
-        self.num_epochs = 16
-        self.dropout = 0.2
-        self.lr = 9.65e-6
-        self.final_lr = 0.1
-        self.batch_size = 2 # 32
-        self.test_pct = 0.1
-        # self.eps = 1e-4
-
 
 class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
     # Used for both SFT and RM training

@@ -21,32 +21,6 @@ from experiments.profiler import profile
 from experiments.monitor import detect_nans
 
 
-class MLPSimple(nn.Module):
-    def __init__(self, obs_dim, action_dim=None, hidden_dims=None):
-        super().__init__()
-        hidden_dims = hidden_dims or [32, 16]
-
-        self.l1 = nn.Linear(obs_dim, hidden_dims[0])
-        self.l2 = nn.Linear(hidden_dims[0],hidden_dims[1])
-        self.l3 = nn.Linear(hidden_dims[1], action_dim or 1)
-
-    def forward(self, x):
-        # TODO: Make this more clean
-        single_input = x.dim() == 1
-        if single_input:
-            x = x.unsqueeze(dim=0)
-        
-        x = self.l1(x)
-        x = F.leaky_relu(x)
-        x = self.l2(x)
-        x = F.leaky_relu(x)
-        x = self.l3(x)
-        # Could do log probs but this works fine
-        x = torch.softmax(x, dim=-1)
-        if single_input:
-            x = x.squeeze(dim=0)
-        return x
-
 class HFModel(nn.Module, ABC):
     
     def __init__(self, config, transformer, tokenizer, **kwargs):
