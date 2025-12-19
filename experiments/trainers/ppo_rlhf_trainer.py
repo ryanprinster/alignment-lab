@@ -294,8 +294,6 @@ class PPORLHFTrainer(BaseTrainer):
         loss_ppo = torch.min(ratios * A, torch.clamp(ratios, 1-self.config.eps_policy_clipping , 1+self.config.eps_policy_clipping) * A)
         loss_ppo = -masked_mean(loss_ppo, action_pad_mask)
 
-        pdb.set_trace()
-
         ### For logging ###
         with torch.no_grad():
             entropy = torch.sum(new_log_policies * torch.exp(new_log_policies), dim=-1)
@@ -320,6 +318,7 @@ class PPORLHFTrainer(BaseTrainer):
 
             }
 
+        pdb.set_trace()
         return loss_ppo, log_data
     
     @profile
