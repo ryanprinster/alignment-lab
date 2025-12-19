@@ -269,38 +269,40 @@ class RLHFEnvironment(BaseEnvironment):
         with torch.no_grad():
             self._set_models_to_eval(policy_model, value_model, sft_model)
 
-            # Raw model output
+            # 1. Get raw model outputs
             full_states, policy_logits, sft_policy_logits, values, rewards = \
                 self._generate_and_compute_outputs(
                     batch, policy_model, value_model, sft_model, 
                     reward_model, temp
                 )
             
+            # 2. Format trajectory data
             data = self._format_trajectory_data()
 
-            # Apply EOS trick
+            # 3. Apply EOS trick
             data['rewards_2d'], data['reward_mask'] = \
                 self._set_reward_for_no_eos(data['rewards_2d'], data['reward_mask'], data['action_pad_mask'])
                     
+            # 4. Compute KL        
             kl_per_action = Trajectory.compute_kl(data['policy_logits'], data['sft_policy_logits'],  data['action_pad_mask'])
             del data['sft_policy_logits']
 
+            # 5. Compute log probs
             log_probs = Trajectory.compute_log_probs(data['actions'], data['policy_logits'],  data['action_pad_mask'])
             del data['policy_logits']
 
             # NOTE: Ordering to reflect the following implementation
             # https://github.com/vwxyzjn/summarize_from_feedback_details/blob/main/summarize_from_feedback_details/ppo.py#L679
 
-
-            # 1. Apply KL to rewards
+            # 6. Apply KL to rewards
             raw_rewards = data['rewards_2d']
             data['rewards_2d'] = (data['rewards_2d'] - (self.config.beta * kl_per_action)).masked_fill(~data['action_pad_mask'], 0)
 
-            # 2. Whiten rewards
+            # 7. Whiten rewards
             if self.config.whiten_rewards:
                 data['rewards_2d'] = masked_whiten(data['rewards_2d'], data['action_pad_mask'], shift_mean=False)
 
-            # 3. Compute advantages
+            # 8. Compute advantages
             data['A_raw'] = Trajectory.compute_gae(data['values'], data['rewards_2d'], data['value_pad_mask'], self.config.gamma, self.config.lam)
             if self.config.whiten_A:
                 # NOTE: shift mean here to keep 
@@ -308,10 +310,10 @@ class RLHFEnvironment(BaseEnvironment):
                 # A < 0 to be "action worse than expected"
                 A = masked_whiten(data['A_raw'], data['value_pad_mask'])
             
-            # 4. Compute returns/rewards-to-go
+            # 9. Compute returns/rewards-to-go
             R = Trajectory.compute_R(gamma=self.config.gamma, r=data['rewards_2d'], action_pad_mask=data['action_pad_mask'])
 
-            # 5. Create trajectory and set data
+            # 10. Create trajectory and set data
             tj = Trajectory(batch_size=data['states'].size(0))
             tj.states = data['states']
             tj.full_states = full_states
