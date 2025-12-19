@@ -98,7 +98,7 @@ class SFTTrainer(BaseTrainer):
                     self.global_step,
                     epoch,
                     loss.item(),
-                    checkpoint_prefix="sft_",
+                    checkpoint_prefix="sft_no_dropout_",
                 )
 
                 self.logger.log(
@@ -121,6 +121,6 @@ class SFTTrainer(BaseTrainer):
                     self.global_step,
                     epoch,
                     loss.item(),
-                    checkpoint_prefix="sft_",
+                    checkpoint_prefix="sft_no_dropout_",
                     final_checkpoint=True
                 )
