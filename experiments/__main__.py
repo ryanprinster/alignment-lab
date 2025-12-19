@@ -6,6 +6,7 @@ os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True' # NOTE: make 
 
 from experiments.trainers.sft_model_trainer import SFTTrainer
 from experiments.trainers.rm_model_trainer import RMTrainer
+from experiments.runpod_utils import stop_runpod
 
 import argparse
 import subprocess
@@ -168,6 +169,10 @@ def main():
             f.write(f"Crashed at {datetime.now()}\n")
             f.write(f"Error: {e}\n")
             f.write(traceback.format_exc())
+        
+        print("Stopping runpod...")
+        stop_runpod()
+
 
 
 if __name__ == "__main__":
