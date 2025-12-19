@@ -151,7 +151,6 @@ class RLHFEnvironment(BaseEnvironment):
         return full_states, policy_logits, sft_policy_logits, values, rewards
 
     def _truncate_to_response(self, states, values, policy_logits, sft_policy_logits, response_length):
-        """Truncate all tensors to the response portion only."""
         states = states[:, -response_length:]
         values = values[:, -response_length:]
         policy_logits = policy_logits[:, -response_length:, :]
