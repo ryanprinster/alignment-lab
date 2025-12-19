@@ -122,9 +122,15 @@ class HFModel(nn.Module, ABC):
         self.load_state_dict(state_dict, strict=False)
     
     def disable_dropout(self):
+        # Also update config for clarity
         self.transformer.config.attention_dropout = 0.0
         self.transformer.config.hidden_dropout = 0.0
         self.transformer.config.resid_dropout = 0.0
+        
+        # Actually disable the dropout layers
+        for module in self.transformer.modules():
+            if isinstance(module, torch.nn.Dropout):
+                module.p = 0.0
 
 
 class HFModel_Causal(HFModel):
