@@ -5,6 +5,8 @@ from experiments.datasets import TLDRFilteredDataSFT
 from experiments.models import HFModel_SFT
 from experiments.trainers.base_trainer import BaseTrainer
 
+import pdb
+
 
 class SFTEval(BaseTrainer):
     def __init__(self, config: SFTConfigBase):
@@ -34,6 +36,7 @@ class SFTEval(BaseTrainer):
 
     def evaluate(self):
         for _batch_idx, batch in enumerate(self.data.test_loader):
+            pdb.set_trace()
             for subreddit, title, post, summary in zip(
                 batch["subreddit"], batch["title"], batch["post"], batch["summary"]
             ):

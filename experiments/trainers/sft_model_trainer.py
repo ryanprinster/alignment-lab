@@ -121,7 +121,6 @@ class SFTTrainer(BaseTrainer):
                 if (self.global_step + 1) % self.config.accumulation_steps == 0:
                     self._zero_grad()
 
-                pdb.set_trace()
 
         # Final checkpoint
         self.checkpointer.save_checkpoint(

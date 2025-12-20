@@ -8,6 +8,7 @@ from torch.utils.data.dataloader import default_collate
 
 from experiments.profiler import profile
 
+import pdb
 
 class ProfiledDataLoader(DataLoader):
 
@@ -38,6 +39,8 @@ class TLDRFilteredDataBase(ABC):
         self.dataset["train"] = dataset["train"]
         self.dataset["validation"] = dataset["validation"]
         self.dataset["test"] = dataset["test"]
+
+        pdb.set_trace()
 
         self.train_loader = DataLoader(
             self.dataset["train"],
