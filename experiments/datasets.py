@@ -35,7 +35,7 @@ class TLDRFilteredDataBase(ABC):
 
         dataset = self.dataset.map(preprocess_func, batched=True)
         pdb.set_trace()
-        dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "query_text", "summary_text"])
+        dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "subreddit", "title", "post", "summary", ])
 
         self.dataset["train"] = dataset["train"]
         self.dataset["validation"] = dataset["validation"]
@@ -111,15 +111,11 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
         tokenizer = tokenizer or self.tokenizer
         #  Detail 1 (Dataset -> Specification)
         texts = []
-        queries = []
-        summaries = []
 
         for subreddit, title, post, summary in zip(
             batch["subreddit"], batch["title"], batch["post"], batch["summary"]
         ):
             formatted_query = self.get_query_text(subreddit, title, post, tokenizer)
-            queries.append(formatted_query)
-            summaries.append(summary)
             # Detail 3 (Prepend a leading space to completion; append an EOS token to the completions)
             summary = " " + summary + tokenizer.eos_token
             full_text = formatted_query + summary
@@ -139,8 +135,6 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
             return_tensors="pt",
         )
 
-        data_dict["query_text"] = queries
-        data_dict["summary_text"] = summaries
         return data_dict
         
 
