@@ -36,6 +36,7 @@ class TLDRFilteredDataBase(ABC):
         dataset = self.dataset.map(preprocess_func, batched=True)
         dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
         pdb.set_trace()
+        # TODO: Simplest solution is to do this and change sft eval and ppo eval code
 
         self.dataset["train"] = dataset["train"]
         self.dataset["validation"] = dataset["validation"]

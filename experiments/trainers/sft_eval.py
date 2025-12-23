@@ -1,7 +1,7 @@
 import torch
 
 from experiments.config import SFTConfigBase
-from experiments.datasets import TLDRFilteredDataSFT
+from experiments.datasets import TLDRFilteredDataPPO
 from experiments.models import HFModel_SFT
 from experiments.trainers.base_trainer import BaseTrainer
 
@@ -24,7 +24,7 @@ class SFTEval(BaseTrainer):
         self.sft.eval()
         self.gpt.eval()
 
-        self.data = TLDRFilteredDataSFT(
+        self.data = TLDRFilteredDataPPO(
             tokenizer=self.sft.tokenizer, batch_size=self.config.batch_size
         )
 
@@ -37,34 +37,40 @@ class SFTEval(BaseTrainer):
     def evaluate(self):
         for _batch_idx, batch in enumerate(self.data.test_loader):
             pdb.set_trace()
-            for subreddit, title, post, summary in zip(
-                batch["subreddit"], batch["title"], batch["post"], batch["summary"]
-            ):
+            with torch.no_grad():
+                batch = self._to_device(batch)
 
-                query_text = self.data.get_query_text(subreddit, title, post)
-                inputs = self.data.tokenizer(query_text, return_tensors="pt")
-                inputs = self._to_device(inputs)
+                # 1. encode to string or get a way to split batch at end string
+                #   -> Actually do this to get just the index we want to split at
+                # 2. split to get prompt only, and response only
+                # 3. Make attention_mask
+                # 
+                pdb.set_trace()
+                tldr_ids = self.data.tokenizer.encode("\n\nTL;DR:")
+                
 
-                with torch.no_grad():
-                    sft_gen_ids, _ = self.sft.generate(
-                        inputs,
-                        TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH,
-                        self.config.generation_temperature,
-                        do_sample=False,
-                    )
-                    gpt_gen_ids, _ = self.gpt.generate(
-                        inputs,
-                        TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH,
-                        self.config.generation_temperature,
-                        do_sample=False,
-                    )
+                sft_gen_ids, _ = self.sft.generate(
+                    batch,
+                    TLDRFilteredDataPPO.SFT_MAX_INPUT_LENGTH,
+                    self.config.generation_temperature,
+                    do_sample=False,
+                )
+                gpt_gen_ids, _ = self.gpt.generate(
+                    batch,
+                    TLDRFilteredDataPPO.SFT_MAX_INPUT_LENGTH,
+                    self.config.generation_temperature,
+                    do_sample=False,
+                )
+            
+    
+            full_gpt_text = self.data.tokenizer.decode(gpt_gen_ids[0]).split("TL;DR:")
+            prompt, gpt_text = full_gpt_text[0], "".join(full_gpt_text[1:])
+            full_sft_text = self.data.tokenizer.decode(sft_gen_ids[0]).split("TL;DR:")
+            sft_text = "".join(full_sft_text[1:])
 
-                gpt_text = self.data.tokenizer.decode(gpt_gen_ids[0]).split("TL;DR:")[-1]
-                sft_text = self.data.tokenizer.decode(sft_gen_ids[0]).split("TL;DR:")[-1]
-
-                print(f"Batch #{_batch_idx}\n")
-                print(f"Prompt: {query_text}\n\n")
-                print(f"Label: {summary}\n")
-                print(f"SFT Response: {sft_text}\n")
-                print(f"GPT Response: {gpt_text}\n")
-                print(f"===================")
+            print(f"Batch #{_batch_idx}\n")
+            print(f"Prompt: {prompt}\n\n")
+            print(f"Label: {summary}\n")
+            print(f"SFT Response: {sft_text}\n")
+            print(f"GPT Response: {gpt_text}\n")
+            print(f"===================")
