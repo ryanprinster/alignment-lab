@@ -60,6 +60,8 @@ class PPORLHFEval(BaseTrainer):
                 break
             print("")
 
+            self.data.get_query_text(subreddit="interactive", title="Interactive Test", post=prompt_input)
+            pdb.set_trace()
             batch_inputs, _ = self.format_batch_for_generation(
                 {
                     "subreddit": ["interactive"],
@@ -217,6 +219,19 @@ class PPORLHFEval(BaseTrainer):
         del full_states
         return generated_summaries
 
+    def format_batch_prompts_and_summaries(self, batch):
+        prompt_ids = []
+        reference_summary_ids = []
+        for subreddit, title, post, summary in zip(
+            batch["subreddit"], batch["title"], batch["post"], batch["summary"]
+        ):
+            formatted_query = self.data.get_query_text(subreddit, title, post)
+            pdb.set_trace()
+            prompt_ids.append(self.data.tokenizer.encode(formatted_query)['input_ids'])
+            reference_summary_ids.append(self.data.tokenizer.encode(summary))
+
+        return prompt_ids, reference_summary_ids
+
     def construct_claude_request(self):
         self.model.eval()
 
@@ -225,18 +240,14 @@ class PPORLHFEval(BaseTrainer):
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
             print(f"Preparing batch {batch_idx}")
+            
+            prompt_ids, reference_summary_ids = self.format_batch_prompts_and_summaries(batch)
+            generated_summary_ids = self.generate_summaries(batch)
 
-            input_batch, reference_summary_ids = self.format_batch_for_generation(
-                batch, self.data.__class__.SFT_MAX_QUERY_LENGTH
-            )
-            pdb.set_trace()
+            self.torch_batch_to_request(prompt_ids, reference_summary_ids, generated_summary_ids)
 
-            prompts = input_batch["input_ids"]
-            generated_summaries = self.generate_summaries(input_batch)
-            del input_batch
-
-            self.torch_batch_to_request(prompts, reference_summary_ids, generated_summaries)
-
+        pdb.set_trace()
+        assert(False)
         print("finished creating batched requests")
         batch = self.client.messages.batches.create(requests=self.requests)
 
