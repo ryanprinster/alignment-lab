@@ -544,18 +544,8 @@ class PPORLHFEval(BaseTrainer):
             print("")
 
             query = self.data.get_query_text(subreddit="interactive", title="Interactive Test", post=prompt_input)
-            pdb.set_trace()
-            batch_inputs, _ = self._format_batch_for_generation(
-                {
-                    "subreddit": ["interactive"],
-                    "title": ["Interactive Test"],
-                    "post": [prompt_input],
-                    "summary": [""],
-                },
-                self.data.__class__.SFT_MAX_QUERY_LENGTH,
-            )
-            del _
+            input_batch = self.data.tokenizer(query,truncation=False, padding="max_length", max_length=self.data.SFT_MAX_INPUT_LENGTH,return_tensors="pt")
 
-            generated = self._generate_summaries({'input_ids': query})
+            generated = self._generate_summaries(input_batch)
             summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
             print(f"Generated Summary: {summary_text}\n")
