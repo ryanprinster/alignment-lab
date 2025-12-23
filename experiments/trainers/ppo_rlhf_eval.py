@@ -229,7 +229,7 @@ class PPORLHFEval(BaseTrainer):
             prompt_ids.append(self.data.tokenizer.encode(formatted_query))
             reference_summary_ids.append(self.data.tokenizer.encode(summary))
 
-        return prompt_ids.to(self.device), reference_summary_ids.to(self.device)
+        return prompt_ids, reference_summary_ids
 
     def construct_claude_request(self):
         self.model.eval()
@@ -239,6 +239,7 @@ class PPORLHFEval(BaseTrainer):
 
         for batch_idx, batch in enumerate(self.data.validation_loader):
             print(f"Preparing batch {batch_idx}")
+            batch = self._to_device(batch)
             
             prompt_ids, reference_summary_ids = self.format_batch_prompts_and_summaries(batch)
             generated_summary_ids = self.generate_summaries(batch)
