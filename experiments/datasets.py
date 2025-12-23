@@ -110,6 +110,7 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
         tokenizer = tokenizer or self.tokenizer
         #  Detail 1 (Dataset -> Specification)
         texts = []
+        pdb.set_trace()
 
         for subreddit, title, post, summary in zip(
             batch["subreddit"], batch["title"], batch["post"], batch["summary"]

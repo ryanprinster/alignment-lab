@@ -45,7 +45,7 @@ class SFTEval(BaseTrainer):
                 # 3. Make attention_mask
                 # 
                 pdb.set_trace()
-                tldr_ids = self.data.tokenizer.encode("\n\nTL;DR:")
+                tldr_ids = self.data.tokenizer.encode("TL;DR:")
                 
 
                 sft_gen_ids, _ = self.sft.generate(
