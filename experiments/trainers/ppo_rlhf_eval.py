@@ -50,32 +50,6 @@ class PPORLHFEval(BaseTrainer):
             tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
         )
 
-    def human_generate_summary(self):
-        """Interactive loop: generates summaries for user-provided prompts."""
-        self.model.eval()
-
-        while True:
-            prompt_input = input("\nPrompt> ")
-            if prompt_input.lower() in ("quit", "exit"):
-                break
-            print("")
-
-            self.data.get_query_text(subreddit="interactive", title="Interactive Test", post=prompt_input)
-            pdb.set_trace()
-            batch_inputs, _ = self.format_batch_for_generation(
-                {
-                    "subreddit": ["interactive"],
-                    "title": ["Interactive Test"],
-                    "post": [prompt_input],
-                    "summary": [""],
-                },
-                self.data.__class__.SFT_MAX_QUERY_LENGTH,
-            )
-            del _
-
-            generated = self.generate_summaries(batch_inputs)
-            summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
-            print(f"Generated Summary: {summary_text}\n")
 
     def _to_device(self, batch):
         for k in batch.keys():
@@ -116,7 +90,7 @@ class PPORLHFEval(BaseTrainer):
             },
         }
 
-    def trim_tensor(self, tensor):
+    def _trim_tensor(self, tensor):
         """
         Trims tokenized tensor or list of pad, eos, and bos tokens
         """
@@ -139,7 +113,7 @@ class PPORLHFEval(BaseTrainer):
 
         return tensor[left : right + 1]
 
-    def format_batch_for_generation(self, batch, max_query_length):
+    def _format_batch_for_generation(self, batch, max_query_length):
         input_ids = []
         attention_masks = []
         summary_ids = []
@@ -175,11 +149,11 @@ class PPORLHFEval(BaseTrainer):
         }, summary_ids
 
     @profile
-    def torch_batch_to_request(self, prompts, summary_ids, generated_summaries):
+    def _torch_batch_to_request(self, prompts, summary_ids, generated_summaries):
         for i in range(len(summary_ids)):  # enumerate through batch
-            prompt_ids = self.trim_tensor(prompts[i])
-            gen_sum_ids = self.trim_tensor(generated_summaries[i])
-            ref_sum_ids = self.trim_tensor(summary_ids[i])
+            prompt_ids = self._trim_tensor(prompts[i])
+            gen_sum_ids = self._trim_tensor(generated_summaries[i])
+            ref_sum_ids = self._trim_tensor(summary_ids[i])
 
             prompt_text = self.data.tokenizer.decode(prompt_ids)
             generated_summary_text = self.data.tokenizer.decode(
@@ -210,7 +184,7 @@ class PPORLHFEval(BaseTrainer):
             "\n\n\n",
         )
 
-    def generate_summaries(self, input_batch):
+    def _generate_summaries(self, input_batch):
         full_states, _ = self.model.generate(
             input_batch,
             self.data.__class__.SFT_MAX_INPUT_LENGTH,  # ???
@@ -222,7 +196,7 @@ class PPORLHFEval(BaseTrainer):
         del full_states
         return generated_summaries
 
-    def format_batch_prompts_and_summaries(self, batch):
+    def _format_batch_prompts_and_summaries(self, batch):
         prompt_ids = []
         reference_summary_ids = []
         for subreddit, title, post, summary in zip(
@@ -244,10 +218,10 @@ class PPORLHFEval(BaseTrainer):
             print(f"Preparing batch {batch_idx}")
             batch = self._to_device(batch)
             
-            prompt_ids, reference_summary_ids = self.format_batch_prompts_and_summaries(batch)
-            generated_summary_ids = self.generate_summaries(batch)
+            prompt_ids, reference_summary_ids = self._format_batch_prompts_and_summaries(batch)
+            generated_summary_ids = self._generate_summaries(batch)
 
-            self.torch_batch_to_request(prompt_ids, reference_summary_ids, generated_summary_ids)
+            self._torch_batch_to_request(prompt_ids, reference_summary_ids, generated_summary_ids)
 
         pdb.set_trace()
         assert(False)
@@ -357,7 +331,7 @@ class PPORLHFEval(BaseTrainer):
         print(f"Model win rate: {win_rate:.2%} ({model_wins}/{total})")
         return preferences
 
-    def load_and_bin_results(self, results_file, n_bins=8):
+    def _load_and_bin_results(self, results_file, n_bins=8):
         """Load results and bin by length control"""
         # Load results
         results = []
@@ -430,9 +404,9 @@ class PPORLHFEval(BaseTrainer):
         sft_results_file = self.config.sft_results_file or sft_results_file
         paper_ppo_results_file = self.config.paper_ppo_results_file or paper_ppo_results_file
 
-        ppo_centers, ppo_rates, ppo_counts = self.load_and_bin_results(ppo_results_file)
-        sft_centers, sft_rates, sft_counts = self.load_and_bin_results(sft_results_file)
-        ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts = self.load_and_bin_results(
+        ppo_centers, ppo_rates, ppo_counts = self._load_and_bin_results(ppo_results_file)
+        sft_centers, sft_rates, sft_counts = self._load_and_bin_results(sft_results_file)
+        ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts = self._load_and_bin_results(
             paper_ppo_results_file
         )
 
@@ -558,3 +532,30 @@ class PPORLHFEval(BaseTrainer):
             "sft": (sft_centers, sft_rates, sft_counts),
             "ppr_ppo": (ppr_ppo_centers, ppr_ppo_rates, ppr_ppo_counts),
         }
+
+    def human_generate_summary(self):
+        """Interactive loop: generates summaries for user-provided prompts."""
+        self.model.eval()
+
+        while True:
+            prompt_input = input("\nPrompt> ")
+            if prompt_input.lower() in ("quit", "exit"):
+                break
+            print("")
+
+            query = self.data.get_query_text(subreddit="interactive", title="Interactive Test", post=prompt_input)
+            pdb.set_trace()
+            batch_inputs, _ = self._format_batch_for_generation(
+                {
+                    "subreddit": ["interactive"],
+                    "title": ["Interactive Test"],
+                    "post": [prompt_input],
+                    "summary": [""],
+                },
+                self.data.__class__.SFT_MAX_QUERY_LENGTH,
+            )
+            del _
+
+            generated = self._generate_summaries({'input_ids': query})
+            summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
+            print(f"Generated Summary: {summary_text}\n")
