@@ -31,11 +31,11 @@ class TLDRFilteredDataBase(ABC):
 
         self.tokenizer = tokenizer
 
-        pdb.set_trace()
         preprocess_func = partial(self.preprocess_func, tokenizer=tokenizer)
 
         dataset = self.dataset.map(preprocess_func, batched=True)
-        dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
+        pdb.set_trace()
+        dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "query_text", "summary_text"])
 
         self.dataset["train"] = dataset["train"]
         self.dataset["validation"] = dataset["validation"]
@@ -111,7 +111,8 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
         tokenizer = tokenizer or self.tokenizer
         #  Detail 1 (Dataset -> Specification)
         texts = []
-        pdb.set_trace()
+        queries = []
+        summaries = []
 
         for subreddit, title, post, summary in zip(
             batch["subreddit"], batch["title"], batch["post"], batch["summary"]
@@ -128,13 +129,19 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
 
         # Detail 5 (SFT dataset for SFT training: concatenate the query and the reference summary
         # together and pad from the right)
-        return tokenizer(
+        data_dict = tokenizer(
             texts,
             truncation=False,  # Already did ~clever truncation~
             padding="max_length",  # This should use tokenizer.pad_token_id
             max_length=TLDRFilteredDataBase.SFT_MAX_INPUT_LENGTH,
             return_tensors="pt",
         )
+
+        data_dict["query_text"] = queries
+        data_dict["summary_text"] = summaries
+        return data_dict
+        
+
 
 
 class TLDRFilteredDataPPO(TLDRFilteredDataBase):
