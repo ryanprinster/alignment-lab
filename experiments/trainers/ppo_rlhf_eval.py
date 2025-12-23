@@ -510,7 +510,8 @@ class PPORLHFEval(BaseTrainer):
 
             query = self.data.get_query_text(subreddit="interactive", title="Interactive Test", post=prompt_input)
             input_batch = self.data.tokenizer(query,truncation=False, padding="max_length", max_length=self.data.SFT_MAX_QUERY_LENGTH,return_tensors="pt")
-
+            
+            input_batch = self._to_device(input_batch)
             generated = self._generate_summaries(input_batch)
             summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
             print(f"Generated Summary: {summary_text}\n")
