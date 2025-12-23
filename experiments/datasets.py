@@ -31,6 +31,7 @@ class TLDRFilteredDataBase(ABC):
 
         self.tokenizer = tokenizer
 
+        pdb.set_trace()
         preprocess_func = partial(self.preprocess_func, tokenizer=tokenizer)
 
         dataset = self.dataset.map(preprocess_func, batched=True)
