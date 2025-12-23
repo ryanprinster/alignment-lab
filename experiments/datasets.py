@@ -118,6 +118,8 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
             batch["subreddit"], batch["title"], batch["post"], batch["summary"]
         ):
             formatted_query = self.get_query_text(subreddit, title, post, tokenizer)
+            queries.append(formatted_query)
+            summaries.append(summary)
             # Detail 3 (Prepend a leading space to completion; append an EOS token to the completions)
             summary = " " + summary + tokenizer.eos_token
             full_text = formatted_query + summary
