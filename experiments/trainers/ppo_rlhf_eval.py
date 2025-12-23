@@ -188,15 +188,26 @@ class PPORLHFEval(BaseTrainer):
 
             self._torch_batch_to_request(prompt_ids, reference_summary_ids, generated_summary_ids)
 
-        pdb.set_trace()
-        assert(False)
         print("finished creating batched requests")
-        batch = self.client.messages.batches.create(requests=self.requests)
 
-        with open(f"summaries_{batch.id}.jsonl", "w") as f:
-            for summary in self.summaries:
-                f.write(json.dumps(summary) + "\n")
-        print(f"Submitted comparisons: {batch.id}")
+        print(f"Submit to {len(self.requests)} requests to Claude API?")
+        response = input("Submit batch? (y/n): ").strip().lower()
+        batch = None
+        if response == 'y':
+            batch = self.client.messages.batches.create(requests=self.requests)
+            print("batch submitted.")
+        
+        response = input("Save summaries to file? (y/n): ").strip().lower()
+        if response == 'y':
+            if batch is not None:
+                batch_id = batch.id
+            else:
+                batch_id = "null_batch_id"
+
+            with open(f"summaries_{batch_id}.jsonl", "w") as f:
+                for summary in self.summaries:
+                    f.write(json.dumps(summary) + "\n")
+            print(f"Submitted summaries: {batch_id}")
 
     def download_batch_results(
         self,
