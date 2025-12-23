@@ -1,7 +1,7 @@
 import torch
 
 from experiments.config import SFTConfigBase
-from experiments.datasets import TLDRFilteredDataPPO
+from experiments.datasets import TLDRFilteredDataSFT
 from experiments.models import HFModel_SFT
 from experiments.trainers.base_trainer import BaseTrainer
 
@@ -24,7 +24,7 @@ class SFTEval(BaseTrainer):
         self.sft.eval()
         self.gpt.eval()
 
-        self.data = TLDRFilteredDataPPO(
+        self.data = TLDRFilteredDataSFT(
             tokenizer=self.sft.tokenizer, batch_size=self.config.batch_size
         )
 
@@ -51,13 +51,13 @@ class SFTEval(BaseTrainer):
 
                 sft_gen_ids, _ = self.sft.generate(
                     batch,
-                    TLDRFilteredDataPPO.SFT_MAX_INPUT_LENGTH,
+                    TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH,
                     self.config.generation_temperature,
                     do_sample=False,
                 )
                 gpt_gen_ids, _ = self.gpt.generate(
                     batch,
-                    TLDRFilteredDataPPO.SFT_MAX_INPUT_LENGTH,
+                    TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH,
                     self.config.generation_temperature,
                     do_sample=False,
                 )
