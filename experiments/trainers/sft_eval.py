@@ -1,7 +1,7 @@
 import torch
 
 from experiments.config import SFTConfigBase
-from experiments.datasets import TLDRFilteredDataSFT
+from experiments.datasets import TLDRFilteredDataPPO
 from experiments.models import HFModel_SFT
 from experiments.trainers.base_trainer import BaseTrainer
 
@@ -24,7 +24,7 @@ class SFTEval(BaseTrainer):
         self.sft.eval()
         self.gpt.eval()
 
-        self.data = TLDRFilteredDataSFT(
+        self.data = TLDRFilteredDataPPO(
             tokenizer=self.sft.tokenizer, batch_size=self.config.batch_size
         )
 
@@ -45,19 +45,9 @@ class SFTEval(BaseTrainer):
                 # 3. Make attention_mask
                 # 
 
-                for subreddit, title, post, summary in zip(
-                    batch["subreddit"], batch["title"], batch["post"], batch["summary"]
-                ):
-                    formatted_query = self.data.get_query_text(subreddit, title, post)
                 pdb.set_trace()
-
-                
-                
-                self.data.get_query_text(batch['subreddit'],batch['title'],batch['post'])
-
                 
 
-                tldr_ids = self.data.tokenizer.encode("TL;DR:")
                 # 0. given a tensor batch of size (batch_size, sequence_length)
                 # 1. encode "TL;DR:"
                 # 2. remove special tokens from tldr_ids
@@ -68,13 +58,13 @@ class SFTEval(BaseTrainer):
 
                 sft_gen_ids, _ = self.sft.generate(
                     batch,
-                    TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH,
+                    TLDRFilteredDataPPO.SFT_MAX_INPUT_LENGTH,
                     self.config.generation_temperature,
                     do_sample=False,
                 )
                 gpt_gen_ids, _ = self.gpt.generate(
                     batch,
-                    TLDRFilteredDataSFT.SFT_MAX_INPUT_LENGTH,
+                    TLDRFilteredDataPPO.SFT_MAX_INPUT_LENGTH,
                     self.config.generation_temperature,
                     do_sample=False,
                 )
@@ -87,7 +77,7 @@ class SFTEval(BaseTrainer):
 
             print(f"Batch #{_batch_idx}\n")
             print(f"Prompt: {prompt}\n\n")
-            print(f"Label: {summary}\n")
+            print(f"Label: {batch['summary'][0]}\n")
             print(f"SFT Response: {sft_text}\n")
             print(f"GPT Response: {gpt_text}\n")
             print(f"===================")
