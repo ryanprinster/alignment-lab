@@ -38,35 +38,17 @@ class SFTEval(BaseTrainer):
         for _batch_idx, batch in enumerate(self.data.test_loader):
             with torch.no_grad():
                 batch = self._to_device(batch)
-
-                # 1. encode to string or get a way to split batch at end string
-                #   -> Actually do this to get just the index we want to split at
-                # 2. split to get prompt only, and response only
-                # 3. Make attention_mask
-                # 
-
                 pdb.set_trace()
-                
-
-                # 0. given a tensor batch of size (batch_size, sequence_length)
-                # 1. encode "TL;DR:"
-                # 2. remove special tokens from tldr_ids
-                # 3. Get the index of the last token of the first occurence of 
-                #   tldr_ids in the batch tensor, for each element in the batch
-                # 4. Split each tensor, and batch
-                
 
                 sft_gen_ids, _ = self.sft.generate(
                     batch,
-                    TLDRFilteredDataPPO.SFT_MAX_INPUT_LENGTH,
+                    self.data.SFT_MAX_INPUT_LENGTH,
                     self.config.generation_temperature,
-                    do_sample=False,
                 )
                 gpt_gen_ids, _ = self.gpt.generate(
                     batch,
-                    TLDRFilteredDataPPO.SFT_MAX_INPUT_LENGTH,
+                    self.data.SFT_MAX_INPUT_LENGTH,
                     self.config.generation_temperature,
-                    do_sample=False,
                 )
             
     
