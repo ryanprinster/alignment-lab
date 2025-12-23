@@ -17,6 +17,8 @@ from experiments.models import HFModel_Policy
 from experiments.profiler import profile
 from experiments.trainers.base_trainer import BaseTrainer
 
+import pdb
+
 
 class PPORLHFEval(BaseTrainer):
 
@@ -227,6 +229,8 @@ class PPORLHFEval(BaseTrainer):
             input_batch, reference_summary_ids = self.format_batch_for_generation(
                 batch, self.data.__class__.SFT_MAX_QUERY_LENGTH
             )
+            pdb.set_trace()
+
             prompts = input_batch["input_ids"]
             generated_summaries = self.generate_summaries(input_batch)
             del input_batch

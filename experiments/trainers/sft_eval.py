@@ -38,7 +38,6 @@ class SFTEval(BaseTrainer):
         for _batch_idx, batch in enumerate(self.data.test_loader):
             with torch.no_grad():
                 batch = self._to_device(batch)
-                pdb.set_trace()
 
                 sft_gen_ids, _ = self.sft.generate(
                     batch,
