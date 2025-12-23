@@ -226,8 +226,7 @@ class PPORLHFEval(BaseTrainer):
             batch["subreddit"], batch["title"], batch["post"], batch["summary"]
         ):
             formatted_query = self.data.get_query_text(subreddit, title, post)
-            pdb.set_trace()
-            prompt_ids.append(self.data.tokenizer.encode(formatted_query)['input_ids'])
+            prompt_ids.append(self.data.tokenizer.encode(formatted_query))
             reference_summary_ids.append(self.data.tokenizer.encode(summary))
 
         return prompt_ids, reference_summary_ids

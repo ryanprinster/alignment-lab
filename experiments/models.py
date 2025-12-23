@@ -106,6 +106,8 @@ class HFModel_Causal(HFModel):
 
     @profile
     def generate(self, inputs, max_length, temp, do_sample=True, max_query_length=None):
+        if inputs["attention_mask"] is None:
+            inputs["attention_mask"] = torch.ones_like(inputs["input_ids"]) * (inputs["input_ids"] != self.tokenizer.pad_token_id)
         # NOTE: generation currently does top_p = 0.9 by default, vs 1.0 in the paper.
         # As this is not used for any loss / advantage computation, the impact to training is limited.
         # There are pros and cons to this as a design choice, but this may contribute to a lower entropy.

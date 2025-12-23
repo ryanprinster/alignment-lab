@@ -34,7 +34,6 @@ class TLDRFilteredDataBase(ABC):
         preprocess_func = partial(self.preprocess_func, tokenizer=tokenizer)
 
         dataset = self.dataset.map(preprocess_func, batched=True)
-        pdb.set_trace()
         dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "subreddit", "title", "post", "summary", ])
 
         self.dataset["train"] = dataset["train"]
