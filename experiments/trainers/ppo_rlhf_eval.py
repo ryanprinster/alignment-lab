@@ -118,7 +118,7 @@ class PPORLHFEval(BaseTrainer):
 
     def trim_tensor(self, tensor):
         """
-        Trims tokenized tensor of pad, eos, and bos tokens
+        Trims tokenized tensor or list of pad, eos, and bos tokens
         """
         trim_ids = [
             self.data.tokenizer.pad_token_id,
@@ -129,9 +129,12 @@ class PPORLHFEval(BaseTrainer):
         left = 0
         right = len(tensor) - 1
 
-        while left <= right and tensor[left].item() in trim_ids:
+        def get_val(x):
+            return x.item() if hasattr(x, 'item') else x
+
+        while left <= right and get_val(tensor[left]) in trim_ids:
             left += 1
-        while right >= left and tensor[right].item() in trim_ids:
+        while right >= left and get_val(tensor[right]) in trim_ids:
             right -= 1
 
         return tensor[left : right + 1]
