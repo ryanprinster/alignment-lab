@@ -44,8 +44,26 @@ class SFTEval(BaseTrainer):
                 # 2. split to get prompt only, and response only
                 # 3. Make attention_mask
                 # 
+
+                for subreddit, title, post, summary in zip(
+                    batch["subreddit"], batch["title"], batch["post"], batch["summary"]
+                ):
+                    formatted_query = self.data.get_query_text(subreddit, title, post)
                 pdb.set_trace()
+
+                
+                
+                self.data.get_query_text(batch['subreddit'],batch['title'],batch['post'])
+
+                
+
                 tldr_ids = self.data.tokenizer.encode("TL;DR:")
+                # 0. given a tensor batch of size (batch_size, sequence_length)
+                # 1. encode "TL;DR:"
+                # 2. remove special tokens from tldr_ids
+                # 3. Get the index of the last token of the first occurence of 
+                #   tldr_ids in the batch tensor, for each element in the batch
+                # 4. Split each tensor, and batch
                 
 
                 sft_gen_ids, _ = self.sft.generate(

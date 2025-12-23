@@ -111,11 +111,13 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
         tokenizer = tokenizer or self.tokenizer
         #  Detail 1 (Dataset -> Specification)
         texts = []
+        queries = []
 
         for subreddit, title, post, summary in zip(
             batch["subreddit"], batch["title"], batch["post"], batch["summary"]
         ):
             formatted_query = self.get_query_text(subreddit, title, post, tokenizer)
+            queries.append(formatted_query)
             # Detail 3 (Prepend a leading space to completion; append an EOS token to the completions)
             summary = " " + summary + tokenizer.eos_token
             full_text = formatted_query + summary
@@ -134,6 +136,19 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
             max_length=TLDRFilteredDataBase.SFT_MAX_INPUT_LENGTH,
             return_tensors="pt",
         )
+        
+        original_padding_side = tokenizer.padding_side
+        tokenizer.padding_side = "left"
+        query_dict = tokenizer(
+            queries,
+            truncation=False,  # Already did ~clever truncation~
+            padding="max_length",  # This should use tokenizer.pad_token_id
+            max_length=TLDRFilteredDataBase.SFT_MAX_QUERY_LENGTH,
+            return_tensors="pt",
+        )
+        tokenizer.padding_side = original_padding_side 
+
+        data_dict['query_input'] = query_dict
 
         return data_dict
         
