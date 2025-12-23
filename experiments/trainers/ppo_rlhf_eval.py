@@ -229,7 +229,7 @@ class PPORLHFEval(BaseTrainer):
             prompt_ids.append(self.data.tokenizer.encode(formatted_query))
             reference_summary_ids.append(self.data.tokenizer.encode(summary))
 
-        return prompt_ids, reference_summary_ids
+        return prompt_ids.to(self.device), reference_summary_ids.to(self.device)
 
     def construct_claude_request(self):
         self.model.eval()
