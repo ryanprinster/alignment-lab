@@ -113,41 +113,6 @@ class PPORLHFEval(BaseTrainer):
 
         return tensor[left : right + 1]
 
-    def _format_batch_for_generation(self, batch, max_query_length):
-        input_ids = []
-        attention_masks = []
-        summary_ids = []
-        for subreddit, title, post, summary in zip(
-            batch["subreddit"], batch["title"], batch["post"], batch["summary"]
-        ):
-            query_text = self.data.get_query_text(subreddit, title, post)
-            inputs = self.data.tokenizer(query_text, return_tensors="pt")
-            inputs["input_ids"] = inputs["input_ids"].squeeze()
-            inputs["attention_mask"] = inputs["attention_mask"].squeeze()
-            inputs = self._to_device(inputs)
-            input_ids.append(
-                torch.nn.functional.pad(
-                    inputs["input_ids"],
-                    (max_query_length - inputs["input_ids"].size(0), 0),
-                    value=self.data.tokenizer.pad_token_id,
-                )
-            )
-            attention_masks.append(
-                torch.nn.functional.pad(
-                    inputs["attention_mask"],
-                    (max_query_length - inputs["attention_mask"].size(0), 0),
-                    value=0,
-                )
-            )
-
-            summary_ids.append(
-                self.data.tokenizer(summary, return_tensors="pt")["input_ids"].squeeze()
-            )
-        return {
-            "input_ids": torch.stack(input_ids),
-            "attention_mask": torch.stack(attention_masks),
-        }, summary_ids
-
     @profile
     def _torch_batch_to_request(self, prompts, summary_ids, generated_summaries):
         for i in range(len(summary_ids)):  # enumerate through batch
@@ -544,7 +509,7 @@ class PPORLHFEval(BaseTrainer):
             print("")
 
             query = self.data.get_query_text(subreddit="interactive", title="Interactive Test", post=prompt_input)
-            input_batch = self.data.tokenizer(query,truncation=False, padding="max_length", max_length=self.data.SFT_MAX_INPUT_LENGTH,return_tensors="pt")
+            input_batch = self.data.tokenizer(query,truncation=False, padding="max_length", max_length=self.data.SFT_MAX_QUERY_LENGTH,return_tensors="pt")
 
             generated = self._generate_summaries(input_batch)
             summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
