@@ -161,50 +161,14 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
 
     def preprocess_func(self, batch, tokenizer=None):
         tokenizer = tokenizer or self.tokenizer
-        #  Detail 1 (Dataset -> Specification)
+        # Detail 1 (Dataset -> Specification)
 
-        full_texts, _query_texts, _summary_texts = self.format_batch(batch)
-        
-    
         # Detail 4 (Dataset -> SFT and preference datasets have different tokenization length)
-        #   --> TODO: add check to ensure that full_text is <= SFT_MAX_INPUT_LENGTH
-        #   --> TODO: when extending to preference dataset, double cehck summary max token lengths
-
-
+        full_texts, _query_texts, _summary_texts = self.format_batch(batch)
+    
         # Detail 5 (SFT dataset for SFT training: concatenate the query and the reference summary
         # together and pad from the right)
         return self.tokenize_and_pad_right(full_texts, TLDRFilteredDataBase.SFT_MAX_INPUT_LENGTH)
-
-# -------------------
-
-        texts = []
-
-
-        for subreddit, title, post, summary in zip(
-            batch["subreddit"], batch["title"], batch["post"], batch["summary"]
-        ):
-            formatted_query = self.get_query_text(subreddit, title, post, tokenizer)
-            # Detail 3 (Prepend a leading space to completion; append an EOS token to the completions)
-            summary = " " + summary + tokenizer.eos_token
-            full_text = formatted_query + summary
-            texts.append(full_text)
-
-
-        # Detail 5 (SFT dataset for SFT training: concatenate the query and the reference summary
-        # together and pad from the right)
-        data_dict = tokenizer(
-            texts,
-            truncation=False,  # Already did ~clever truncation~
-            padding="max_length",  # This should use tokenizer.pad_token_id
-            max_length=TLDRFilteredDataBase.SFT_MAX_INPUT_LENGTH,
-            return_tensors="pt",
-        )
-        
-        return data_dict
-
-
-        
-
 
 
 class TLDRFilteredDataPPO(TLDRFilteredDataBase):
@@ -214,28 +178,10 @@ class TLDRFilteredDataPPO(TLDRFilteredDataBase):
 
     def preprocess_func(self, batch, tokenizer=None):
         tokenizer = tokenizer or self.tokenizer
-        texts = []
 
-        for subreddit, title, post, summary in zip(
-            batch["subreddit"], batch["title"], batch["post"], batch["summary"]
-        ):
-            formatted_query = self.get_query_text(subreddit, title, post, tokenizer)
-            texts.append(formatted_query)
-
-        # Pad Left
-        original_padding_side = tokenizer.padding_side
-        tokenizer.padding_side = "left"
-        inputs = tokenizer(
-            texts,
-            truncation=False,  # Already did ~clever truncation~
-            padding="max_length",  # Should use tokenizer.pad_token_id
-            max_length=TLDRFilteredDataBase.SFT_MAX_QUERY_LENGTH,
-            return_tensors="pt",
-        )
-
-        # Reset original padding
-        tokenizer.padding_side = original_padding_side
-        return inputs
+        _full_texts, query_texts, _summary_texts = self.format_batch(batch)
+        
+        return self.tokenize_and_pad_left(query_texts, TLDRFilteredDataBase.SFT_MAX_QUERY_LENGTH)
 
 
 class OpenAIPreferenceData:
