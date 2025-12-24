@@ -99,6 +99,59 @@ class TLDRFilteredDataBase(ABC):
             tokens = tokenizer(test_query, return_tensors="pt")
 
         return post
+    
+        
+    def format_batch(self, batch, tokenizer=None):
+        tokenizer = tokenizer or self.tokenizer
+
+        full_texts = []
+        query_texts = []
+        summary_texts = []
+
+        for subreddit, title, post, summary in zip(
+            batch["subreddit"], batch["title"], batch["post"], batch["summary"]
+        ):
+            formatted_query = self.get_query_text(subreddit, title, post, tokenizer)
+            query_texts.append(formatted_query)
+
+            summary_texts.append()
+            # Detail 3 (Prepend a leading space to completion; append an EOS token to the completions)
+            summary = " " + summary + tokenizer.eos_token
+
+            full_text = formatted_query + summary
+            full_texts.append(full_text)
+        
+        return full_texts, query_texts, summary_texts
+    
+    def tokenize_and_pad_left(self, texts, max_length, tokenizer=None):
+        tokenizer = tokenizer or self.tokenizer
+        # Pad Left
+        original_padding_side = tokenizer.padding_side
+        tokenizer.padding_side = "left"
+        inputs = tokenizer(
+            texts,
+            truncation=False,  # Already did ~clever truncation~
+            padding="max_length",  # Should use tokenizer.pad_token_id
+            max_length=max_length,
+            return_tensors="pt",
+        )
+
+        # Reset original padding
+        tokenizer.padding_side = original_padding_side
+        return inputs
+    
+    def tokenize_and_pad_right(self, texts, max_length, tokenizer=None):
+        tokenizer = tokenizer or self.tokenizer
+
+        return tokenizer(
+            texts,
+            truncation=False,  # Already did ~clever truncation~
+            padding="max_length",  # This should use tokenizer.pad_token_id
+            max_length=max_length,
+            return_tensors="pt",
+        )
+    
+    
 
 
 class TLDRFilteredDataSFT(TLDRFilteredDataBase):
@@ -110,6 +163,8 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
         tokenizer = tokenizer or self.tokenizer
         #  Detail 1 (Dataset -> Specification)
         texts = []
+
+        #TODO: replace with abstracted helper functions
 
         for subreddit, title, post, summary in zip(
             batch["subreddit"], batch["title"], batch["post"], batch["summary"]
@@ -135,6 +190,8 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
         )
         
         return data_dict
+
+
         
 
 

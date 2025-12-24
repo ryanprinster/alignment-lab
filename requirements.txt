@@ -7,3 +7,4 @@ gymnasium>=0.29.0
 hf-transfer>=0.1.0
 anthropic>=0.18.0
 matplotlib>=3.7.0
+rouge-score>=0.1.2
