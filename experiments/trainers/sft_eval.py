@@ -15,20 +15,20 @@ class SFTEval(BaseTrainer):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.sft = (
-            HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
-        )
-        self.sft.set_from_local_state_dict(self.config.sft_model_path)
-        self.gpt = (
-            HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
-        )
+        # self.sft = (
+        #     HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        # )
+        # self.sft.set_from_local_state_dict(self.config.sft_model_path)
+        # self.gpt = (
+        #     HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        # )
 
-        self.sft.eval()
-        self.gpt.eval()
+        # self.sft.eval()
+        # self.gpt.eval()
 
-        self.data = TLDRFilteredDataPPO(
-            tokenizer=self.sft.tokenizer, batch_size=self.config.batch_size
-        )
+        # self.data = TLDRFilteredDataPPO(
+        #     tokenizer=self.sft.tokenizer, batch_size=self.config.batch_size
+        # )
 
     def _to_device(self, batch):
         for k in batch.keys():
@@ -66,6 +66,18 @@ class SFTEval(BaseTrainer):
             print(f"===================")
 
     def plot_train_curves(self):
+        def smooth(values, weight=0.6):
+            """exp moving avg"""
+            smoothed = []
+            last = values[0]
+            
+            for value in values:
+                smoothed_val = last * weight + value * (1 - weight)
+                smoothed.append(smoothed_val)
+                last = smoothed_val
+            
+            return smoothed
+
         file = self.config.sft_training_log_path
         losses = []
         steps = []
@@ -73,12 +85,15 @@ class SFTEval(BaseTrainer):
         with open(file, 'r') as f:
             for line in f:
                 data = json.loads(line)
-                steps.append(data['global_step'])
-                losses.append(data['loss'])
+                if data['global_step'] % 5 == 0:
+                    steps.append(data['global_step'])
+                    losses.append(data['loss']) 
+
 
         # Plot
         plt.figure(figsize=(10, 6))
-        plt.plot(steps, losses)
+        plt.plot(steps, losses, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        plt.plot(steps, smooth(losses, weight=0.99), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
         plt.xlabel('Global Step')
         plt.ylabel('Loss')
         plt.title('Training Loss vs Global Step')
