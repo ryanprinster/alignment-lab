@@ -158,6 +158,10 @@ class RMEval(BaseTrainer):
         plt.figure(figsize=(10, 6))
         plt.plot(steps, losses, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         plt.plot(steps, smooth(losses, weight=0.7), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        
+        # plt.plot(steps, accuracies, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(accuracies, weight=0.7), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        
         plt.xlabel('Step')
         plt.ylabel('RM Loss')
         plt.title('Reward Model')
