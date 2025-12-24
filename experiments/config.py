@@ -60,6 +60,9 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         # RM
         self.calculated_sft_bias = 4.6745805740356
 
+        self.sft_training_log_path = ""
+
+
         # Detail 7 (Disable dropout) aka there is no dropout, this is done
         # Detail 8 (Tech stack) Differences from the paper thus far:
         # --> Not using accelerate

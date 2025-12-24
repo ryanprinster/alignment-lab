@@ -1,4 +1,6 @@
 import torch
+import json
+import matplotlib.pyplot as plt
 
 from experiments.config import SFTConfigBase
 from experiments.datasets import TLDRFilteredDataPPO
@@ -62,3 +64,25 @@ class SFTEval(BaseTrainer):
             print(f"SFT Response: {sft_text}\n")
             print(f"GPT Response: {gpt_text}\n")
             print(f"===================")
+
+    def plot_train_curves(self):
+        file = self.config.sft_training_log_path
+        losses = []
+        steps = []
+
+        with open(file, 'r') as f:
+            for line in f:
+                data = json.loads(line)
+                steps.append(data['global_step'])
+                losses.append(data['loss'])
+
+        # Plot
+        plt.figure(figsize=(10, 6))
+        plt.plot(steps, losses)
+        plt.xlabel('Global Step')
+        plt.ylabel('Loss')
+        plt.title('Training Loss vs Global Step')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig('loss_curve.png', dpi=150)
+        plt.show()
