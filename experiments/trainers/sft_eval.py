@@ -59,9 +59,6 @@ class SFTEval(BaseTrainer):
             with torch.no_grad():
                 batch = self._to_device(batch)
 
-                full_texts, query_texts, summary_texts = self.data.format_batch(batch)
-
-                # TODO:
                 # Move _format_batch_prompts_and_summaries to a eval utils or as part of dataset class
                 # Same with _trim_tensor
                 # Maybe put _trim_tensor in _format_batch_prompts_and_summaries
@@ -84,30 +81,25 @@ class SFTEval(BaseTrainer):
                 sft_response_ids = sft_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
                 gpt_response_ids = gpt_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
 
-                pdb.set_trace()
-                sft_response_texts = self.data.tokenizer.batch_decode(sft_response_ids)
-                gpt_response_texts = self.data.tokenizer.batch_decode(gpt_response_ids)
+                sft_response_texts = self.data.tokenizer.batch_decode(sft_response_ids, skip_special_tokens=True)
+                gpt_response_texts = self.data.tokenizer.batch_decode(gpt_response_ids, skip_special_tokens=True)
+                
                 
                 # Calculate rouge scores
                 for i, ref_text in enumerate(ref_summary_texts):
                     
-                    scores = scorer.score(ref_text, sft_response_texts[i])
-                    pdb.set_trace()
-
+                    rougeL_score = scorer.score(ref_text, sft_response_texts[i])['rougeL'].fmeasure
+                    rouge_total += rougeL_score
+                    rouge_count += 1
                 
-    
-            full_gpt_text = self.data.tokenizer.decode(gpt_gen_ids[0]).split("TL;DR:")
-            prompt, gpt_text = full_gpt_text[0], "".join(full_gpt_text[1:])
-            full_sft_text = self.data.tokenizer.decode(sft_gen_ids[0]).split("TL;DR:")
-            sft_text = "".join(full_sft_text[1:])
+                print(f"Running ROUGE {rouge_total/rouge_count}\n")
 
-
-            print(f"Batch #{_batch_idx}\n")
-            print(f"Prompt: {prompt}\n\n")
-            print(f"Label: {batch['summary'][0]}\n")
-            print(f"SFT Response: {sft_text}\n")
-            print(f"GPT Response: {gpt_text}\n")
-            print(f"===================")
+                print(f"Batch #{_batch_idx}\n")
+                print(f"Prompt: {query_texts[0]}\n\n")
+                print(f"Label: {ref_summary_texts[0]}\n")
+                print(f"SFT Response: {sft_response_texts[0]}\n")
+                print(f"GPT Response: {gpt_response_texts[0]}\n")
+                print(f"===================")
 
     def plot_train_curves(self):
         def smooth(values, weight=0.6):
