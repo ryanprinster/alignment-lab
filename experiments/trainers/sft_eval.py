@@ -84,8 +84,9 @@ class SFTEval(BaseTrainer):
                 sft_response_ids = sft_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
                 gpt_response_ids = gpt_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
 
-                sft_response_texts = self.data.tokenizer.decode(sft_response_ids)
-                gpt_response_texts = self.data.tokenizer.decode(gpt_response_ids)
+                pdb.set_trace()
+                sft_response_texts = self.data.tokenizer.batch_decode(sft_response_ids)
+                gpt_response_texts = self.data.tokenizer.batch_decode(gpt_response_ids)
                 
                 # Calculate rouge scores
                 for i, ref_text in enumerate(ref_summary_texts):
