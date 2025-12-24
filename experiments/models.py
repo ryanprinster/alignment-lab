@@ -117,6 +117,7 @@ class HFModel_Causal(HFModel):
             max_length=max_length,
             temperature=temp,
             do_sample=do_sample,
+            top_p=self.config.top_p,
             return_dict_in_generate=True,
             output_scores=True,
             output_attentions=False,

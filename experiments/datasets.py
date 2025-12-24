@@ -162,9 +162,23 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
     def preprocess_func(self, batch, tokenizer=None):
         tokenizer = tokenizer or self.tokenizer
         #  Detail 1 (Dataset -> Specification)
+
+        full_texts, _query_texts, _summary_texts = self.format_batch(batch)
+        
+    
+        # Detail 4 (Dataset -> SFT and preference datasets have different tokenization length)
+        #   --> TODO: add check to ensure that full_text is <= SFT_MAX_INPUT_LENGTH
+        #   --> TODO: when extending to preference dataset, double cehck summary max token lengths
+
+
+        # Detail 5 (SFT dataset for SFT training: concatenate the query and the reference summary
+        # together and pad from the right)
+        return self.tokenize_and_pad_right(full_texts, TLDRFilteredDataBase.SFT_MAX_INPUT_LENGTH)
+
+# -------------------
+
         texts = []
 
-        #TODO: replace with abstracted helper functions
 
         for subreddit, title, post, summary in zip(
             batch["subreddit"], batch["title"], batch["post"], batch["summary"]
@@ -175,9 +189,6 @@ class TLDRFilteredDataSFT(TLDRFilteredDataBase):
             full_text = formatted_query + summary
             texts.append(full_text)
 
-            # Detail 4 (Dataset -> SFT and preference datasets have different tokenization length)
-            #   --> TODO: add check to ensure that full_text is <= SFT_MAX_INPUT_LENGTH
-            #   --> TODO: when extending to preference dataset, double cehck summary max token lengths
 
         # Detail 5 (SFT dataset for SFT training: concatenate the query and the reference summary
         # together and pad from the right)

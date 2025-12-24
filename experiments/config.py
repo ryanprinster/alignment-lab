@@ -37,6 +37,7 @@ class RLFHCaseStudyConfig(SFTConfigBase, RMConfigBase):
         self.accumulation_steps = 1
 
         self.generation_temperature = 0.7
+        self.top_p = 1.0
         self.disable_dropout = True
 
         # Checkpointing
@@ -113,6 +114,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.clip_value_func_loss = True
         self.generation_temperature = 0.7  # Sampling temp
         self.temperature_scale_logits = True
+        self.top_p = 1.0
         self.disable_dropout = True
 
         self.whiten_A = True
