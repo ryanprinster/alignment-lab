@@ -277,8 +277,8 @@ class PPORLHFEval(BaseTrainer):
         print(f"Downloaded {len(results)} results to {output_file}")
         return results
 
-    def parse_preferences(self, results):
-        """Extract A/B preferences from results"""
+    def parse_win_rates(self, results):
+        """Extract A/B win rates from results"""
         preferences = []
         for result in results:
             if result["status"] == "success":
