@@ -68,6 +68,7 @@ class SFTEval(BaseTrainer):
                 _full_texts, query_texts, ref_summary_texts = self.data.format_batch(batch)
 
                 inputs = self.data.tokenize_and_pad_left(query_texts, self.data.SFT_MAX_QUERY_LENGTH)
+                inputs = self._to_device(inputs)
 
                 sft_gen_ids, _ = self.sft.generate(
                     inputs,
