@@ -71,11 +71,13 @@ class SFTEval(BaseTrainer):
                     inputs,
                     self.data.SFT_MAX_INPUT_LENGTH,
                     self.config.generation_temperature,
+                    do_sample=False,
                 )
                 gpt_gen_ids, _ = self.gpt.generate(
                     inputs,
                     self.data.SFT_MAX_INPUT_LENGTH,
                     self.config.generation_temperature,
+                    do_sample=False,
                 )
 
                 sft_response_ids = sft_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
@@ -94,6 +96,7 @@ class SFTEval(BaseTrainer):
                 
                 print(f"Running ROUGE {rouge_total/rouge_count}\n")
 
+                print(f"===================")
                 print(f"Batch #{_batch_idx}\n")
                 print(f"Prompt: {query_texts[0]}\n\n")
                 print(f"Label: {ref_summary_texts[0]}\n")
