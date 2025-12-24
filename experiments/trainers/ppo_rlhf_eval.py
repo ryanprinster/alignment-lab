@@ -41,14 +41,14 @@ class PPORLHFEval(BaseTrainer):
         # self.model = HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
         # self.model.set_from_local_state_dict(self.config.sft_model_path)
 
-        self.model = HFModel_Policy.init_from_hf_pretrained(
-            config=self.config,
-            hf_model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
-            revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device).requires_grad_(False)
+        # self.model = HFModel_Policy.init_from_hf_pretrained(
+        #     config=self.config,
+        #     hf_model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
+        #     revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device).requires_grad_(False)
 
-        self.data = TLDRFilteredDataPPO(
-            tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
-        )
+        # self.data = TLDRFilteredDataPPO(
+        #     tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
+        # )
 
 
     def _to_device(self, batch):
