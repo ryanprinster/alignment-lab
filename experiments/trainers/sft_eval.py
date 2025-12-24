@@ -59,9 +59,6 @@ class SFTEval(BaseTrainer):
             with torch.no_grad():
                 batch = self._to_device(batch)
 
-                # Move _format_batch_prompts_and_summaries to a eval utils or as part of dataset class
-                # Same with _trim_tensor
-                # Maybe put _trim_tensor in _format_batch_prompts_and_summaries
                 _full_texts, query_texts, ref_summary_texts = self.data.format_batch(batch)
 
                 inputs = self.data.tokenize_and_pad_left(query_texts, self.data.SFT_MAX_QUERY_LENGTH)

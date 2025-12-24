@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn.functional as F
@@ -17,12 +18,12 @@ class RMEval(BaseTrainer):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device)
-        self.model.set_from_local_state_dict(self.config.rm_model_path)
+        # self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device)
+        # self.model.set_from_local_state_dict(self.config.rm_model_path)
 
-        self.data = OpenAIPreferenceData(
-            tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
-        )
+        # self.data = OpenAIPreferenceData(
+        #     tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
+        # )
 
     def _to_device(self, batch):
         batch["preferred_input_ids"] = batch["preferred_input_ids"].to(self.device)
@@ -107,6 +108,8 @@ class RMEval(BaseTrainer):
             attention_mask=attn_mask.unsqueeze(0).to(self.device),
         )
         return y
+    
+    
 
     def human_test(self):
         self.model.eval()
@@ -122,3 +125,43 @@ class RMEval(BaseTrainer):
             output = self._test_reward_model(prompt_input + "\n\nTL;DR: " + summary_input)
 
             print(output)
+
+
+    def plot_train_curves(self):
+        def smooth(values, weight=0.6):
+            """exp moving avg"""
+            smoothed = []
+            last = values[0]
+            
+            for value in values:
+                smoothed_val = last * weight + value * (1 - weight)
+                smoothed.append(smoothed_val)
+                last = smoothed_val
+            
+            return smoothed
+
+        file = self.config.rm_training_log_path
+        losses = []
+        accuracies = []
+        steps = []
+
+        with open(file, 'r') as f:
+            for line in f:
+                data = json.loads(line)
+                if data['global_step'] % 5 == 0:
+                    steps.append(data['global_step'])
+                    losses.append(data['loss']) 
+                    accuracies.append(data['accuracy'])
+
+
+        # Plot
+        plt.figure(figsize=(10, 6))
+        plt.plot(steps, losses, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        plt.plot(steps, smooth(losses, weight=0.7), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        plt.xlabel('Step')
+        plt.ylabel('RM Loss')
+        plt.title('Reward Model')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig('rm_loss_curve.png', dpi=150)
+        plt.show()
