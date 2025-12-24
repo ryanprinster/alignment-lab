@@ -114,7 +114,7 @@ class TLDRFilteredDataBase(ABC):
             formatted_query = self.get_query_text(subreddit, title, post, tokenizer)
             query_texts.append(formatted_query)
 
-            summary_texts.append()
+            summary_texts.append(summary)
             # Detail 3 (Prepend a leading space to completion; append an EOS token to the completions)
             summary = " " + summary + tokenizer.eos_token
 
