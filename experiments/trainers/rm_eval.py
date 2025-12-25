@@ -144,6 +144,8 @@ class RMEval(BaseTrainer):
         losses = []
         accuracies = []
         steps = []
+        r_rejected = []
+        r_delta = []
 
         with open(file, 'r') as f:
             for line in f:
@@ -152,16 +154,25 @@ class RMEval(BaseTrainer):
                     steps.append(data['global_step'])
                     losses.append(data['loss']) 
                     accuracies.append(data['accuracy'])
+                    r_rejected.append(data['r_rejected'])
+                    r_delta.append(data['r_delta'])
 
 
         # Plot
         plt.figure(figsize=(10, 6))
         plt.plot(steps, losses, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        plt.plot(steps, smooth(losses, weight=0.7), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        plt.plot(steps, smooth(losses, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
         
         # plt.plot(steps, accuracies, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        # plt.plot(steps, smooth(accuracies, weight=0.7), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        # plt.plot(steps, smooth(accuracies, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
         
+        # plt.plot(steps, r_rejected, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(r_rejected, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        
+        # plt.plot(steps, r_delta, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(r_delta, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        
+
         plt.xlabel('Step')
         plt.ylabel('RM Loss')
         plt.title('Reward Model')

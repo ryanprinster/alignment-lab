@@ -150,6 +150,7 @@ class RLFHPPOConfig(PPOConfigBase):
         self.pre_compute_rm_scores = True
 
         # Eval
+        self.ppo_training_log_path = ""
         self.batch_id = "msgbatch_01AhfkjK4M3996M5wbuSepU4"
         self.batch_results_file_name = "batch_results_paper_ppo_v1.jsonl"
         self.plot_name = "length_controlled_winrate_comparison_.png"

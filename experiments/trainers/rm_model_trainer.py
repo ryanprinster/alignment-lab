@@ -189,5 +189,6 @@ class RMTrainer(BaseTrainer):
             self.global_step,
             epoch,
             loss.item(),
+            checkpoint_prefix="reward_",
             final_checkpoint=True,
         )

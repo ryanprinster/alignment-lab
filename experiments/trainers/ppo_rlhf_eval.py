@@ -22,12 +22,10 @@ import pdb
 
 class PPORLHFEval(BaseTrainer):
 
-    @profile
     def __init__(self, config: PPOConfigBase):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        self.checkpointer = Checkpointer(self.config)
 
         # Trained PPO Model
         # self.model = (
@@ -526,3 +524,64 @@ class PPORLHFEval(BaseTrainer):
             generated = self._generate_summaries(input_batch)
             summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
             print(f"Generated Summary: {summary_text}\n")
+
+    def plot_train_curves(self):
+        def smooth(values, weight=0.6):
+            """exp moving avg"""
+            smoothed = []
+            last = values[0]
+            
+            for value in values:
+                smoothed_val = last * weight + value * (1 - weight)
+                smoothed.append(smoothed_val)
+                last = smoothed_val
+            
+            return smoothed
+
+        file = self.config.ppo_training_log_path
+        steps = []
+        raw_reward = []
+        rlhf_reward = []
+        kl = []
+        returns = []
+        entropy = []
+        approx_kl = []
+
+        with open(file, 'r') as f:
+            for line in f:
+                data = json.loads(line)
+                if data['global_step'] % 1 == 0:
+                    steps.append(data['global_step'])
+                    raw_reward.append(data['mean_raw_reward'])
+                    rlhf_reward.append(data['mean_rlhf_reward'])
+                    kl.append(data['kl'])
+                    returns.append(data['R'])
+                    entropy.append(data['policy_entropy'])
+                    approx_kl.append(data['approx_kl'])
+
+
+        # Plot
+        plt.figure(figsize=(10, 6))
+        # plt.plot(steps, rlhf_reward, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(rlhf_reward, weight=0.98), alpha=1.0, color='#2ca02c', linewidth=2.5, label="Reward")
+        
+        # plt.plot(steps, kl, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(kl, weight=0.90), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        
+        # plt.plot(steps, returns, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(returns, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        
+        # plt.plot(steps, entropy, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(entropy, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        
+        plt.plot(steps, approx_kl, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        plt.plot(steps, smooth(approx_kl, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        
+
+        plt.xlabel('Step')
+        plt.ylabel('RLHF Reward')
+        plt.title('RLHF Reward')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        # plt.savefig('rm_loss_curve.png', dpi=150)
+        plt.show()
