@@ -17,20 +17,20 @@ class SFTEval(BaseTrainer):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.sft = (
-            HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
-        )
-        self.sft.set_from_local_state_dict(self.config.sft_model_path)
-        self.gpt = (
-            HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
-        )
+        # self.sft = (
+        #     HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        # )
+        # self.sft.set_from_local_state_dict(self.config.sft_model_path)
+        # self.gpt = (
+        #     HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        # )
 
-        self.sft.eval()
-        self.gpt.eval()
+        # self.sft.eval()
+        # self.gpt.eval()
 
-        self.data = TLDRFilteredDataPPO(
-            tokenizer=self.sft.tokenizer, batch_size=self.config.batch_size
-        )
+        # self.data = TLDRFilteredDataPPO(
+        #     tokenizer=self.sft.tokenizer, batch_size=self.config.batch_size
+        # )
 
     def _to_device(self, batch):
         for k in batch.keys():
@@ -127,13 +127,14 @@ class SFTEval(BaseTrainer):
 
 
         # Plot
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(4, 3))
         plt.plot(steps, losses, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        plt.plot(steps, smooth(losses, weight=0.7), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        plt.plot(steps, smooth(losses, weight=0.7), alpha=1.0, color='#2ca02c', linewidth=2.5, label="1B")
         plt.xlabel('Step')
         plt.ylabel('SFT Loss')
         plt.title('SFT')
         plt.grid(True, alpha=0.3)
+        plt.legend()
         plt.tight_layout()
         plt.savefig('sft_loss_curve.png', dpi=150)
         plt.show()
