@@ -159,7 +159,7 @@ class RMEval(BaseTrainer):
 
 
         # Plot
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(6, 4))
         plt.plot(steps, losses, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         plt.plot(steps, smooth(losses, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
         
@@ -178,5 +178,5 @@ class RMEval(BaseTrainer):
         plt.title('Reward Model')
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
-        plt.savefig('rm_loss_curve.png', dpi=150)
+        # plt.savefig('rm_loss_curve.png', dpi=150)
         plt.show()
