@@ -28,12 +28,12 @@ class PPORLHFEval(BaseTrainer):
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
         # Trained PPO Model
-        # self.model = (
-        #     HFModel_Policy.init_from_hf_pretrained(self.config)
-        #     .to(self.device)
-        #     .requires_grad_(False)
-        # )
-        # self.model.set_from_local_state_dict(self.config.policy_checkpoint_path)
+        self.model = (
+            HFModel_Policy.init_from_hf_pretrained(self.config)
+            .to(self.device)
+            .requires_grad_(False)
+        )
+        self.model.set_from_local_state_dict(self.config.policy_checkpoint_path)
 
         # SFT Model
         # self.model = HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
@@ -44,9 +44,9 @@ class PPORLHFEval(BaseTrainer):
         #     hf_model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
         #     revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device).requires_grad_(False)
 
-        # self.data = TLDRFilteredDataPPO(
-        #     tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
-        # )
+        self.data = TLDRFilteredDataPPO(
+            tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
+        )
 
 
     def _to_device(self, batch):
@@ -385,7 +385,7 @@ class PPORLHFEval(BaseTrainer):
         )
 
         # Plot
-        plt.figure(figsize=(12, 7))
+        plt.figure(figsize=(8, 8))
         plt.scatter(
             ppo_centers,
             ppo_rates,
@@ -408,7 +408,7 @@ class PPORLHFEval(BaseTrainer):
             ppr_ppo_centers,
             ppr_ppo_rates,
             s=80,
-            label="Huang et. al. PPO 1B 77713",
+            label="Huang et al. PPO 1B 77713",
             color="red",
             marker="o",
             zorder=3,
@@ -561,26 +561,32 @@ class PPORLHFEval(BaseTrainer):
 
 
         # Plot
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(7, 5))
         # plt.plot(steps, rlhf_reward, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         # plt.plot(steps, smooth(rlhf_reward, weight=0.98), alpha=1.0, color='#2ca02c', linewidth=2.5, label="Reward")
-        
+        # plt.ylabel('RLHF Reward')
+
         # plt.plot(steps, kl, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         # plt.plot(steps, smooth(kl, weight=0.90), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
-        
+        # plt.ylabel('KL from SFT')
+
         # plt.plot(steps, returns, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         # plt.plot(steps, smooth(returns, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
         
         # plt.plot(steps, entropy, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         # plt.plot(steps, smooth(entropy, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
         
-        plt.plot(steps, approx_kl, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        plt.plot(steps, smooth(approx_kl, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
-        
+        # plt.plot(steps, approx_kl, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(approx_kl, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        # plt.ylabel('Approx KL')
+
+        plt.plot(steps, raw_reward, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        plt.plot(steps, smooth(raw_reward, weight=0.98), alpha=1.0, color='#2ca02c', linewidth=2.5, label="Reward")
+        plt.ylabel('RM Score')
+
 
         plt.xlabel('Step')
-        plt.ylabel('RLHF Reward')
-        plt.title('RLHF Reward')
+        plt.title('PPO')
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         # plt.savefig('rm_loss_curve.png', dpi=150)

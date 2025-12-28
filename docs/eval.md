@@ -26,7 +26,7 @@ The goal of this analysis is to verify reproduction of results.
 </tr>
 <tr>
 <td align="center"><i>Reproduced SFT</i></td>
-<td align="center"><i>Stiennon et al. (2020)</i></td>
+<td align="center"><i>Huang et al. (2024)</i></td>
 </tr>
 </table>
 
@@ -259,3 +259,121 @@ Boyfriend is a billionaire and I'm upset that I've been lied to for the past 2 y
 - Loss trajectory: [similar/different patterns]
 - Qualitative comparison: [subjective assessment]
 - Hypothesis for differences: [model architecture, dataset size, etc.]
+
+
+## Stage 2: Reward Modeling (RM)
+
+### Training Setup
+
+
+### Results
+
+**Training curves:**
+
+<table>
+<tr>
+<td><img src="assets/images/rm_loss_curve_2.png" alt="RM loss"/></td>
+<td><img src="assets/images/rm_loss_curve_huang_etal.png" alt="Huang et al. SFT loss"/></td>
+</tr>
+<tr>
+<td><img src="assets/images/rm_acc_curve.png" alt="RM accuracy"/></td>
+<td><img src="assets/images/rm_acc_curve_huang_etal.png" alt="Huang et al. SFT loss"/></td>
+</tr>
+<tr>
+<td><img src="assets/images/rm_r_delta.png" alt="RM reward delta"/></td>
+</tr>
+<tr>
+<td align="center"><i>Reproduced RM</i></td>
+<td align="center"><i>Huang et al. (2024)</i></td>
+</tr>
+</table>
+
+**Metrics:**
+| Metric | Reproduced SFT | Paper SFT | 
+|--------|----------------|-----------|
+| Validation Accuracy | 0.695 | ~0.63 (est. based on figure) |
+
+
+### Qualitative
+
+### Reward Model Scoring Examples
+
+Prompt
+> The small coastal town had always relied on its fishing industry, but over the past decade, climate change had begun to disrupt the patterns of the ocean currents, reducing the availability of certain fish. Local fishermen noticed their daily hauls shrinking, and younger generations were less inclined to continue in a profession that seemed increasingly uncertain. Town meetings became heated as residents debated whether to invest in modern aquaculture, diversify into tourism, or leave the industry entirely. Despite the tension, a sense of community persisted, with neighbors helping one another navigate the uncertain future.
+
+**Summary Quality**
+
+<details>
+<summary>Example Set 1: Reponses with varying summary quality</summary>
+
+| Reward | Summary |
+|--------|---------|
+| 2.81 | The town's fishing industry faces decline due to climate change, prompting debates about adaptation while the community remains supportive. |
+| 0.18 | The town's fishing industry is having problems, and people are trying to figure out what to do. |
+| -2.34 | The town has some issues with fish and people talk about it. |
+| -3.02 | The astronaut floated silently above the colorful clouds of Jupiter. |
+| -3.80 | Colorless green ideas sleep furiously under the whispering sandwich. |
+
+</details>
+
+
+<details>
+<summary>Example Set 2: Reponses with varying summary quality, controlling length</summary>
+
+
+| Reward | Summary |
+|--------|---------|
+| 3.36 | The town's fishing industry declined due to climate change, sparking debates on aquaculture, tourism, or leaving, yet community support endured. |
+| 1.37 | The town's fishing faced problems from climate change, and people discussed solutions, while some still helped each other through difficulties. |
+| -1.72 | The town's fishing changed a little, and some people mentioned tourism or aquaculture, but mostly everyone kept doing their usual routines. |
+| -3.38 | Purple elephants danced quietly under neon clouds while bicycles sang melodies, and sandwiches flew over mountains as time slowly forgot to exist. |
+| -3.31 | Sun quickly jumps blue river singing laptop under fast orange sky banana walks happy chair tree yesterday notebook. |
+
+</details>
+
+
+<details>
+<summary>Example Set 3: Reponses with varying summary length, controlling summary quality == high</summary>
+
+| Reward | Words | Summary |
+|--------|-------|---------|
+| 3.36 | 21 | The town's fishing industry declined due to climate change, sparking debates on aquaculture, tourism, or leaving, yet community support endured. |
+| 3.83 | 31 | The town's fishing industry declined because of climate change, leading to intense debates about options like aquaculture, tourism, or relocation, yet despite these challenges, the strong community support impressively endured. |
+| 4.56 | 41 | The town's fishing industry declined as a result of climate change, which sparked ongoing debates about alternatives like aquaculture, tourism, or even leaving altogether, yet the strong sense of mutual support within the community remained steady despite the challenges. |
+
+</details>
+
+<details>
+**Vary Length, Control Summary Quality == Medium**
+
+| Reward | Words | Summary |
+|--------|-------|---------|
+| 1.37 | 21 | The town's fishing faced problems from climate change, and people discussed solutions, while some still helped each other through difficulties. |
+| 1.62 | 36 | The town's fishing faced significant problems caused by ongoing climate change, and people discussed potential solutions together, while many community members continued to help one another through those various difficulties and challenging times. |
+| 2.17 | 48 | The town's fishing faced serious problems from the effects of climate change, so people openly discussed various solutions, but even while they shared different opinions, many still offered help to one another and stayed connected throughout those difficulties and uncertain times. |
+
+</details>
+
+<details>
+
+
+| Reward | Words | Summary |
+|--------|-------|---------|
+| -1.72 | 24 | The town's fishing changed a little, and some people mentioned tourism or aquaculture, but mostly everyone kept doing their usual routines. |
+| -0.38 | 32 | In the town, fishing changed only a little due to climate-related conditions, and some people mentioned ideas like aquaculture or tourism, but mostly everyone continued their usual everyday routines as always. |
+| 0.72 | 43 | In the small town, fishing changed just a little because of climate influences, and though some people mentioned tourism or aquaculture as alternatives, almost everyone continued with their typical routines and daily habits, keeping life mostly the same. |
+
+</details>
+
+---
+
+### Analysis
+
+**Training dynamics:**
+
+
+**Output quality:**
+
+
+**Reproduction assessment:**
+-

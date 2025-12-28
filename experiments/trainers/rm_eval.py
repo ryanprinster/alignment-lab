@@ -159,23 +159,29 @@ class RMEval(BaseTrainer):
 
 
         # Plot
-        plt.figure(figsize=(6, 4))
-        plt.plot(steps, losses, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        plt.plot(steps, smooth(losses, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        # plt.figure(figsize=(6, 4))
+        # plt.plot(steps, losses, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(losses, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        # plt.ylabel('RM Loss')
         
         # plt.plot(steps, accuracies, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         # plt.plot(steps, smooth(accuracies, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
-        
+        # plt.ylabel('Training Accuracy')
+
         # plt.plot(steps, r_rejected, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         # plt.plot(steps, smooth(r_rejected, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
-        
-        # plt.plot(steps, r_delta, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        # plt.plot(steps, smooth(r_delta, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
-        
+        # plt.ylabel('Rejected Rewards')
+
+
+
+        plt.plot(steps, r_delta, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        plt.plot(steps, smooth(r_delta, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        plt.ylabel('Reward Delta (Preferred - Rejected) ')
+
 
         plt.xlabel('Step')
-        plt.ylabel('RM Loss')
-        plt.title('Reward Model')
+        plt.title('Reward Model')  
+
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         # plt.savefig('rm_loss_curve.png', dpi=150)
