@@ -459,7 +459,7 @@ class PPORLHFEval(BaseTrainer):
 
         plt.xlabel("log(generated_length / reference_length)", fontsize=12)
         plt.ylabel(
-            "Winrate against reference summaries (according to claude-sonnet-4-20250514)",
+            "Winrate vs reference summaries (judge: claude-sonnet-4-20250514)",
             fontsize=12,
         )
         plt.title("Length-Controlled Win Rate vs Summary Length Ratio", fontsize=14)
