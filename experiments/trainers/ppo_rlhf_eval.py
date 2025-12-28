@@ -433,7 +433,7 @@ class PPORLHFEval(BaseTrainer):
             ppo_trendline(x_range),
             "--",
             linewidth=2,
-            color="orange",
+            color="blue",
             alpha=0.6,
             zorder=2,
         )
