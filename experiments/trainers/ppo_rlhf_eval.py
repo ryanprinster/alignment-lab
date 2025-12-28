@@ -455,6 +455,8 @@ class PPORLHFEval(BaseTrainer):
             zorder=2,
         )
         plt.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5, label="Random baseline")
+        plt.xlim(-1, 1)
+        plt.ylim(-1, 1)
 
         plt.xlabel("log(generated_length / reference_length)", fontsize=12)
         plt.ylabel(
