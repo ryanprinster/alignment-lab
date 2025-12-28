@@ -385,7 +385,7 @@ class PPORLHFEval(BaseTrainer):
         )
 
         # Plot
-        plt.figure(figsize=(8, 8))
+        plt.figure(figsize=(6, 6))
         plt.scatter(
             ppo_centers,
             ppo_rates,
