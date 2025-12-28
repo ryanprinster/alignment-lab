@@ -265,6 +265,8 @@ Boyfriend is a billionaire and I'm upset that I've been lied to for the past 2 y
 
 ### Training Setup
 
+(TODO) - Calibration
+
 
 ### Results
 
@@ -301,7 +303,7 @@ Boyfriend is a billionaire and I'm upset that I've been lied to for the past 2 y
 Prompt
 > The small coastal town had always relied on its fishing industry, but over the past decade, climate change had begun to disrupt the patterns of the ocean currents, reducing the availability of certain fish. Local fishermen noticed their daily hauls shrinking, and younger generations were less inclined to continue in a profession that seemed increasingly uncertain. Town meetings became heated as residents debated whether to invest in modern aquaculture, diversify into tourism, or leave the industry entirely. Despite the tension, a sense of community persisted, with neighbors helping one another navigate the uncertain future.
 
-**Summary Quality**
+**Rewards for given response**
 
 <details>
 <summary>Example Set 1: Reponses with varying summary quality</summary>
@@ -344,7 +346,7 @@ Prompt
 </details>
 
 <details>
-**Vary Length, Control Summary Quality == Medium**
+<summary>Example Set 4: Reponses with varying summary length, controlling summary quality == medium</summary>
 
 | Reward | Words | Summary |
 |--------|-------|---------|
@@ -355,7 +357,7 @@ Prompt
 </details>
 
 <details>
-
+<summary>Example Set 5: Reponses with varying summary length, controlling summary quality == low</summary>
 
 | Reward | Words | Summary |
 |--------|-------|---------|
@@ -376,4 +378,94 @@ Prompt
 
 
 **Reproduction assessment:**
--
+
+
+
+
+
+## Stage 3: RL Fine-Tuning with PPO
+
+### Training Setup
+- Base model: Llama-XXX (vs paper's GPT-3)
+- Dataset: Reddit TL;DR (XXX train examples)
+- Key hyperparameters:
+  - Learning rate: X.XX (paper: X.XX)
+  - Batch size: XX (paper: XX)
+  - Epochs: X (paper: X)
+- Training time: X hours on [your GPU setup]
+
+### Results
+
+**Training curves:**
+
+<table>
+<tr>
+<td><img src="assets/images/ppo_rlhf_reward_2.png" alt=""/></td>
+<td><img src="assets/images/ppo_rlhf_reward_huang.png" alt=""/></td>
+</tr>
+
+<tr>
+<td><img src="assets/images/ppo_rm_score.png" alt=""/></td>
+<td><img src="assets/images/ppo_rm_score_huang.png" alt=""/></td>
+</tr>
+
+<tr>
+<td><img src="assets/images/ppo_kl_from_sft.png" alt=""/></td>
+<td><img src="assets/images/ppo_kl_from_sft_huang.png" alt=""/></td>
+</tr>
+
+<tr>
+<td><img src="assets/images/ppo_approx_kl.png" alt=""/></td>
+<td><img src="assets/images/ppo_approx_kl_huang.png" alt=""/></td>
+</tr>
+
+<tr>
+<td align="center"><i>Reproduced PPO</i></td>
+<td align="center"><i>Huang et al. (2024)</i></td>
+</tr>
+</table>
+
+
+**Eval plots:**
+
+<table>
+<tr>
+<td><img src="assets/images/ppo_win_rate.png" alt=""/></td>
+<td><img src="assets/images/ppo_win_rate_huang.png" alt=""/></td>
+</tr>
+
+
+<tr>
+<td align="center"><i>Reproduced PPO</i></td>
+<td align="center"><i>Huang et al. (2024)</i></td>
+</tr>
+</table>
+
+**Metrics:**
+| Metric | Reproduced PPO | Paper PPO | 
+|--------|--------|-----------|
+
+### Sample Outputs
+
+
+
+---
+
+### Analysis
+
+**Training dynamics:**
+- My loss curve shows [convergence pattern, comparison to paper]
+- Key differences: [e.g., faster/slower convergence, final loss]
+- Possible reasons: [model size, dataset processing, hyperparameters]
+
+**Output quality:**
+- Qualitative improvements over base: [what improved]
+- Comparison to paper: [where you match, where you differ]
+- Common patterns: [e.g., length, style, content selection]
+- Failure modes: [where SFT struggles]
+
+**Reproduction assessment:**
+- ROUGE-L: [within X% of paper, discuss if meaningful]
+- Loss trajectory: [similar/different patterns]
+- Qualitative comparison: [subjective assessment]
+- Hypothesis for differences: [model architecture, dataset size, etc.]
