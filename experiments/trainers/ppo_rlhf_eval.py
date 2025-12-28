@@ -386,6 +386,7 @@ class PPORLHFEval(BaseTrainer):
 
         # Plot
         plt.figure(figsize=(6, 6))
+        plt.ylim(0, 1)
         plt.scatter(
             ppo_centers,
             ppo_rates,
@@ -455,7 +456,6 @@ class PPORLHFEval(BaseTrainer):
             zorder=2,
         )
         plt.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5, label="Random baseline")
-        plt.ylim(0, 1)
 
         plt.xlabel("log(generated_length / reference_length)", fontsize=12)
         plt.ylabel(
