@@ -475,7 +475,6 @@ class PPORLHFEval(BaseTrainer):
         #     plt.text(x, y - 0.02, f'{count}', ha='center', fontsize=8, alpha=0.6, color='red')
 
         plt.tight_layout()
-        plt.axis("equal")
         plt.savefig(self.config.plot_name, dpi=300)
         plt.show()
 
