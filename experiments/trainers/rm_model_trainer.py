@@ -17,6 +17,8 @@ from experiments.monitor import detect_nans
 from experiments.profiler import profile
 from experiments.trainers.base_trainer import BaseTrainer
 
+import pdb
+
 
 class RMTrainer(BaseTrainer):
     def __init__(self, config: RMConfigBase):
@@ -106,7 +108,8 @@ class RMTrainer(BaseTrainer):
             attention_mask=torch.cat([batch["preferred_attention_mask"], batch["rejected_attention_mask"]], dim=0),
         )
         batch_size = rewards.shape[0]
-        return rewards[:batch_size], rewards[batch_size:]
+        pdb.set_trace()
+        return rewards[:batch_size, :], rewards[batch_size:, :]
 
     @detect_nans
     def _loss(self, r_preferred, r_rejected):
