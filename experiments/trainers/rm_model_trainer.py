@@ -105,7 +105,7 @@ class RMTrainer(BaseTrainer):
             input_ids=torch.cat([batch["preferred_input_ids"], batch["rejected_input_ids"]], dim=0),
             attention_mask=torch.cat([batch["preferred_attention_mask"], batch["rejected_attention_mask"]], dim=0),
         )
-        batch_size = rewards.shape(0)
+        batch_size = rewards.shape[0]
         return rewards[:batch_size], rewards[batch_size:]
 
     @detect_nans
