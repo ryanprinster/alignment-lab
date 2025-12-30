@@ -6,6 +6,7 @@ import torch
 import torch.optim as optim
 from torch.amp import GradScaler, autocast
 from torch.optim.lr_scheduler import CosineAnnealingLR
+import torch.nn.functional as F
 
 from experiments.checkpointer import Checkpointer
 from experiments.config import RMConfigBase
@@ -112,7 +113,7 @@ class RMTrainer(BaseTrainer):
 
     @detect_nans
     def _loss(self, r_preferred, r_rejected):
-        loss = -torch.mean(torch.log(torch.sigmoid(r_preferred - r_rejected)))
+        loss = -torch.mean(F.logsigmoid(r_preferred - r_rejected))
         return loss
 
     @profile
@@ -151,10 +152,28 @@ class RMTrainer(BaseTrainer):
 
                 self._backward(loss)
 
-                if (self.global_step + 1) % self.config.accumulation_steps == 0:
+                self.global_step += 1
+
+                if self.global_step % self.config.accumulation_steps == 0:
                     self._update_weights()
 
-                self.global_step += 1
+                    self.logger.log(
+                        scalars={
+                            "loss": loss.item(),
+                            "accuracy": self._accuracy(r_preferred, r_rejected).item(),
+                            "r_preferred": torch.mean(r_preferred).item(),
+                            "r_rejected": torch.mean(r_rejected).item(),
+                            "r_delta": torch.mean(r_preferred - r_rejected).item(),
+                            "epoch": epoch,
+                            "global_step": self.global_step,
+                            "lr": self.lr_scheduler.get_last_lr()[0],
+                        },
+                        models=[self.model],
+                    )
+                    
+                    self._zero_grad()
+
+
 
                 self.checkpointer.save_checkpoint(
                     self.model,
@@ -165,22 +184,6 @@ class RMTrainer(BaseTrainer):
                     checkpoint_prefix="reward_",
                 )
 
-                self.logger.log(
-                    scalars={
-                        "loss": loss.item(),
-                        "accuracy": self._accuracy(r_preferred, r_rejected).item(),
-                        "r_preferred": torch.mean(r_preferred).item(),
-                        "r_rejected": torch.mean(r_rejected).item(),
-                        "r_delta": torch.mean(r_preferred - r_rejected).item(),
-                        "epoch": epoch,
-                        "global_step": self.global_step,
-                        "lr": self.lr_scheduler.get_last_lr()[0],
-                    },
-                    models=[self.model],
-                )
-
-                if (self.global_step + 1) % self.config.accumulation_steps == 0:
-                    self._zero_grad()
 
         # Final checkpoint
         self.checkpointer.save_checkpoint(

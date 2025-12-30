@@ -555,7 +555,7 @@ class PPORLHFEval(BaseTrainer):
                     steps.append(data['global_step'])
                     raw_reward.append(data['mean_raw_reward'])
                     rlhf_reward.append(data['mean_rlhf_reward'])
-                    kl.append(data['kl'])
+                    kl.append(data['kl_mean'])
                     returns.append(data['R'])
                     entropy.append(data['policy_entropy'])
                     approx_kl.append(data['approx_kl'])
@@ -567,9 +567,9 @@ class PPORLHFEval(BaseTrainer):
         # plt.plot(steps, smooth(rlhf_reward, weight=0.98), alpha=1.0, color='#2ca02c', linewidth=2.5, label="Reward")
         # plt.ylabel('RLHF Reward')
 
-        # plt.plot(steps, kl, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        # plt.plot(steps, smooth(kl, weight=0.90), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
-        # plt.ylabel('KL from SFT')
+        plt.plot(steps, kl, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        plt.plot(steps, smooth(kl, weight=0.90), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        plt.ylabel('KL from SFT')
 
         # plt.plot(steps, returns, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         # plt.plot(steps, smooth(returns, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
@@ -581,9 +581,9 @@ class PPORLHFEval(BaseTrainer):
         # plt.plot(steps, smooth(approx_kl, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
         # plt.ylabel('Approx KL')
 
-        plt.plot(steps, raw_reward, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        plt.plot(steps, smooth(raw_reward, weight=0.98), alpha=1.0, color='#2ca02c', linewidth=2.5, label="Reward")
-        plt.ylabel('RM Score')
+        # plt.plot(steps, raw_reward, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(raw_reward, weight=0.98), alpha=1.0, color='#2ca02c', linewidth=2.5, label="Reward")
+        # plt.ylabel('RM Score')
 
 
         plt.xlabel('Step')

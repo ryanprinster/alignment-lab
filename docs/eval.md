@@ -7,13 +7,15 @@ The goal of this analysis is to verify reproduction of results.
 ## Stage 1: Supervised Fine-Tuning (SFT)
 
 ### Training Setup
-- Base model: Llama-XXX (vs paper's GPT-3)
-- Dataset: Reddit TL;DR (XXX train examples)
-- Key hyperparameters:
-  - Learning rate: X.XX (paper: X.XX)
-  - Batch size: XX (paper: XX)
-  - Epochs: X (paper: X)
-- Training time: X hours on [your GPU setup]
+
+Follows Huang et al. 2024. Only differences are:
+
+| Difference | Reproduction | Huang et al 2024 | 
+|--------|--------|-----------|
+|GPT Base Model|Llama-3.2-1B (untuned)|Pythia Biderman et al. (2023)|
+|Tokenizer|HF Llama Tokenizer|HF Pythia Tokenizer|
+|Hardware | 1xH200| 8xH100|
+
 
 ### Results
 
@@ -265,12 +267,22 @@ Boyfriend is a billionaire and I'm upset that I've been lied to for the past 2 y
 
 ### Training Setup
 
-(TODO) - Calibration
+Follows Huang et al. 2024. Only differences are:
+
+| Difference | Reproduction | Huang et al 2024 | 
+|--------|--------|-----------|
+|Base SFT Model|Llama-3.2-1B (untuned)|Pythia Biderman et al. (2023)|
+|Tokenizer|HF Llama Tokenizer|HF Pythia Tokenizer|
+|Hardware | 1xH200| 8xH100|
+
 
 
 ### Results
 
 **Training curves:**
+
+TODO - Calibration / agreement?
+
 
 <table>
 <tr>
@@ -283,12 +295,16 @@ Boyfriend is a billionaire and I'm upset that I've been lied to for the past 2 y
 </tr>
 <tr>
 <td><img src="assets/images/rm_r_delta.png" alt="RM reward delta"/></td>
+
 </tr>
 <tr>
 <td align="center"><i>Reproduced RM</i></td>
 <td align="center"><i>Huang et al. (2024)</i></td>
 </tr>
 </table>
+
+
+
 
 **Metrics:**
 | Metric | Reproduced SFT | Paper SFT | 
@@ -425,6 +441,8 @@ Prompt
 </tr>
 </table>
 
+<img src="assets/images/ppo_train_curves.png" alt="RM reward delta"/>
+<td align="center"><i>Additional PPO training curves. Left to right, top to bottom: Entropy of the current policy, mean sequence length in a batch, mean return, length reward correlation within a batch, ratio of batch clipped by ppo loss function, max advantage in a batch.</i></td>
 
 **Eval plots:**
 
@@ -440,6 +458,8 @@ Prompt
 <td align="center"><i>Huang et al. (2024)</i></td>
 </tr>
 </table>
+
+
 
 **Metrics:**
 | Metric | Reproduced PPO | Paper PPO | 
