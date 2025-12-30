@@ -107,7 +107,7 @@ class RMTrainer(BaseTrainer):
             attention_mask=torch.cat([batch["preferred_attention_mask"], batch["rejected_attention_mask"]], dim=0),
         )
         batch_size = batch["preferred_input_ids"].shape[0]
-        return rewards[:batch_size, :], rewards[batch_size:, :]
+        return rewards[:batch_size], rewards[batch_size:]
 
     @detect_nans
     def _loss(self, r_preferred, r_rejected):
