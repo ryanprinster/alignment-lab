@@ -101,15 +101,12 @@ class RMTrainer(BaseTrainer):
 
     @profile
     def _forward(self, batch):
-        r_preferred = self.model.forward(
-            input_ids=batch["preferred_input_ids"],
-            attention_mask=batch["preferred_attention_mask"],
+        rewards = self.model.forward(
+            input_ids=torch.cat([batch["preferred_input_ids"], batch["rejected_input_ids"]], dim=0),
+            attention_mask=torch.cat([batch["preferred_attention_mask"], batch["rejected_attention_mask"]], dim=0),
         )
-        r_rejected = self.model.forward(
-            input_ids=batch["rejected_input_ids"],
-            attention_mask=batch["rejected_attention_mask"],
-        )
-        return (r_preferred, r_rejected)
+        batch_size = rewards.shape(0)
+        return rewards[:batch_size], rewards[batch_size:]
 
     @detect_nans
     def _loss(self, r_preferred, r_rejected):
