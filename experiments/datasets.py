@@ -215,6 +215,7 @@ class OpenAIPreferenceData:
                 "preferred_attention_mask",
                 "rejected_input_ids",
                 "rejected_attention_mask",
+                "queries",
             ],
         )
 
@@ -269,14 +270,14 @@ class OpenAIPreferenceData:
             preferred_attention_mask.append(preferred_tokens["attention_mask"].squeeze(0))
             rejected_input_ids.append(rejected_tokens["input_ids"].squeeze(0))
             rejected_attention_mask.append(rejected_tokens["attention_mask"].squeeze(0))
-            queries.append(query_text)
+            queries.append(self.tokenizer.encode(query_text))
 
         return {
             "preferred_input_ids": torch.stack(preferred_input_ids),
             "preferred_attention_mask": torch.stack(preferred_attention_mask),
             "rejected_input_ids": torch.stack(rejected_input_ids),
             "rejected_attention_mask": torch.stack(rejected_attention_mask),
-            "queries": queries,
+            "queries": torch.stack(queries),
         }
 
     def _format_query(self, subreddit, title, post):

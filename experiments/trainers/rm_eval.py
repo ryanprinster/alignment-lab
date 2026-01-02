@@ -21,9 +21,9 @@ class RMEval(BaseTrainer):
         # self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device)
         # self.model.set_from_local_state_dict(self.config.rm_model_path)
 
-        # self.data = OpenAIPreferenceData(
-        #     tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
-        # )
+        self.data = OpenAIPreferenceData(
+            tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
+        )
 
     def _to_device(self, batch):
         batch["preferred_input_ids"] = batch["preferred_input_ids"].to(self.device)
@@ -186,7 +186,7 @@ class RMEval(BaseTrainer):
         plt.show()
 
 
-    def compute_agreement(self):
+    def create_validation_agreement_request(self):
         print("Starting Agreement Calculation!")
 
         self.model.eval()
@@ -195,15 +195,7 @@ class RMEval(BaseTrainer):
         total_examples = 0
         with torch.no_grad():
             for _batch_idx, batch in enumerate(self.data.validation_loader):
-                batch = self._to_device(batch)
-
-                outputs = self._forward(batch)
-
-                # Logits are scalar rewards
-                r_preferred = outputs[0]
-                r_rejected = outputs[1]
-
-                correct = (r_preferred > r_rejected).float()
+                batch['pre']
 
 
 
