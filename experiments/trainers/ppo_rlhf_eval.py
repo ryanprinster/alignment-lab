@@ -585,7 +585,6 @@ class PPORLHFEval(BaseTrainer):
         # plt.plot(steps, smooth(raw_reward, weight=0.98), alpha=1.0, color='#2ca02c', linewidth=2.5, label="Reward")
         # plt.ylabel('RM Score')
 
-
         plt.xlabel('Step')
         plt.title('PPO')
         plt.grid(True, alpha=0.3)

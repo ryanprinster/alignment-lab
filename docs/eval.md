@@ -15,6 +15,8 @@ Follows Huang et al. 2024. Only differences are:
 |GPT Base Model|Llama-3.2-1B (untuned)|Pythia Biderman et al. (2023)|
 |Tokenizer|HF Llama Tokenizer|HF Pythia Tokenizer|
 |Hardware | 1xH200| 8xH100|
+|ZeRO | No | Stage 2|
+
 
 
 ### Results
@@ -246,21 +248,19 @@ Boyfriend is a billionaire and I'm upset that I've been lied to for the past 2 y
 ### Analysis
 
 **Training dynamics:**
-- My loss curve shows [convergence pattern, comparison to paper]
-- Key differences: [e.g., faster/slower convergence, final loss]
-- Possible reasons: [model size, dataset processing, hyperparameters]
+- Different convergence pattern - This is explained simply with different base models. 
+- Final loss - As we use CE loss, these are comparable. As other metrics show no evidence of overfitting, a lower final train loss is explained with Llama being a stronger and more updated base model.
 
 **Output quality:**
-- Qualitative improvements over base: [what improved]
-- Comparison to paper: [where you match, where you differ]
-- Common patterns: [e.g., length, style, content selection]
-- Failure modes: [where SFT struggles]
+- Qualitative improvements over base - SFT model learns to use eos tokens, and tends to output shorter responses
+- Failure modes:
+
+**Eval Metrics:**
+- ROUGE-L - Improves upon that of Huang etal. Any improvement is likely attributed to a better base model. 
+
 
 **Reproduction assessment:**
-- ROUGE-L: [within X% of paper, discuss if meaningful]
-- Loss trajectory: [similar/different patterns]
-- Qualitative comparison: [subjective assessment]
-- Hypothesis for differences: [model architecture, dataset size, etc.]
+- Similar performance in next token prediction loss, as well as ROUGE-L, indicates a similar performance of the model. This gives strong evidence to a successful reproduction of the SFT methods in Huang et al. 2024. 
 
 
 ## Stage 2: Reward Modeling (RM)
@@ -274,6 +274,7 @@ Follows Huang et al. 2024. Only differences are:
 |Base SFT Model|Llama-3.2-1B (untuned)|Pythia Biderman et al. (2023)|
 |Tokenizer|HF Llama Tokenizer|HF Pythia Tokenizer|
 |Hardware | 1xH200| 8xH100|
+|ZeRO | No | Stage 2|
 
 
 
@@ -351,7 +352,7 @@ Prompt
 
 
 <details>
-<summary>Example Set 3: Reponses with varying summary length, controlling summary quality == high</summary>
+<summary>Example Set 3.1: Reponses with varying summary length, controlling summary quality == high</summary>
 
 | Reward | Words | Summary |
 |--------|-------|---------|
@@ -362,7 +363,7 @@ Prompt
 </details>
 
 <details>
-<summary>Example Set 4: Reponses with varying summary length, controlling summary quality == medium</summary>
+<summary>Example Set 3.2: Reponses with varying summary length, controlling summary quality == medium</summary>
 
 | Reward | Words | Summary |
 |--------|-------|---------|
@@ -373,7 +374,7 @@ Prompt
 </details>
 
 <details>
-<summary>Example Set 5: Reponses with varying summary length, controlling summary quality == low</summary>
+<summary>Example Set 3.3: Reponses with varying summary length, controlling summary quality == low</summary>
 
 | Reward | Words | Summary |
 |--------|-------|---------|
@@ -388,27 +389,47 @@ Prompt
 ### Analysis
 
 **Training dynamics:**
-
+(TODO: Change Y axis of loss curve)
+- Variance - The most striking difference between curves is the variation of all metrics. Expected culprits are eliminated. Effective batch size is not the cause (accounting for gradient accumulation, distributed micro batches, etc). I speculate that the authors did not average over multiple seeds, as I believe the lighter background curves are different seeds. I can't eliminate that the authors did some type of smoothing, nor can I confirm the fact. 
+- Curvature - After applying smoothing (alpha = 0.92), we can observe that the curves of validation accuracy appear similar in shape and end points to that of Huang et al. We also analyze the delta between preferred and rejected rewards, which represents the models ability to separate data. 
 
 **Output quality:**
-
+The goal with manual scoring was to qualitatively get a sense of that the model behaves as expected, in the following particular ways.
+1. The model has increasing scores with increasing quality of summaries
+  - In Example 1, we give three summaries of the chosen prompt, with decreasing amounts of information and specificity. Then, we give a "summary" that has nothing to do with the paragraph but is coherent, and lastly a "summary" that is mostly nonsensical. 
+  - We do observe a decreasing model score over these examples, which is consistent with expectation.
+2. The model scores still have a positive correlation with quality of summaries when controlling for length
+  - In Example 2, we again give three summaries of the chosen prompt while controlling for length, with decreasing amounts of information and specificity. Then we again give an unrelated but coherent "summary", and lastly a nonsensical "summary".
+  - We again observe a decreasing model score over these examples, with the exception of the nonsensical response. This is within expectations; the lack of a negative tail for the nonsensical response is not concerning as the model still gives a significant penalty. 
+  - This is consistent with expectations.
+3. The model has length bias, which was observed in Huang et al. 2024.
+  - In Example 3, we control for model quality while varying length by replacing words with short phrases of the same meaning.
+  - We observe an increase of model score with length, and the effect is consistent with varying levels of summary quality. 
+  - This is consistent with expectations.
 
 **Reproduction assessment:**
-
-
+- While the variance is the most obvious deviation from the expectation, we argue that it is less important than result analysis. The smoothed curvatures matching the expected curves, properly increasing reward delta, an outperforming validation accuracy, (TODO: agreement rate), and qualitative assessment all agree that the reward model is effective. Hence, we have strong evidence that this is a faithful reproduction of the model.
 
 
 
 ## Stage 3: RL Fine-Tuning with PPO
 
 ### Training Setup
-- Base model: Llama-XXX (vs paper's GPT-3)
-- Dataset: Reddit TL;DR (XXX train examples)
-- Key hyperparameters:
-  - Learning rate: X.XX (paper: X.XX)
-  - Batch size: XX (paper: XX)
-  - Epochs: X (paper: X)
-- Training time: X hours on [your GPU setup]
+Follows Huang et al. 2024. Only differences are:
+
+| Difference | Reproduction | Huang et al 2024 | 
+|--------|--------|-----------|
+|GPT Base Model|Llama-3.2-1B (untuned)|Pythia Biderman et al. (2023)|
+|Tokenizer|HF Llama Tokenizer|HF Pythia Tokenizer|
+|Hardware | 1xH200| 8xH100|
+|ZeRO | No | Stage 2|
+|Batch size |128| 512|
+|Learning Rate |1.5e-6 | 3e-6|
+|Train Steps |912 == 1 epoch | 1M ~= 8.56 epochs|
+
+- Batch size was kept at 128 to allow sigle GPU training
+- Learning rate was decreased in proportion to sqrt batch size
+- Training was terminated early, as Huang et al 2024 observed over-optimization of 1B models in PPO training
 
 ### Results
 
@@ -464,28 +485,55 @@ Prompt
 **Metrics:**
 | Metric | Reproduced PPO | Paper PPO | 
 |--------|--------|-----------|
+|--------|--------|-----------|
+
 
 ### Sample Outputs
 
-
+TODO
 
 ---
 
 ### Analysis
 
 **Training dynamics:**
-- My loss curve shows [convergence pattern, comparison to paper]
-- Key differences: [e.g., faster/slower convergence, final loss]
-- Possible reasons: [model size, dataset processing, hyperparameters]
+- Curvature has sligthly more variation, but would likely appear to be less if run for 8.5x longer. 
+  - Approx KL - While this appears to have no curvature, we are again looking at the first 1/8.5th of 
+- A slightly higher variance can be attributed to a smaller batch size.
+- The magnitudes are clearly different. 
+  - For raw model score, the actual magnitude is irrelevant, as different seeds of a reward model with the same implementation will have different scales of reward, though bias will be controlled.  
+  - RLHF reward in this case uses a whitened reward, and presuming Huang et al. did for the given plots as well, the final score should be somewhat but not exactly comparable, as the other portion of the term from KL divergence will not be comparable as we would expect different average KLs for different vocabulary sizez. 
+  - KL - The tokenizer from HF Pythia has a smaller vocab size (~50k) to compared to that of the Llama tokenizer (~128k), hence we would expect a larger KL. This we observe. We also notice in Huang et al that the final magnitude of KL for 1B models varies sigificantly with longer training and the corresponding overoptimization observed in some models, so the important part is to verify no over optimization.
+  - (TODO: double check vocab sizes)
+  - TODO: Change Y axis scaling on plot to visualize magnitude.
+
+- Policy entropy
+  - We observe a sharp decrease then a slow increase. The absolute magnitude is low, but when comparing to W+B logs of Huang et al, we also observe a similar phenonemon.
+- A slightly increasing mean sequence length and length reward correlation imply that part of what the model is learning is to produce longer outputs, as we know that there is a length bias in the reward model. This is expected, and not concerning given we can still produce quality outputs. 
+- A decrease in max, mean, variance of advantages is observed and expected, as the model learns to better predict the next value.
+- Correspondingly, increasing returns dominated by an increasing value also indicate learning by the value model.
+- Pct clipped has a sharp decrease as the model initially learns, then is steady around 8-10%. This is ideal, meaning that the updates predicted by the model are not frequently too big, and not always too small. 
+
 
 **Output quality:**
+TODO
 - Qualitative improvements over base: [what improved]
 - Comparison to paper: [where you match, where you differ]
 - Common patterns: [e.g., length, style, content selection]
 - Failure modes: [where SFT struggles]
 
+TODO - Also do entropy analysis
+
+**Win Rate:**
+- The win rate of the PPO model using Claude Sonnet 4 as as judge shows a significant improvement over the SFT model, which is expected.
+- The trendlines are roughly similar to those of Huang et al. The authors 2.8B and 6.9B models look similar though slightly better to the reproduced 1B model, which is expected. The comparison picture shows the best looking seed for 1B models that the authors present- these have high variation due to overoptimization as the authors note.
+- The re-calculated win rate of HF version of the Huang et al. 1B seed 77713 is also plotted, for sanity check with our models. This shows a lower win rate than the ones plotted in the paper. While we re-ran this with various tokenizers, we obtained the same results. While the reason for the deviation is still unknown, it is unimportant, as we have shown with win rates that our PPO reproduction significantly outperforms our SFT reproduction, and is comparable with Huang et al. 2024
+
 **Reproduction assessment:**
-- ROUGE-L: [within X% of paper, discuss if meaningful]
-- Loss trajectory: [similar/different patterns]
-- Qualitative comparison: [subjective assessment]
-- Hypothesis for differences: [model architecture, dataset size, etc.]
+- TODO: look for 
+- Training curves mostly look within expectations, with a slight concern of low entropy
+- TODO: but entropy analysis shows...
+- Responses qualitatively are strong, and side by side with SFT and GPT models usually show a clear improvement. For a more consistent improvement, I would train larger models.
+- The win rates also are comparable.
+
+Reinforcement learning is notoriously difficult to implement from scratch, and very prone to silent bugs. So appropriately temper expecations, it is still possible there are small bugs that have mild effects on training performance. However, the evidence strongly supports that this is an accurate reproduction of Huang et al. 2024 and RLHF techniques on the whole.
