@@ -192,6 +192,7 @@ class RMEval(BaseTrainer):
 
         self.requests = []
         self.summaries = []
+        self.labels = []
 
         for _batch_idx, batch in enumerate(self.data.validation_loader):
 
@@ -203,11 +204,25 @@ class RMEval(BaseTrainer):
 
             r_preferred, r_rejected = self._forward(batch)
             pdb.set_trace()
-            (r_preferred > r_rejected)
+            labels = (r_preferred > r_rejected).int().tolist()
+            self.labels.extend(labels)
 
 
         print("finished creating batched requests")
         pdb.set_trace()
+
+        response = input("Save summaries and labels to file? (y/n): ").strip().lower()
+        if response == 'y':
+            if batch is not None:
+                batch_id = batch.id
+            else:
+                batch_id = "null_batch_id"
+
+            with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
+                for i, summary in enumerate(self.summaries):
+                    summary['label'] = self.labels[i]
+                    f.write(json.dumps(summary) + "\n")
+            print(f"Submitted summaries: {batch_id}")
 
         print(f"Submit to {len(self.requests)} requests to Claude API?")
         response = input("Submit batch? (y/n): ").strip().lower()
@@ -217,17 +232,6 @@ class RMEval(BaseTrainer):
             print(f"batch submitted. batch id = {batch.id}")
 
         
-        response = input("Save summaries to file? (y/n): ").strip().lower()
-        if response == 'y':
-            if batch is not None:
-                batch_id = batch.id
-            else:
-                batch_id = "null_batch_id"
-
-            with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
-                for summary in self.summaries:
-                    f.write(json.dumps(summary) + "\n")
-            print(f"Submitted summaries: {batch_id}")
 
     
         #TODO: Move to general helpers?
