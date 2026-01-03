@@ -26,6 +26,7 @@ class RMEval(BaseTrainer):
             tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
         )
 
+    @profile
     def _to_device(self, batch):
         batch["preferred_input_ids"] = batch["preferred_input_ids"].to(self.device)
         batch["preferred_attention_mask"] = batch["preferred_attention_mask"].to(self.device)
@@ -186,6 +187,7 @@ class RMEval(BaseTrainer):
         # plt.savefig('rm_loss_curve.png', dpi=150)
         plt.show()
 
+        
 
     def create_validation_agreement_request(self):
         print("Starting Agreement Calculation!")
@@ -203,8 +205,13 @@ class RMEval(BaseTrainer):
             batch = self._to_device(batch)
 
             r_preferred, r_rejected = self._forward(batch)
-            labels = (r_preferred > r_rejected).int().tolist()
-            self.labels.extend(labels)
+
+            @profile
+            def temp():
+                labels = (r_preferred > r_rejected).int().tolist()
+                self.labels.extend(labels)
+
+            temp(r_preferred, r_rejected)
             print(f"batch index: {_batch_idx}")
 
 

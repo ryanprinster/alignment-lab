@@ -12,6 +12,7 @@ import pdb
 
 class ProfiledDataLoader(DataLoader):
 
+    @profile
     def __iter__(self):
         self._iterator = super().__iter__()
         return self
@@ -228,7 +229,7 @@ class OpenAIPreferenceData:
             dataset["validation"], batch_size=batch_size, shuffle=True, num_workers=0
         )
 
-    # @profile
+    @profile
     def _extract_preference_data(self, batch, tokenizer):
         preferred_input_ids = []
         preferred_attention_mask = []
