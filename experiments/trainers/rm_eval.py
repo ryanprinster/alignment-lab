@@ -220,8 +220,6 @@ class RMEval(BaseTrainer):
 
             print(f"batch index: {_batch_idx}")
 
-            break
-
 
         print("finished creating batched requests")
 
