@@ -19,7 +19,7 @@ class RMEval(BaseTrainer):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device)
+        self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
         self.model.set_from_local_state_dict(self.config.rm_model_path)
 
         self.data = OpenAIPreferenceData(
