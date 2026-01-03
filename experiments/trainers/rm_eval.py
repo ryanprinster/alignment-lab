@@ -259,19 +259,22 @@ class RMEval(BaseTrainer):
             self.data.tokenizer.eos_token_id,
             self.data.tokenizer.bos_token_id,
         ]
-
+        
+        if isinstance(tensor, torch.Tensor):
+            tensor = tensor.cpu()  # Single sync
+        
+        tensor_list = tensor.tolist() if hasattr(tensor, 'tolist') else tensor
+        
         left = 0
-        right = len(tensor) - 1
-
-        def get_val(x):
-            return x.item() if hasattr(x, 'item') else x
-
-        while left <= right and get_val(tensor[left]) in trim_ids:
+        right = len(tensor_list) - 1
+        
+        # Now pure Python - no syncs!
+        while left <= right and tensor_list[left] in trim_ids:
             left += 1
-        while right >= left and get_val(tensor[right]) in trim_ids:
+        while right >= left and tensor_list[right] in trim_ids:
             right -= 1
-
-        return tensor[left : right + 1]
+        
+        return tensor_list[left : right + 1]
 
     @profile
     def _torch_batch_to_request(self, prompts, pref_summaries, rej_summaries):
