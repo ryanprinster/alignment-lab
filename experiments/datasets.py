@@ -16,7 +16,7 @@ class ProfiledDataLoader(DataLoader):
         self._iterator = super().__iter__()
         return self
 
-    # @profile
+    @profile
     def __next__(self):
         return next(self._iterator)
 
