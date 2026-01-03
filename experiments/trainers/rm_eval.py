@@ -207,11 +207,18 @@ class RMEval(BaseTrainer):
             r_preferred, r_rejected = self._forward(batch)
 
             @profile
-            def temp(r_preferred, r_rejected):
+            def temp1(r_preferred, r_rejected):
                 labels = (r_preferred > r_rejected).int().tolist()
+                return labels
+
+            @profile
+            def temp2(labels):
                 self.labels.extend(labels)
 
-            temp(r_preferred, r_rejected)
+            labels = temp1(r_preferred, r_rejected)
+            temp2(labels)
+
+
             print(f"batch index: {_batch_idx}")
 
 
