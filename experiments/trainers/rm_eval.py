@@ -11,6 +11,7 @@ from experiments.models import HFModel_Reward
 from experiments.profiler import profile
 from experiments.trainers.base_trainer import BaseTrainer
 
+import pdb
 
 class RMEval(BaseTrainer):
 
@@ -18,8 +19,8 @@ class RMEval(BaseTrainer):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device)
-        # self.model.set_from_local_state_dict(self.config.rm_model_path)
+        self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device)
+        self.model.set_from_local_state_dict(self.config.rm_model_path)
 
         self.data = OpenAIPreferenceData(
             tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
@@ -189,23 +190,129 @@ class RMEval(BaseTrainer):
     def create_validation_agreement_request(self):
         print("Starting Agreement Calculation!")
 
-        self.model.eval()
+        self.requests = []
+        self.summaries = []
 
-        total_correct = 0
-        total_examples = 0
-        with torch.no_grad():
-            for _batch_idx, batch in enumerate(self.data.validation_loader):
-                batch['pre']
+        for _batch_idx, batch in enumerate(self.data.validation_loader):
+
+            self._torch_batch_to_request(batch['queries'], 
+                                            batch['preferred_summaries'],
+                                            batch['rejected_summaries'])
+            
+            batch = self._to_device(batch)
+
+            r_preferred, r_rejected = self._forward(batch)
+            pdb.set_trace()
+            (r_preferred > r_rejected)
 
 
+        print("finished creating batched requests")
+        pdb.set_trace()
 
-                
+        print(f"Submit to {len(self.requests)} requests to Claude API?")
+        response = input("Submit batch? (y/n): ").strip().lower()
+        batch = None
+        if response == 'y':
+            batch = self.client.messages.batches.create(requests=self.requests)
+            print(f"batch submitted. batch id = {batch.id}")
 
-        now = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-        log_data = {
-            "step": _batch_idx,
-            "cumulative_accuracy": 1.0 * total_correct / total_examples,
-            "timestamp": now,
+        
+        response = input("Save summaries to file? (y/n): ").strip().lower()
+        if response == 'y':
+            if batch is not None:
+                batch_id = batch.id
+            else:
+                batch_id = "null_batch_id"
+
+            with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
+                for summary in self.summaries:
+                    f.write(json.dumps(summary) + "\n")
+            print(f"Submitted summaries: {batch_id}")
+
+    
+        #TODO: Move to general helpers?
+
+    def _trim_tensor(self, tensor):
+        """
+        Trims tokenized tensor or list of pad, eos, and bos tokens
+        """
+        trim_ids = [
+            self.data.tokenizer.pad_token_id,
+            self.data.tokenizer.eos_token_id,
+            self.data.tokenizer.bos_token_id,
+        ]
+
+        left = 0
+        right = len(tensor) - 1
+
+        def get_val(x):
+            return x.item() if hasattr(x, 'item') else x
+
+        while left <= right and get_val(tensor[left]) in trim_ids:
+            left += 1
+        while right >= left and get_val(tensor[right]) in trim_ids:
+            right -= 1
+
+        return tensor[left : right + 1]
+
+    def _torch_batch_to_request(self, prompts, pref_summaries, rej_summaries):
+        for i in range(len(pref_summaries)):  # enumerate through batch
+            prompt_ids = self._trim_tensor(prompts[i])
+            pref_sum_ids = self._trim_tensor(pref_summaries[i])
+            rej_sum_ids = self._trim_tensor(rej_summaries[i])
+
+            prompt_text = self.data.tokenizer.decode(prompt_ids, skip_special_tokens=True)
+            pref_summary_text = self.data.tokenizer.decode(
+                pref_sum_ids, skip_special_tokens=True
+            )
+            rej_summary_text = self.data.tokenizer.decode(rej_sum_ids)
+
+            request = RMEval._claude_request_json(
+                len(self.requests),
+                prompt_text,
+                pref_summary_text,
+                rej_summary_text,
+            )
+            self.requests.append(request)
+
+            self.summaries.append(
+                {
+                    "pref": pref_summary_text,
+                    "rej": rej_summary_text,
+                    "prompt": prompt_text,
+                }
+            )
+
+    @staticmethod
+    def _judge_prompt(post, summary_a, summary_b):
+        return f"""Which of the following summaries does a better job of summarizing the most important points in the given forum post, without including unimportant or irrelevant details? Judge based on accuracy, coverage, and coherence.
+
+            Post:
+            {post}
+
+            Summary A:
+            {summary_a}
+
+            Summary B:
+            {summary_b}
+
+            FIRST provide a one-sentence comparison of the two summaries, explaining which you prefer and why. SECOND, on a new line, state only "A" or "B" to indicate your choice. Your response should use the format:
+            Comparison: <one-sentence comparison and explanation>
+            Preferred: <"A" or "B">"""
+
+    @staticmethod
+    def _claude_request_json(idx, post, summary_a, summary_b):
+        return {
+            "custom_id": f"comparison-{idx}",
+            "params": {
+                "model": "claude-sonnet-4-20250514",
+                "max_tokens": 200,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": RMEval._judge_prompt(post, summary_a, summary_b),
+                    }
+                ],
+            },
         }
-        with open(f"rm_validation_{now}.jsonl", "a") as f:
-            f.write(json.dumps(log_data) + "\n")
+    

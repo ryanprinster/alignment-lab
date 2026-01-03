@@ -189,7 +189,7 @@ class OpenAIPreferenceData:
     RM_MAX_QUERY_LENGTH = 512
     RM_MAX_INPUT_LENGTH = 638
 
-    @profile
+    # @profile
     def __init__(self, tokenizer, batch_size, subset="comparisons"):
         # openai/summarize_from_feedback is not really supported by hf anymore, using this instead
         self.dataset = load_dataset("HuggingFaceH4/summarize-from-feedback")
@@ -216,6 +216,8 @@ class OpenAIPreferenceData:
                 "rejected_input_ids",
                 "rejected_attention_mask",
                 "queries",
+                "preferred_summaries",
+                "rejected_summaries",
             ],
         )
 
@@ -233,6 +235,8 @@ class OpenAIPreferenceData:
         rejected_input_ids = []
         rejected_attention_mask = []
         queries = []
+        preferred_summaries = []
+        rejected_summaries = []
 
         for meta, responses, label in zip(batch["meta"], batch["responses"], batch["label"]):
             post = meta["post"]
@@ -266,11 +270,18 @@ class OpenAIPreferenceData:
                 return_tensors="pt",
             )
 
+            query = self.tokenize_and_pad_right(query_text, self.RM_MAX_INPUT_LENGTH)
+            pref = self.tokenize_and_pad_right(preferred_summary, self.RM_MAX_INPUT_LENGTH)
+            reject = self.tokenize_and_pad_right(rejected_summary, self.RM_MAX_INPUT_LENGTH)
+
             preferred_input_ids.append(preferred_tokens["input_ids"].squeeze(0))
             preferred_attention_mask.append(preferred_tokens["attention_mask"].squeeze(0))
             rejected_input_ids.append(rejected_tokens["input_ids"].squeeze(0))
             rejected_attention_mask.append(rejected_tokens["attention_mask"].squeeze(0))
-            queries.append(self.tokenizer.encode(query_text))
+
+            queries.append(query["input_ids"].squeeze(0))
+            preferred_summaries.append(pref["input_ids"].squeeze(0))
+            rejected_summaries.append(reject["input_ids"].squeeze(0))
 
         return {
             "preferred_input_ids": torch.stack(preferred_input_ids),
@@ -278,7 +289,20 @@ class OpenAIPreferenceData:
             "rejected_input_ids": torch.stack(rejected_input_ids),
             "rejected_attention_mask": torch.stack(rejected_attention_mask),
             "queries": torch.stack(queries),
+            "preferred_summaries": torch.stack(preferred_summaries),
+            "rejected_summaries": torch.stack(rejected_summaries),
         }
+    
+    def tokenize_and_pad_right(self, texts, max_length, tokenizer=None):
+        tokenizer = tokenizer or self.tokenizer
+
+        return tokenizer(
+            texts,
+            truncation=False,  # Already did ~clever truncation~
+            padding="max_length",  # This should use tokenizer.pad_token_id
+            max_length=max_length,
+            return_tensors="pt",
+        )
 
     def _format_query(self, subreddit, title, post):
         return f"SUBREDDIT: r/{subreddit}\n\nTITLE: {title}\n\nPOST: {post}\n\nTL;DR:"
