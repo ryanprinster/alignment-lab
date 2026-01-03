@@ -228,10 +228,12 @@ class RMEval(BaseTrainer):
 
         response = input("Save summaries and labels to file? (y/n): ").strip().lower()
         if response == 'y':
-            if batch is not None:
-                batch_id = batch.id
-            else:
-                batch_id = "null_batch_id"
+            # if batch is not None:
+            #     batch_id = batch.id
+            # else:
+            #     batch_id = "null_batch_id"
+
+            batch_id="temp_id"
 
             with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
                 for i, summary in enumerate(self.summaries):
