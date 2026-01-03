@@ -203,9 +203,9 @@ class RMEval(BaseTrainer):
             batch = self._to_device(batch)
 
             r_preferred, r_rejected = self._forward(batch)
-            pdb.set_trace()
             labels = (r_preferred > r_rejected).int().tolist()
             self.labels.extend(labels)
+            print(f"batch index: {_batch_idx}")
 
 
         print("finished creating batched requests")
