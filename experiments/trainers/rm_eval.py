@@ -226,7 +226,7 @@ class RMEval(BaseTrainer):
         print("finished creating batched requests")
         pdb.set_trace()
 
-        self.labels = torch.cat(self.labels, dim=0).tolist()
+        self.labels = torch.stack(self.labels).tolist()
 
         response = input("Save summaries and labels to file? (y/n): ").strip().lower()
         if response == 'y':
