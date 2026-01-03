@@ -208,7 +208,7 @@ class RMEval(BaseTrainer):
 
             @profile
             def temp1(r_preferred, r_rejected):
-                labels = (r_preferred > r_rejected).int().tolist()
+                labels = (r_preferred > r_rejected).int()
                 return labels
 
             @profile
