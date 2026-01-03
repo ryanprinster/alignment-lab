@@ -224,24 +224,8 @@ class RMEval(BaseTrainer):
 
 
         print("finished creating batched requests")
-        pdb.set_trace()
 
         self.labels = torch.stack(self.labels).tolist()
-
-        response = input("Save summaries and labels to file? (y/n): ").strip().lower()
-        if response == 'y':
-            # if batch is not None:
-            #     batch_id = batch.id
-            # else:
-            #     batch_id = "null_batch_id"
-
-            batch_id="temp_id"
-
-            with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
-                for i, summary in enumerate(self.summaries):
-                    summary['label'] = self.labels[i]
-                    f.write(json.dumps(summary) + "\n")
-            print(f"Submitted summaries: {batch_id}")
 
         print(f"Submit to {len(self.requests)} requests to Claude API?")
         response = input("Submit batch? (y/n): ").strip().lower()
@@ -250,7 +234,20 @@ class RMEval(BaseTrainer):
             batch = self.client.messages.batches.create(requests=self.requests)
             print(f"batch submitted. batch id = {batch.id}")
 
-        
+        response = input("Save summaries and labels to file? (y/n): ").strip().lower()
+        if response == 'y':
+            if batch is not None:
+                batch_id = batch.id
+            else:
+                batch_id = "null_batch_id"
+
+            batch_id="temp_id"
+
+            with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
+                for i, summary in enumerate(self.summaries):
+                    summary['label'] = self.labels[i]
+                    f.write(json.dumps(summary) + "\n")
+            print(f"Submitted summaries: {batch_id}")
 
     
         #TODO: Move to general helpers?
