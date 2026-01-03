@@ -259,6 +259,7 @@ class RMEval(BaseTrainer):
 
         return tensor[left : right + 1]
 
+    @profile
     def _torch_batch_to_request(self, prompts, pref_summaries, rej_summaries):
         for i in range(len(pref_summaries)):  # enumerate through batch
             prompt_ids = self._trim_tensor(prompts[i])
