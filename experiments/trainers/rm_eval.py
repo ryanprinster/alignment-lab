@@ -201,7 +201,6 @@ class RMEval(BaseTrainer):
             self._torch_batch_to_request(batch['queries'], 
                                             batch['preferred_summaries'],
                                             batch['rejected_summaries'])
-            pdb.set_trace()
             batch = self._to_device(batch)
 
             r_preferred, r_rejected = self._forward(batch)
