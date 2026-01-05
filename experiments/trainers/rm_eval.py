@@ -355,7 +355,7 @@ class RMEval(BaseTrainer):
         data = []
 
         batch_id = "placeholder_jan_4"
-        with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
+        with open(f"rm_summaries_{batch_id}.jsonl", "r") as f:
             for line in f:
                 try:
                     # Decode the JSON line into a Python object
