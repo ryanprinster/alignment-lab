@@ -348,3 +348,52 @@ class RMEval(BaseTrainer):
             },
         }
     
+
+    def send_validation_agreement_request(self):
+        print("Starting Agreement Calculation!")
+
+        data = []
+
+        batch_id = "placeholder_jan_4"
+        with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
+            for line in f:
+                try:
+                    # Decode the JSON line into a Python object
+                    json_object = json.loads(line)
+                    data.append(json_object)
+
+                except json.JSONDecodeError as e:
+                    print(f"Error decoding JSON on line: {e}")
+    
+        requests = []
+        for i, d in enumerate(data):
+            request = RMEval._claude_request_json(
+                    i,
+                    d["prompt"],
+                    d["pref"],
+                    d["rej"],
+                )
+            requests.append(request)
+        
+        batch = self.client.messages.batches.create(requests=requests)
+
+        print(f"Submitted summaries: {batch.id}")
+
+        
+    
+        # response = input("Submit batch? (y/n): ").strip().lower()
+        # batch = None
+        # if response == 'y':
+        #     batch = self.client.messages.batches.create(requests=self.requests)
+        #     print(f"batch submitted. batch id = {batch.id}")
+
+        # response = input("Save summaries and labels to file? (y/n): ").strip().lower()
+        # if response == 'y':
+        #     if batch is not None:
+        #         batch_id = batch.id
+        #     else:
+        #         batch_id = "null_batch_id"
+
+
+    
+        #TODO: Move to general helpers?
