@@ -379,7 +379,7 @@ class RMEval(BaseTrainer):
                 )
             requests.append(request)
         
-        pdb.set_trace()
+            pdb.set_trace()
         batch = self.client.messages.batches.create(requests=requests)
 
         print(f"Submitted summaries: {batch.id}")
