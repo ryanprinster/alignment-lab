@@ -19,12 +19,12 @@ class RMEval(BaseTrainer):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
-        self.model.set_from_local_state_dict(self.config.rm_model_path)
+        # self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        # self.model.set_from_local_state_dict(self.config.rm_model_path)
 
-        self.data = OpenAIPreferenceData(
-            tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
-        )
+        # self.data = OpenAIPreferenceData(
+        #     tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
+        # )
 
     @profile
     def _to_device(self, batch):
@@ -160,13 +160,17 @@ class RMEval(BaseTrainer):
 
         # Plot
         # plt.figure(figsize=(6, 4))
+        # plt.ylim(0.3, 0.7)
+        # plt.yticks([0.3, 0.4, 0.5, 0.6, 0.7])
         # plt.plot(steps, losses, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         # plt.plot(steps, smooth(losses, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
         # plt.ylabel('RM Loss')
         
-        # plt.plot(steps, accuracies, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        # plt.plot(steps, smooth(accuracies, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
-        # plt.ylabel('Training Accuracy')
+        plt.plot(steps, accuracies, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        plt.plot(steps, smooth(accuracies, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        plt.ylim(0.4, 0.9)
+        plt.yticks([0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+        plt.ylabel('Training Accuracy')
 
         # plt.plot(steps, r_rejected, alpha=0.15, color='#2ca02c', linewidth=2.5,)
         # plt.plot(steps, smooth(r_rejected, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
@@ -174,9 +178,9 @@ class RMEval(BaseTrainer):
 
 
 
-        plt.plot(steps, r_delta, alpha=0.15, color='#2ca02c', linewidth=2.5,)
-        plt.plot(steps, smooth(r_delta, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
-        plt.ylabel('Reward Delta (Preferred - Rejected) ')
+        # plt.plot(steps, r_delta, alpha=0.15, color='#2ca02c', linewidth=2.5,)
+        # plt.plot(steps, smooth(r_delta, weight=0.9), alpha=1.0, color='#2ca02c', linewidth=2.5, label="SFT")
+        # plt.ylabel('Reward Delta (Preferred - Rejected) ')
 
 
         plt.xlabel('Step')
@@ -221,31 +225,36 @@ class RMEval(BaseTrainer):
             print(f"batch index: {_batch_idx}")
 
 
-        print("finished creating batched requests")
-
         self.labels = torch.stack(self.labels).tolist()
 
-        print(f"Submit to {len(self.requests)} requests to Claude API?")
-        response = input("Submit batch? (y/n): ").strip().lower()
-        batch = None
-        if response == 'y':
-            batch = self.client.messages.batches.create(requests=self.requests)
-            print(f"batch submitted. batch id = {batch.id}")
+        print("finished creating batched requests")
+        
+        batch = self.client.messages.batches.create(requests=self.requests)
+        batch_id = batch.id
 
-        response = input("Save summaries and labels to file? (y/n): ").strip().lower()
-        if response == 'y':
-            if batch is not None:
-                batch_id = batch.id
-            else:
-                batch_id = "null_batch_id"
 
-            batch_id="temp_id"
+        # print(f"Submit to {len(self.requests)} requests to Claude API?")
 
-            with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
-                for i, summary in enumerate(self.summaries):
-                    summary['label'] = self.labels[i]
-                    f.write(json.dumps(summary) + "\n")
-            print(f"Submitted summaries: {batch_id}")
+
+        with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
+            for i, summary in enumerate(self.summaries):
+                summary['label'] = self.labels[i]
+                f.write(json.dumps(summary) + "\n")
+        print(f"Submitted summaries: {batch_id}")
+    
+        # response = input("Submit batch? (y/n): ").strip().lower()
+        # batch = None
+        # if response == 'y':
+        #     batch = self.client.messages.batches.create(requests=self.requests)
+        #     print(f"batch submitted. batch id = {batch.id}")
+
+        # response = input("Save summaries and labels to file? (y/n): ").strip().lower()
+        # if response == 'y':
+        #     if batch is not None:
+        #         batch_id = batch.id
+        #     else:
+        #         batch_id = "null_batch_id"
+
 
     
         #TODO: Move to general helpers?
