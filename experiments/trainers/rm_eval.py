@@ -362,7 +362,6 @@ class RMEval(BaseTrainer):
             for line in f:
                 json_object = json.loads(line)
                 data.append(json_object)
-                pdb.set_trace()
     
         print("file now processed.")
         requests = []
