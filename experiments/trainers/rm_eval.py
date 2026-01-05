@@ -365,6 +365,7 @@ class RMEval(BaseTrainer):
                 except json.JSONDecodeError as e:
                     print(f"Error decoding JSON on line: {e}")
     
+        print("file now processed.")
         requests = []
         for i, d in enumerate(data):
             request = RMEval._claude_request_json(
