@@ -194,8 +194,6 @@ class RMEval(BaseTrainer):
         # plt.savefig('rm_loss_curve.png', dpi=150)
         plt.show()
 
-        
-
     def create_validation_agreement_request(self):
         print("Starting Agreement Calculation!")
 
@@ -226,8 +224,6 @@ class RMEval(BaseTrainer):
 
 
             print(f"batch index: {_batch_idx}")
-            break
-
 
         self.labels = torch.stack(self.labels).tolist()
 
