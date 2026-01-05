@@ -364,6 +364,7 @@ class RMEval(BaseTrainer):
                     # Decode the JSON line into a Python object
                     json_object = json.loads(line)
                     data.append(json_object)
+                    pdb.set_trace()
 
                 except json.JSONDecodeError as e:
                     print(f"Error decoding JSON on line: {e}")
