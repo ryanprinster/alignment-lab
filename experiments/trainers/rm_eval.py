@@ -360,11 +360,11 @@ class RMEval(BaseTrainer):
         batch_id = "placeholder_jan_4"
         with open(f"rm_summaries_{batch_id}.jsonl", "r") as f:
             for line in f:
+                pdb.set_trace()
                 try:
                     # Decode the JSON line into a Python object
                     json_object = json.loads(line)
                     data.append(json_object)
-                    pdb.set_trace()
 
                 except json.JSONDecodeError as e:
                     print(f"Error decoding JSON on line: {e}")
