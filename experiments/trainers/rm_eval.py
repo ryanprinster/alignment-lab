@@ -359,9 +359,10 @@ class RMEval(BaseTrainer):
 
         batch_id = "placeholder_jan_4"
 
-        pdb.set_trace()
 
         with open(f"rm_summaries_{batch_id}.jsonl", "r") as f:
+            pdb.set_trace()
+
             for line in f:
                 json_object = json.loads(line)
                 data.append(json_object)
