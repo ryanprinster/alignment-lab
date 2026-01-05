@@ -229,13 +229,14 @@ class RMEval(BaseTrainer):
 
         print("finished creating batched requests")
         
-        batch = self.client.messages.batches.create(requests=self.requests)
-        batch_id = batch.id
+        # batch = self.client.messages.batches.create(requests=self.requests)
+        # batch_id = batch.id
 
 
         # print(f"Submit to {len(self.requests)} requests to Claude API?")
 
 
+        batch_id = "placeholder_jan_4"
         with open(f"rm_summaries_{batch_id}.jsonl", "w") as f:
             for i, summary in enumerate(self.summaries):
                 summary['label'] = self.labels[i]
