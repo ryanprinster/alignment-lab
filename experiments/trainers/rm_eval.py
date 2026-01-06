@@ -466,3 +466,47 @@ class RMEval(BaseTrainer):
 
         print(f"Downloaded {len(results)} results to {output_file}")
         return results
+    
+    def parse_win_rates(self, results):
+        """Extract A/B win rates from results"""
+        agreements = []
+        with open("batch_results_rm_agreement_rate.jsonl", "r") as f:
+            for line in f:
+                result = json.loads(line)
+                if "error" not in result.keys():
+                    response = result["response"]
+
+                    if "Preferred: A" in response:
+                        claude_preference = "A"  # label preferred, claude preferred
+                    elif "Preferred: B" in response:
+                        claude_preference = "B"  # label rejected, claude preferred
+                    else:
+                        claude_preference = "unclear"
+                    
+                    if result["label"] == 1:
+                        rm_preference = "A"
+                    elif result["label"] == 0:
+                        rm_preference = "B"
+                    else:
+                        rm_preference = "unclear"
+
+                    agreement = int(claude_preference == rm_preference)
+                    if rm_preference == "unclear" or claude_preference == "unclear":
+                        agreement = float('inf')
+
+                    agreements.append(
+                        {
+                            "comparison_id": result["custom_id"],
+                            "agreement": agreement,
+                            "full_response": response,
+                        }
+                    )
+
+        # Calculate win rate
+
+        model_wins = sum(1 for p in agreements if p["agreement"] == 1)
+        total = len(agreements)
+        win_rate = model_wins / total if total > 0 else 0
+
+        print(f"Model win rate: {win_rate:.2%} ({model_wins}/{total})")
+        return agreements
