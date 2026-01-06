@@ -13,7 +13,7 @@ import torch
 from experiments.checkpointer import Checkpointer
 from experiments.config import PPOConfigBase
 from experiments.datasets import TLDRFilteredDataPPO
-from experiments.models import HFModel_Policy
+from experiments.models import HFModel_Policy, HFModel_SFT
 from experiments.profiler import profile
 from experiments.trainers.base_trainer import BaseTrainer
 
@@ -26,6 +26,9 @@ class PPORLHFEval(BaseTrainer):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+
+        
 
         # Trained PPO Model
         # self.model = (
@@ -591,3 +594,72 @@ class PPORLHFEval(BaseTrainer):
         plt.tight_layout()
         # plt.savefig('rm_loss_curve.png', dpi=150)
         plt.show()
+
+
+    def generate_samples(self):
+
+        self.ppo = (
+            HFModel_Policy.init_from_hf_pretrained(self.config)
+            .to(self.device)
+            .requires_grad_(False)
+        )
+        self.model.set_from_local_state_dict(self.config.policy_checkpoint_path)
+
+        self.sft = (
+            HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        )
+        self.sft.set_from_local_state_dict(self.config.sft_model_path)
+        self.gpt = (
+            HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
+        )
+
+        self.ppo.eval()
+        self.sft.eval()
+        self.gpt.eval()
+    
+        for _batch_idx, batch in enumerate(self.data.test_loader):
+            with torch.no_grad():
+                batch = self._to_device(batch)
+
+                _full_texts, query_texts, ref_summary_texts = self.data.format_batch(batch)
+
+                inputs = self.data.tokenize_and_pad_left(query_texts, self.data.SFT_MAX_QUERY_LENGTH)
+                inputs = self._to_device(inputs)
+
+                ppo_gen_ids, _ = self.ppo.generate(
+                    inputs,
+                    self.data.SFT_MAX_INPUT_LENGTH,
+                    self.config.generation_temperature,
+                    do_sample=False,
+                )
+
+                sft_gen_ids, _ = self.sft.generate(
+                    inputs,
+                    self.data.SFT_MAX_INPUT_LENGTH,
+                    self.config.generation_temperature,
+                    do_sample=False,
+                )
+                gpt_gen_ids, _ = self.gpt.generate(
+                    inputs,
+                    self.data.SFT_MAX_INPUT_LENGTH,
+                    self.config.generation_temperature,
+                    do_sample=False,
+                )
+
+                ppo_response_ids = ppo_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
+                sft_response_ids = sft_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
+                gpt_response_ids = gpt_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
+
+                ppo_response_texts = self.data.tokenizer.batch_decode(ppo_response_ids, skip_special_tokens=True)
+                sft_response_texts = self.data.tokenizer.batch_decode(sft_response_ids, skip_special_tokens=True)
+                gpt_response_texts = self.data.tokenizer.batch_decode(gpt_response_ids, skip_special_tokens=True)
+                
+
+                print(f"===================")
+                print(f"Batch #{_batch_idx}\n")
+                print(f"Prompt: {query_texts[0]}\n\n")
+                print(f"Label: {ref_summary_texts[0]}\n")
+                print(f"PPO Response: {ppo_response_texts[0]}\n")
+                print(f"SFT Response: {sft_response_texts[0]}\n")
+                print(f"GPT Response: {gpt_response_texts[0]}\n")
+                print(f"===================")

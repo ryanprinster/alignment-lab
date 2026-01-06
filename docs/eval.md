@@ -274,7 +274,8 @@ Follows Huang et al. 2024. Only differences are:
 |Base SFT Model|Llama-3.2-1B (untuned)|Pythia Biderman et al. (2023)|
 |Tokenizer|HF Llama Tokenizer|HF Pythia Tokenizer|
 |Hardware | 1xH200| 8xH100|
-|ZeRO | No | Stage 2|
+|ZeRO | No | Stage 2 |
+|Judge Model | Claude Sonnet 4 | OpenAI GPT 3.5 |
 
 
 
@@ -282,7 +283,7 @@ Follows Huang et al. 2024. Only differences are:
 
 **Training curves:**
 
-TODO - Calibration / agreement?
+
 
 
 <table>
@@ -311,6 +312,9 @@ TODO - Calibration / agreement?
 | Metric | Reproduced SFT | Paper SFT | 
 |--------|----------------|-----------|
 | Validation Accuracy | 0.695 | ~0.63 (est. based on figure) |
+| Agreement | 0.734 | 0.373 +/- ~0.22 (est. based on figure) |
+
+
 
 
 ### Qualitative
