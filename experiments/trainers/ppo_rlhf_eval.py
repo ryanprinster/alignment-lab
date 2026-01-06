@@ -640,9 +640,9 @@ class PPORLHFEval(BaseTrainer):
             HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
         )
 
-        self.ppo.eval()
-        self.sft.eval()
-        self.gpt.eval()
+        # self.ppo.eval()
+        # self.sft.eval()
+        # self.gpt.eval()
     
         for _batch_idx, batch in enumerate(self.data.test_loader):
             with torch.no_grad():
