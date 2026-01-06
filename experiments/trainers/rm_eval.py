@@ -467,7 +467,7 @@ class RMEval(BaseTrainer):
         print(f"Downloaded {len(results)} results to {output_file}")
         return results
     
-    def parse_win_rates(self, results):
+    def parse_win_rates(self):
         """Extract A/B win rates from results"""
         agreements = []
         with open("batch_results_rm_agreement_rate.jsonl", "r") as f:
