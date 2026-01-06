@@ -397,3 +397,72 @@ class RMEval(BaseTrainer):
 
     
         #TODO: Move to general helpers?
+
+
+
+    def download_batch_results(
+        self,
+        batch_id="msgbatch_01JEbb9JyPkqjJWjjY5B1pj6",
+        summaries_file="rm_summaries_placeholder_jan_5.jsonl",
+        output_file="batch_results_rm_agreement_rate.jsonl",
+    ):
+        """Download batch results and save to file"""
+
+        # Load summaries from file
+        import json
+
+        summaries = []
+        with open(summaries_file, "r") as f:
+            for line in f:
+                summaries.append(json.loads(line))
+        print(f"Loaded {len(summaries)} summary pairs from {summaries_file}")
+
+        # Check if batch is complete
+        batch = self.client.messages.batches.retrieve(batch_id)
+        print(f"Status: {batch.processing_status}")
+        print(f"Succeeded: {batch.request_counts.succeeded}")
+        print(f"Errored: {batch.request_counts.errored}")
+
+        if batch.processing_status != "ended":
+            print(f"Batch not ready yet. Current status: {batch.processing_status}")
+            return None
+
+
+        pdb.set_trace()
+        # Download all results
+        results = []
+        for result in self.client.messages.batches.results(batch_id):
+            if result.result.type == "succeeded":
+                response_text = result.result.message.content[0].text
+
+                idx = int(result.custom_id.split("-")[1])
+                summary_pair = summaries[idx] if idx < len(summaries) else {}
+
+                results.append(
+                    {
+                        "custom_id": result.custom_id,
+                        "response": response_text,
+                        "status": "success",
+                        "prompt": summary_pair.get("prompt", ""),
+                        "pref": summary_pair.get("pref", ""),
+                        "rej": summary_pair.get("rej", ""),
+                        "label": summary_pair.get("label", ""),
+                    }
+                )
+
+            else:
+                results.append(
+                    {
+                        "custom_id": result.custom_id,
+                        "error": str(result.result.error),
+                        "status": "error",
+                    }
+                )
+
+        # Save to file
+        with open(output_file, "w") as f:
+            for result in results:
+                f.write(json.dumps(result) + "\n")
+
+        print(f"Downloaded {len(results)} results to {output_file}")
+        return results
