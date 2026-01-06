@@ -44,7 +44,6 @@ Follows Huang et al. 2024. Only differences are:
 
 <details>
 <summary>Example 1 (click to expand)</summary>
-**Example 1: [Brief topic description]**
 
 **Original post:**
 ```
@@ -75,14 +74,12 @@ I'm really counting on Reddit for this one.
 Ex boyfriend is an asshole, I'm not going to forgive him, she's not going to forgive me. Should I still try to save the friendship?
 ```
 
-**Paper SFT (GPT-3):**
-> Paper's output
+
 
 </details>
 
 <details>
 <summary>Example 2 (click to expand)</summary>
-**Example 1: [Brief topic description]**
 
 **Original post:**
 ```
@@ -494,9 +491,284 @@ Follows Huang et al. 2024. Only differences are:
 
 ### Sample Outputs
 
-TODO
+<details>
+<summary>Example 1 (click to expand)</summary>
 
----
+**Original post:**
+```
+SUBREDDIT: r/self
+
+TITLE: Early Mid-life crisis?
+
+POST: So I'm a 37 year old man. Married, children, good steady job, living in a great little town with good schools. And I'm depressed. Not the clinical depression (though I have dealt with that in the past) but more of "is this it?" kind of depression. In a sense, I'm depressed that I only have this one life to live when there is so much to experience in this world. 
+
+A large part of this feeling (though not all) is sexual in nature. My wife, who has some medical issues, has very little interest in sex. We make love maybe 2-3 a year. She's not really into trying new things or adventurous in the sack. She used to be when we first started dating, but that's like another lifetime ago now. My libido seems to be sky-high all the time. To make matters worse, my wife was my first. I've not had sex with another woman. So I'm extremely curious about what sex with another woman would be like - especially a woman who's into it. What would she kiss like? What would it feel like to make love? What would she smell like? Etc... 
+
+I'm not looking for an excuse to cheat. I mean - if a woman threw herself at me, I'd find it hard to turn her down, but that's not going to happen. But I'm not going to actively search for a woman to have an affair. And I'm not going to get a divorce over this. That seems like a silly reason to break up a family, and probably would be selfish on my part. I really want to be there for my kids - that is the main goal in my life. My own parents did a pretty crappy job, both me and my sibling are still trying to deal with that emotionally and I want to be the best dad I can be. 
+
+Non-sexually: I have dozens of interests and no time or money to pursue them. I couldn't afford the college and settled on a two-year degree and now I'm kinda stuck job-wise. If I won the lottery, I'd be going to college full-time probably. But that's not going to happen either.
+
+TL;DR:
+```
+
+**Reference summary (human):**
+```
+Family man making a living but feel stuck. I want to experience more women, more careers, more *life* but I'm getting older and fear this may be it.
+```
+
+**PPO Response:**
+```
+Extremely high libido and curious about what sex with another woman would be like. Could not afford college and settled on two-year degree. What would it be like otherwise? any advice?
+```
+
+**SFT Response:**
+```
+I'm depressed because I'm not doing anything with my life. I want to be doing something with my life.
+```
+
+**GPT Response:**
+```
+I'm depressed because I'm not doing anything with my life. I'm not doing anything sexually. I'm not doing anything with my interests. I'm not doing anything with my money. I'm not doing anything with my time. I'm not
+```
+
+</details>
+
+<details>
+<summary>Example 2 (click to expand)</summary>
+
+**Original post:**
+```
+SUBREDDIT: r/dogs
+
+TITLE: Could the break up/move have made my dog depressed?
+
+POST: I am currently going through the heartbreak of a long term relationship that I ended and I think my dog is feeling just as terrible because of it. 
+
+My boyfriend and I adopted him 2 years ago but he's really been my dog because my boyfriend rarely paid attention to him. Even so, my dog was obsessed with him. Always wanted to play and if he was around, it's like I was invisible. Anyway, we lived in a two bedroom and gave my dog run of the second bedroom while we were at work. He hated the neighborhood because of all the noise so his walks were always short but he loved sitting in the sunlight in his bedroom and was always down to play. Basically, he was a happy dog. 
+
+Then we moved to the west cost and my dog LOVED IT! Outside time was his favorite time. He would always stare longingly at the door and loved to go out to the balcony and people watch. Time of his life. 
+
+The breakup came around and my dog and I moved back to the east coast into my moms place where I am sharing a bedroom with my two siblings. This place drains the life out of me because there is no sunlight. But my dog is taking it pretty badly. It's been just over a week and he's slowly becoming more lethargic and withdrawn. His food hadn't changed at all and I play with him just as much if not more than before and he has two other people that smother him with petting all the time. 
+
+He keeps hiding under the bed and won't respond to commands. He sleeps all day and only wants to play for a few minutes. He hates going out now and the sight of his leash sends him running. He hasn't touched his food all day today. I think he hates this place more than I do. 
+
+My sister took him to her friend's place so he can play with two other dogs and she told me he was wagging his tail and eager to play and roam around. 
+
+This is making me feel worse. I want to make him feel better. What do I do?
+
+TL;DR:
+```
+
+**Reference summary (human):**
+```
+moved back to east coast from west coast after breakup and my dog is not himself anymore. What do I do to make him better?
+```
+
+**PPO Response:**
+```
+My long term adopted dog is slowly becoming lethargic and withdrawn after breakup and hates this new place more than I do. Making me feel worse. Want to make him feel better. What do I do?
+```
+
+**SFT Response:**
+```
+My dog is depressed because of the break up/move. I think it's because he's not getting enough sunlight. What can I do?
+```
+
+**GPT Response:**
+```
+My dog is depressed because of a break up and I don't know what to do.
+```
+
+</details>
+
+<details>
+<summary>Example 3 (click to expand)</summary>
+
+**Original post:**
+```
+SUBREDDIT: r/askwomenadvice
+
+TITLE: Male with significant past trauma struggling to show interested in women physically
+
+POST: Hey /r/AskWomen so I am a 27 year old male and I am struggling with the Physical aspects of letting a women know I am interested in her, including body language.
+
+When I was between 4-12 I was significantly abused by an immediate family member to the point that I was removed from the house by social services. Since then I have been through a lot of therapy and three successful long term relationships. However, because of the abuse physical contact in a relationship comes very slow to me. I have to build trust with the girl to feel comfortable touching her or having her touch me. This includes kissing and sometimes even hugging can be a little awkward with me. Once I have been dating the girl for a couple month (2-5) I am able to be physical in all aspects and I am very comfortable with only a few hiccups. 
+
+The problem really comes through when I meet a girl I am interested and we just start dating. I have a hard time showing the girl I am interested in them. Several time over the years I have had women come back to me and say "What happened between us? I really liked you and I thought you liked me to but you never did anything?" They usually elaborate saying they knew I was interested in them because I would always want to spend time with them and I was checking them out, but then I would never make a move and eventually they thought I just wanted to be friends and they would move on.
+
+My question is what tips or strategies do you have to help me in the "getting to know you stage" show a girl I'm interested in them for sure, without disclosing too fast all the trauma I experienced as a child. The three relationships I managed to have the girl sought me and I did not have to do much work. Most women I encounter (sorry for generalization) seem to expect me to make the first moves.
+
+TL;DR:
+```
+
+**Reference summary (human):**
+```
+History of significant Trauma, Struggle to show a girl physically I am interested in them when first dating or meeting them.
+```
+
+**PPO Response:**
+```
+Male with significant past trauma struggling to show interested in women physically. What tips or strategies do you have to help me in the "getting to know you stage" show interested without disclosing too fast all trauma I experienced as child?
+```
+
+**SFT Response:**
+```
+I am a 27 year old male with a lot of trauma from my past and I am having trouble showing a woman I am interested in them physically.
+```
+
+**GPT Response:**
+```
+I am a 27 year old male and I am struggling with the Physical aspects of letting a women know I am interested in her, including body language.
+
+EDIT: I am not looking for advice on how to get a girl to like me, I
+```
+
+</details>
+
+<details>
+<summary>Example 4 (click to expand)</summary>
+
+**Original post:**
+```
+SUBREDDIT: r/AskReddit
+
+TITLE: My mom's dog was attacked by a bigger dog, and I almost shouted the other dog into pieces (Dovakhin?).  What are some things that you've done that surprised you (and possibly others that were around you)?
+
+POST: Some context from my story:
+
+My mom and I were arriving home when some woman was allowing her big dog (some kind of mastiff) to defacate all over our lawn.  As we pulled into the driveway, she realized she was going to have to clean up after herself, so she asks us for a bag (real nice that she was going to just let her dog shit all over our lawn until she saw us).
+
+Somehow, one of my mom's dogs - a chihuahua - snuck out and into the front yard.  The two dogs went about their business, doing dog stuff to identify one another, when her dog began absolutely mauling my mom's.  Just beating it to all hell.
+
+I had no idea what to do, so I just let reflexes and instincts kick in.  I just let loose this ridiculous formless shout, no real words, completely incoherent.  But the damn thing was so filled with rage that the two dogs, and the lady *and* my mom were completely shocked.  Her big dog just stopped completely and stared at me.  I walked over, picked up my mom's dog - it wasn't hurt... just shaken - and headed back into the house.
+
+More than anything, I think I surprised myself.  That dog could have definitely messed me up, but I never thought twice.
+
+The lady gave us her information in case my mom's dog was injured, but that was pretty much the end of that little altercation.
+
+TL;DR:
+```
+
+**Reference summary (human):**
+```
+At a loss for what do while my mom's dog was getting mauled, I raged out and scared everything on my street.
+```
+
+**PPO Response:**
+```
+My mom's dog was attacked by a bigger dog and I almost shouted the other dog into pieces. What are some things that you've done that surprised you (and possibly others that were around you)?
+```
+
+**SFT Response:**
+```
+My mom's dog was attacked by a bigger dog, and I almost shouted the other dog into pieces (Dovakhin?).
+```
+
+**GPT Response:**
+```
+I was just a kid, but I was able to do something that surprised me.  I was able to do something that surprised others around me.  I was able to do something that surprised myself.
+
+I'm not sure if this is the
+```
+
+</details>
+
+<details>
+<summary>Example 5 (click to expand)</summary>
+
+**Original post:**
+```
+SUBREDDIT: r/pettyrevenge
+
+TITLE: Cashier is a petty individual
+
+POST: Long time Reader, first time poster >.>
+Three major items of note:
+Firstly I work at one of the cheapy stores that have "Dollar" in its name, but not everything costs a dollar. Secondly I am transitioning from male to female, and am decently along the way. Third Sorry for the Wall 'o' Text.
+
+I was working an early shift today, something that I already don't like. Usually I get to start at 4 or 5 today I was in at 11AM, that always makes the Inryi cranky. One of my first customers comes in checks out and calls me Sir. Avoiding a lot of detail I have long hair that might not have been brushed as much as it should have been, a bust that at least one of my coworkers is jealous of, and at least light makeup on.
+
+I tell him that I'm not a Sir, because even my ID now lists me as Female and I really hate being called Sir. He tells me that its what he's addressed me as and I have to deal with it, unless I'm in Thailand in which case I'm stupid. By now I'm seething and for maybe the third time in the year I can feel my heart beating... 
+
+Revenge Time
+I total up his order and then ask "Will there be anything else Ma'am?" he doesn't seem to hear me, but I haven't hit total yet either so he can't swipe his card. Again I ask "Is there anything else you need Ma'am?" This time he just gives me a disgusted look and says "no" so I total it for him and let him swipe his card. He makes another comment about my being a "Sir" so I hit cancel on the register canceling his order, cancel the order, and then make my busy (and therefore less than pleasant) Store Manager come check this individual out. Before walking away I tell him "Have a nice day Ma'am"
+
+TL;DR:
+```
+
+**Reference summary (human):**
+```
+Customer refuses to use proper gender phrasing for cashier, she returns the favor and then cancels his order so the manager has to check him out.
+```
+
+**PPO Response:**
+```
+Total incorrect customer order at cheapy store causing rude individual to say I'm not a Sir. Make busy store manager come check this individual out before walking away
+```
+
+**SFT Response:**
+```
+I'm a female, cashier is a dick, I'm going to make his day. I'm a female, cashier is a dick, I'm going to make his day.
+```
+
+**GPT Response:**
+```
+I'm a petty individual, and I'm not going to take it anymore.
+
+I'm not sure if this is the right place to post this, but I'm not sure where else to go. I'm a 22 year old male who has
+```
+
+</details>
+
+<details>
+<summary>Example 6 (click to expand)</summary>
+
+**Original post:**
+```
+SUBREDDIT: r/relationship_advice
+
+TITLE: (18m) The girl I really like is trying to set me up with a girl I don't like. What the heck do I do?
+
+POST: I'm a high school student. I'm 18, in 12th grade, and I would go as far as to say that I'm sub-par on looks.
+
+"Girl A" is all I could ever want. She's funny, smart, a beautiful singer, an actress, she's got a great sense of style, she's mature, a lot more of a woman than any girl I know, and she's just knockout gorgeous. She told me that she knows a friend of mine, "Girl B",who likes me, and she wants to set me up with her. 
+
+Girl B is nice, and she's funny, and also a good singer, but she's just not... my type? She is just a lot less mature than Girl A. She is two years younger than me (in high school, age differences are a bigger deal), and she just reminds me too much of a cute kid instead of an attractive woman, like Girl A.
+And Girl B is a sophomore. I don't really care so much about age difference as much as I do that she's still gonna be in school all the time, even when I'm out of school or in college. I don't want a high school relationship in college.
+
+I told Girl A that I didn't like Girl B like that, and gave the same reasons as I described above. Girl A told me that I should give her a chance, and that it's not fair to complain about girls not liking me, and then turn down an opportunity like this.
+
+What the hell am I supposed to do?
+
+Sorry for the wall of text.
+
+TL;DR:
+```
+
+**Reference summary (human):**
+```
+Girl I like tries to set me up with girl I don't like. I tell Girl A why I don't like Girl B. Girl A tells me to go for it anyways. Wat do
+```
+
+**PPO Response:**
+```
+The girl I really like is trying to set me up with a girl I don't like. I don't really care so much about age difference but don't want high school relationship in college. What the heck do I do?
+```
+
+**SFT Response:**
+```
+Girl A wants to set me up with a girl I don't like, and I don't know what to do.
+```
+
+**GPT Response:**
+```
+I don't like Girl B, but I don't want to turn down an opportunity to meet a girl I like, and I don't want to be a jerk about it.
+
+EDIT: I'm not sure if this is the right place to post
+```
+
+</details>
+
 
 ### Analysis
 

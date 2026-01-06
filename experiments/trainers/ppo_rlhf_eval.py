@@ -165,8 +165,7 @@ class PPORLHFEval(BaseTrainer):
         )
         del _
         generated_summaries = full_states[:, self.data.__class__.SFT_MAX_QUERY_LENGTH :]
-        del full_states
-        return generated_summaries
+        return generated_summaries, full_states
 
     def _format_batch_prompts_and_summaries(self, batch):
         prompt_ids = []
@@ -191,7 +190,7 @@ class PPORLHFEval(BaseTrainer):
             batch = self._to_device(batch)
             
             prompt_ids, reference_summary_ids = self._format_batch_prompts_and_summaries(batch)
-            generated_summary_ids = self._generate_summaries(batch)
+            generated_summary_ids, _ = self._generate_summaries(batch)
 
             self._torch_batch_to_request(prompt_ids, reference_summary_ids, generated_summary_ids)
 
@@ -531,8 +530,36 @@ class PPORLHFEval(BaseTrainer):
             input_batch = self.data.tokenizer(query,truncation=False, padding="max_length", max_length=self.data.SFT_MAX_QUERY_LENGTH,return_tensors="pt")
             
             input_batch = self._to_device(input_batch)
-            generated = self._generate_summaries(input_batch)
-            summary_text = self.data.tokenizer.decode(generated[0], skip_special_tokens=True)
+            generated, full_text = self._generate_summaries(input_batch)
+            summary_text = self.data.tokenizer.decode(full_text[0], skip_special_tokens=True)
+            print(f"Generated Summary: {summary_text}\n")
+
+    def human_generate_summary_no_prompt_formatting(self):
+        """Interactive loop: generates summaries for user-provided prompts."""
+        self.model.eval()
+
+        while True:
+            subreddit = input("\Subreddit> ")
+            if subreddit.lower() in ("quit", "exit"):
+                break
+            print("")
+
+            title = input("\Title> ")
+            if title.lower() in ("quit", "exit"):
+                break
+            print("")
+
+            post = input("\Post> ")
+            if post.lower() in ("quit", "exit"):
+                break
+            print("")
+
+            query = self.data.get_query_text(subreddit=subreddit, title=title, post=post)
+            input_batch = self.data.tokenizer(query,truncation=False, padding="max_length", max_length=self.data.SFT_MAX_QUERY_LENGTH,return_tensors="pt")
+            
+            input_batch = self._to_device(input_batch)
+            generated, full_text = self._generate_summaries(input_batch)
+            summary_text = self.data.tokenizer.decode(full_text[0], skip_special_tokens=True)
             print(f"Generated Summary: {summary_text}\n")
 
     def plot_train_curves(self):
