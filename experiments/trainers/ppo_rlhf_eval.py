@@ -603,7 +603,7 @@ class PPORLHFEval(BaseTrainer):
             .to(self.device)
             .requires_grad_(False)
         )
-        self.model.set_from_local_state_dict(self.config.policy_checkpoint_path)
+        self.ppo.set_from_local_state_dict(self.config.policy_checkpoint_path)
 
         self.sft = (
             HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
