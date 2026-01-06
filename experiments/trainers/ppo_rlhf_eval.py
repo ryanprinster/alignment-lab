@@ -27,7 +27,13 @@ class PPORLHFEval(BaseTrainer):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-
+        self.ppo = (
+            HFModel_Policy.init_from_hf_pretrained(self.config)
+            .to(self.device)
+            .requires_grad_(False)
+        )
+        self.ppo.set_from_local_state_dict(self.config.policy_checkpoint_path)
+        self.model = self.ppo
         
 
         # Trained PPO Model
@@ -47,9 +53,9 @@ class PPORLHFEval(BaseTrainer):
         #     hf_model_name="vwxyzjn/EleutherAI_pythia-1b-deduped__ppo_left_padding_new_nowhiten_reward__tldr",
         #     revision="ppo_left_padding_new_nowhiten_reward__77713__1709671965").to(self.device).requires_grad_(False)
 
-        # self.data = TLDRFilteredDataPPO(
-        #     tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
-        # )
+        self.data = TLDRFilteredDataPPO(
+            tokenizer=self.model.tokenizer, batch_size=self.config.batch_size
+        )
 
 
     def _to_device(self, batch):
@@ -598,12 +604,6 @@ class PPORLHFEval(BaseTrainer):
 
     def generate_samples(self):
 
-        self.ppo = (
-            HFModel_Policy.init_from_hf_pretrained(self.config)
-            .to(self.device)
-            .requires_grad_(False)
-        )
-        self.ppo.set_from_local_state_dict(self.config.policy_checkpoint_path)
 
         self.sft = (
             HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
