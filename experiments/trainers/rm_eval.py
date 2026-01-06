@@ -20,7 +20,7 @@ class RMEval(BaseTrainer):
     def __init__(self, config: RMConfigBase):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        # self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
         # self.model = HFModel_Reward.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
         # self.model.set_from_local_state_dict(self.config.rm_model_path)
