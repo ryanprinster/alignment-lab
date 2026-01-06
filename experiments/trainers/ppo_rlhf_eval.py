@@ -640,9 +640,12 @@ class PPORLHFEval(BaseTrainer):
             HFModel_SFT.init_from_hf_pretrained(self.config).to(self.device).requires_grad_(False)
         )
 
-        # self.ppo.eval()
-        # self.sft.eval()
-        # self.gpt.eval()
+        self.ppo.eval()
+        self.sft.eval()
+        self.gpt.eval()
+
+        do_sample = True
+        
     
         for _batch_idx, batch in enumerate(self.data.test_loader):
             with torch.no_grad():
@@ -659,20 +662,20 @@ class PPORLHFEval(BaseTrainer):
                         inputs,
                         self.data.SFT_MAX_INPUT_LENGTH,
                         self.config.generation_temperature,
-                        do_sample=False,
+                        do_sample=do_sample,
                     )
 
                     sft_gen_ids, _ = self.sft.generate(
                         inputs,
                         self.data.SFT_MAX_INPUT_LENGTH,
                         self.config.generation_temperature,
-                        do_sample=False,
+                        do_sample=do_sample,
                     )
                     gpt_gen_ids, _ = self.gpt.generate(
                         inputs,
                         self.data.SFT_MAX_INPUT_LENGTH,
                         self.config.generation_temperature,
-                        do_sample=False,
+                        do_sample=do_sample,
                     )
 
                     ppo_response_ids = ppo_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
