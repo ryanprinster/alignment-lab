@@ -329,7 +329,9 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 
 <details>
 <summary>Prompt</summary>
-> The small coastal town had always relied on its fishing industry, but over the past decade, climate change had begun to disrupt the patterns of the ocean currents, reducing the availability of certain fish. Local fishermen noticed their daily hauls shrinking, and younger generations were less inclined to continue in a profession that seemed increasingly uncertain. Town meetings became heated as residents debated whether to invest in modern aquaculture, diversify into tourism, or leave the industry entirely. Despite the tension, a sense of community persisted, with neighbors helping one another navigate the uncertain future.
+```
+The small coastal town had always relied on its fishing industry, but over the past decade, climate change had begun to disrupt the patterns of the ocean currents, reducing the availability of certain fish. Local fishermen noticed their daily hauls shrinking, and younger generations were less inclined to continue in a profession that seemed increasingly uncertain. Town meetings became heated as residents debated whether to invest in modern aquaculture, diversify into tourism, or leave the industry entirely. Despite the tension, a sense of community persisted, with neighbors helping one another navigate the uncertain future.
+```
 </details>
 
 
@@ -935,13 +937,13 @@ honey bee operates through an intricate division of labor that shifts dynamicall
 - PPO-generated responses tend to be longer than SFT outputs, consistent with length bias. They typically include additional details or context, usually one extra sentence compared to SFT responses.
 - To assess response diversity and policy entropy, we provide examples with identical prompts and multiple generated responses. We observe reduced diversity, particularly when titles contain effective summaries (Example 7). With less descriptive titles, we observe moderately higher diversity (Example 8). Preliminary testing with completely out-of-distribution data also reveals limited diversity. This represents an area for future improvement.
 
-*Observed Failure Mode - Title Copying:*
+  **Observed Failure Mode - Title Copying:**
 Our PPO model frequently reproduces post titles verbatim, which represents reward hacking behavior. While titles often serve as reasonable summaries, this strategy demonstrates the model is exploiting a superficial pattern rather than learning genuine summarization, may fail on posts where titles are clickbait or non-descriptive, and may suggest the reward model may be biased toward title overlap.
 
-TODO Analysis:
-- Frequency: X% of outputs contain ≥Y% title overlap defined by ratio of longest common subsequence over title length.
-- Huang et al. comparison: Their samples show this behavior in Z% of cases
-- This is a known limitation of learned reward models, and may be ameliorated by more diverse reward signals, explotation regularization, or simply larger models which Huang et al. imply to be less prone to reward hacking. 
+  TODO Analysis:
+  - Frequency: X% of outputs contain ≥Y% title overlap defined by ratio of longest common subsequence over title length.
+  - Huang et al. comparison: Their samples show this behavior in Z% of cases
+  - This is a known limitation of learned reward models, and may be ameliorated by more diverse reward signals, explotation regularization, or simply larger models which Huang et al. imply to be less prone to reward hacking. 
 
 
 **Win Rate:**
