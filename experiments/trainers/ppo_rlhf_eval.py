@@ -646,52 +646,71 @@ class PPORLHFEval(BaseTrainer):
 
         do_sample = True
         
-    
-        for _batch_idx, batch in enumerate(self.data.test_loader):
+        for _batch_idx, batch in enumerate(self.data.validation_loader):
             with torch.no_grad():
-                for i in range(5):
-                    print(f"Iteration {i}")
-                    batch = self._to_device(batch)
+                batch = self._to_device(batch)
 
-                    _full_texts, query_texts, ref_summary_texts = self.data.format_batch(batch)
+                _full_texts, query_texts, ref_summary_texts = self.data.format_batch(batch)
 
-                    inputs = self.data.tokenize_and_pad_left(query_texts, self.data.SFT_MAX_QUERY_LENGTH)
-                    inputs = self._to_device(inputs)
+                inputs = self.data.tokenize_and_pad_left(query_texts, self.data.SFT_MAX_QUERY_LENGTH)
+                inputs = self._to_device(inputs)
 
-                    ppo_gen_ids, _ = self.ppo.generate(
-                        inputs,
-                        self.data.SFT_MAX_INPUT_LENGTH,
-                        self.config.generation_temperature,
-                        do_sample=do_sample,
-                    )
+                ppo_gen_ids, _ = self.ppo.generate(
+                    inputs,
+                    self.data.SFT_MAX_INPUT_LENGTH,
+                    self.config.generation_temperature,
+                    do_sample=do_sample,
+                )
 
-                    sft_gen_ids, _ = self.sft.generate(
-                        inputs,
-                        self.data.SFT_MAX_INPUT_LENGTH,
-                        self.config.generation_temperature,
-                        do_sample=do_sample,
-                    )
-                    gpt_gen_ids, _ = self.gpt.generate(
-                        inputs,
-                        self.data.SFT_MAX_INPUT_LENGTH,
-                        self.config.generation_temperature,
-                        do_sample=do_sample,
-                    )
+                sft_gen_ids, _ = self.sft.generate(
+                    inputs,
+                    self.data.SFT_MAX_INPUT_LENGTH,
+                    self.config.generation_temperature,
+                    do_sample=do_sample,
+                )
+                gpt_gen_ids, _ = self.gpt.generate(
+                    inputs,
+                    self.data.SFT_MAX_INPUT_LENGTH,
+                    self.config.generation_temperature,
+                    do_sample=do_sample,
+                )
 
-                    ppo_response_ids = ppo_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
-                    sft_response_ids = sft_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
-                    gpt_response_ids = gpt_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
+                ppo_response_ids = ppo_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
+                sft_response_ids = sft_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
+                gpt_response_ids = gpt_gen_ids[:, self.data.SFT_MAX_QUERY_LENGTH:]
 
-                    ppo_response_texts = self.data.tokenizer.batch_decode(ppo_response_ids, skip_special_tokens=True)
-                    sft_response_texts = self.data.tokenizer.batch_decode(sft_response_ids, skip_special_tokens=True)
-                    gpt_response_texts = self.data.tokenizer.batch_decode(gpt_response_ids, skip_special_tokens=True)
-                    
+                ppo_response_texts = self.data.tokenizer.batch_decode(ppo_response_ids, skip_special_tokens=True)
+                sft_response_texts = self.data.tokenizer.batch_decode(sft_response_ids, skip_special_tokens=True)
+                gpt_response_texts = self.data.tokenizer.batch_decode(gpt_response_ids, skip_special_tokens=True)
+                
 
-                    print(f"===================")
-                    print(f"Batch #{_batch_idx}\n")
-                    print(f"Prompt: {query_texts[0]}\n\n")
-                    print(f"Label: {ref_summary_texts[0]}\n")
-                    print(f"PPO Response: {ppo_response_texts[0]}\n")
-                    print(f"SFT Response: {sft_response_texts[0]}\n")
-                    print(f"GPT Response: {gpt_response_texts[0]}\n")
-                    print(f"===================")
+                print(f"===================")
+                print(f"Batch #{_batch_idx}\n")
+                print(f"Prompt: {query_texts[0]}\n\n")
+                print(f"Label: {ref_summary_texts[0]}\n")
+                print(f"PPO Response: {ppo_response_texts[0]}\n")
+                print(f"SFT Response: {sft_response_texts[0]}\n")
+                print(f"GPT Response: {gpt_response_texts[0]}\n")
+                print(f"===================")
+
+    
+    def compute_title_copying_ratio(title: str, summary: str, tokenizer) -> float:
+        """
+        What percentage of title tokens appear in summary in order?
+        Uses LCS - allows insertions but preserves order.
+        """
+        title_toks = tokenizer.encode(title.lower(), add_special_tokens=False)
+        summary_toks = tokenizer.encode(summary.lower(), add_special_tokens=False)
+        
+        # Standard LCS algorithm
+        m, n = len(title_toks), len(summary_toks)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if title_toks[i-1] == summary_toks[j-1]:
+                    dp[i][j] = dp[i-1][j-1] + 1
+                else:
+                    dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+        
+        return dp[m][n] / m

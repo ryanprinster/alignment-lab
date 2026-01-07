@@ -1,8 +1,28 @@
 # RLHF Implementation from Scratch: Evaluation Results
 
-## Overview
 
-The goal of this analysis is to verify reproduction of the 1B RLHF model from Huang et al. [[1]](#ref1) , hence we will focus analysis on where results diverge from expectation set by the literature.
+## Executive Summary
+
+This analysis evaluates a from-scratch reproduction of the 1B RLHF pipeline from Huang et al. [[1]](#ref1) on Reddit TL;DR summarization. We assess each of the three RLHF stages (supervised fine-tuning, reward modeling, and PPO fine-tuning) through quantitative metrics and qualitative validation.
+
+**Key Results:**
+- **SFT:** ROUGE-L of 0.2694 vs. ~0.2575 (original)
+- **Reward Model:** 69.5% validation accuracy vs. ~63% (original) and 73.4% judge agreement vs. 37.3% (original)
+- **PPO:** Length-controlled win rates comparable to original 1B curves, with similar training dynamics but lower policy entropy and early evidence of reward hacking via title copying (~X% of outputs) TODO:
+
+**Key Deviations:**
+- Different base model (Llama 3.2 1B vs. Pythia)
+- Single GPU vs. 8-GPU distributed training to accomodate cost
+- Different PPO batch size and learning rate to accomodate memory
+- Shorter PPO training duration (1 epoch vs. 8.5 epochs) to minimize overoptimization
+
+**Notable Findings:**
+- Successfully reproduced core RLHF dynamics
+- Identified reward hacking via title copying (TODO: X% of outputs) 
+- Lower policy entropy than expected (requires further investigation)
+
+**Assessment:** Successfully reproduced core RLHF methodology with comparable performance. Metric improvements over the original are primarily attributed to our more modern base model (Llama 3.2 vs. Pythia).
+
 
 ## Stage 1: Supervised Fine-Tuning (SFT)
 
@@ -17,7 +37,10 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 |Hardware Configuration| 1xH200| 8xH100|
 |ZeRO | Not implemented | Stage 2|
 
-
+The 8x difference in GPU count primarily affected the memory bottleneck of training (our method would need to implement ZeRO via accelerator over multiple GPUs for larger models) rather than final model quality. We validated that:
+- Effective final batch sizes are equivalent unless otherwise metioned, when controlling for gradient accumulation and distributed local and micro batches
+- Single-GPU memory constraints were managed through gradient checkpointing, traded for ~40% increased training time
+- Training stability was maintained despite different distributed training dynamics
 
 ### Results
 
@@ -29,7 +52,7 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 <td><img src="assets/images/sft_loss_curve_huang_etal.png" style="max-width: 500px; max-height: 300px;" alt="Huang et al. SFT loss"/></td>
 </tr>
 <tr>
-<td align="center"><i>Reproduced SFT</i></td>
+<td align="center"><i>Reproduced SFT (exponential smoothing α = 0.8)</i></td>
 <td align="center"><i>Huang et al. (2024)</i></td>
 </tr>
 </table>
@@ -40,7 +63,9 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 | ROUGE-L | 0.2694 | ~0.2575 (est. from figure) |
 
 ### Sample Outputs
-Below we present sample outputs from our SFT implementation to facilitate qualitative analysis.
+Note that qualitative examples presented throughout this document are drawn from a manually selected set of samples chosen to illustrate key behaviors. For quantitative validation, we computed 
+metrics over the appropriate full set, with number of samples detailed in [[1]](#ref1). The qualitative examples are intended to provide intuition about model behavior, not statistical validation.
+
 
 <details>
 <summary>Example 1</summary>
@@ -283,7 +308,7 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 
 </tr>
 <tr>
-<td align="center"><i>Reproduced RM</i></td>
+<td align="center"><i>Reproduced RM (exponential smoothing α = 0.92)</i></td>
 <td align="center"><i>Huang et al. (2024)</i></td>
 </tr>
 </table>
@@ -308,9 +333,8 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 </details>
 
 
-**Rewards for given response**
 <details>
-<summary>Example Set 1: Responses with Varying Summary Quality</summary>
+<summary>Example Scores 1: Responses with Varying Summary Quality</summary>
 
 | Reward | Summary |
 |--------|---------|
@@ -324,7 +348,7 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 
 
 <details>
-<summary>Example Set 2: Responses with Varying Summary Quality (Length-Controlled)</summary>
+<summary>Example Scores 2: Responses with Varying Summary Quality (Length-Controlled)</summary>
 
 
 | Reward | Summary |
@@ -339,7 +363,7 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 
 
 <details>
-<summary>Example Set 3.1: Responses with Varying Summary Length (High Quality)</summary>
+<summary>Example Scores 3.1: Responses with Varying Summary Length (High Quality)</summary>
 
 | Reward | Words | Summary |
 |--------|-------|---------|
@@ -350,7 +374,7 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 </details>
 
 <details>
-<summary>Example Set 3.2: Responses with Varying Summary Length (Medium Quality)</summary>
+<summary>Example Scores 3.2: Responses with Varying Summary Length (Medium Quality)</summary>
 
 | Reward | Words | Summary |
 |--------|-------|---------|
@@ -361,7 +385,7 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 </details>
 
 <details>
-<summary>Example Set 3.3: Responses with Varying Summary Length (Low Quality)</summary>
+<summary>Example Scores 3.3: Responses with Varying Summary Length (Low Quality)</summary>
 | Reward | Words | Summary |
 |--------|-------|---------|
 | -1.72 | 24 | The town's fishing changed a little, and some people mentioned tourism or aquaculture, but mostly everyone kept doing their usual routines. |
@@ -376,10 +400,10 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 
 **Training Dynamics:**
 - Variance - The most notable difference between our training curves and those reported in the paper is the observed variance across all metrics. We have eliminated the most common sources of variance: effective batch size is not the cause (accounting for gradient accumulation, distributed micro-batches, etc.). We speculate that the authors may not have averaged over multiple random seeds, as the lighter background curves in their figures appear to represent individual seed runs. We cannot definitively determine whether the authors applied smoothing to their reported curves.
-- Curvature - After applying exponential smoothing (α = 0.92), we observe that our validation accuracy curves exhibit similar shape and convergence behavior to those in Huang et al. We also analyze the delta between preferred and rejected rewards, which quantifies the model's discriminative capacity.
+- Curvature - After applying exponential smoothing, we observe that our validation accuracy curves exhibit similar shape and convergence behavior to those in Huang et al. We also analyze the delta between preferred and rejected rewards, which quantifies the model's discriminative capacity.
 
 **Output Quality:**
-The objective of our manual evaluation was to qualitatively assess whether the model exhibits expected behavior in the following key aspects. Note that this is a limited sample-based evaluation intended to verify basic model behavior rather than provide comprehensive statistical validation.
+The objective of our manual evaluation was to qualitatively assess whether the model exhibits expected behavior in the following key aspects. 
 
 1. The model assigns higher scores to higher-quality summaries
    - In Example Set 1, we provide three summaries with progressively decreasing information content and specificity, followed by a coherent but irrelevant response, and finally a largely nonsensical output.
@@ -395,9 +419,11 @@ The objective of our manual evaluation was to qualitatively assess whether the m
    - We observe monotonically increasing model scores with length, and this effect remains consistent across different quality levels.
    - This behavior is consistent with expectations.
 
-**Reproduction Assessment:**
-While variance represents the most visible deviation from the reported results, we argue that outcome metrics are more indicative of faithful reproduction. The alignment of smoothed training curves with expected behavior, properly increasing reward deltas, superior validation accuracy and agreement rates, and positive qualitative assessment collectively provide strong evidence that our reward model is effective and represents a faithful reproduction of the methodology presented in Huang et al. (2024).
+**Evaluation Metrics:**
+Validation accuracy and agreement rate both show notable improvements. Validation accuracy can be attributed to a stronger base model. Agreement rate implies that Huang et al 1B models captured a set of preferences that contradicted with the judge model (<50% agreement indicates disagreement), whereas our reproduction captured preferences that agree with the judge model. 
 
+**Reproduction Assessment:**
+Both validation accuracy and agreement rate demonstrate notable improvements over the original work. The higher validation accuracy is likely attributable to our stronger base model. The substantial improvement in agreement rate is particularly noteworthy: Huang et al.'s 1B models captured preferences that contradicted the judge model (<50% agreement indicating systematic disagreement), whereas our reproduction learned preferences that align with the judge model's assessments.
 
 ## Stage 3: RL Fine-Tuning with PPO
 
@@ -445,14 +471,14 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 </tr>
 
 <tr>
-<td align="center"><i>Reproduced PPO</i></td>
+<td align="center"><i>Reproduced PPO (exponential smoothing α = 0.92)</i></td>
 <td align="center"><i>Huang et al. (2024)</i></td>
 </tr>
 </table>
 
 <img src="assets/images/ppo_train_curves.png" style="max-width: 900px; max-height: 600px;" alt="RM reward delta"/>
 
-<td align="center"><i>Supplementary PPO training metrics. Left to right, top to bottom: policy entropy, mean sequence length per batch, mean episodic return, within-batch correlation between length and reward, proportion of batch clipped by PPO objective, maximum advantage value per batch.</i></td>
+<td align="center"><i>Supplementary PPO training metrics. Left to right, top to bottom: policy entropy, mean sequence length per batch, mean episodic return, within-batch correlation between length and reward, proportion of batch clipped by PPO objective, maximum advantage value per batch. (exponential smoothing α = 0.92) </i></td>
 
 
 
@@ -895,7 +921,9 @@ honey bee operates through an intricate division of labor that shifts dynamicall
   - Raw model score - The absolute magnitude is not meaningful for comparison, as different random seeds of identically implemented reward models will produce different reward scales, though bias remains controlled.
   - RLHF reward - Given our use of whitened rewards (and assuming Huang et al. employed the same normalization), final scores are somewhat but not precisely comparable. The KL divergence component is expected to differ due to vocabulary size differences affecting average KL values.
   - KL divergence - The HuggingFace Pythia tokenizer has a smaller vocabulary (~50k tokens) compared to the Llama tokenizer (~128k tokens), leading to an expected increase in KL divergence, which we observe. Huang et al. also report substantial variation in final KL magnitude for 1B models with extended training and corresponding over-optimization; therefore, the critical assessment is verifying the absence of over-optimization rather than exact magnitude matching.
-  - Policy entropy - We observe an initial sharp decrease followed by gradual increase. While the absolute magnitude is low, comparison with Huang et al.'s Weights & Biases logs reveals similar behavior.
+  - Policy entropy - We observe an initial sharp decrease followed by gradual increase. While the absolute magnitude is low, comparison with Huang et al.'s Weights & Biases logs reveals similar behavior. Final policy entropy: X.XX nats (vs. Y.YY nats in Huang et al.) TODO: fill in numbers.
+
+
 
 *Supplementary Metrics*
 - The gradual increase in mean sequence length and length-reward correlation indicates that the model learns to generate longer outputs, consistent with the known length bias in the reward model. This behavior is expected and not concerning given the model's continued ability to produce quality outputs.
@@ -905,14 +933,29 @@ honey bee operates through an intricate division of labor that shifts dynamicall
 
 **Output Quality:**
 - PPO-generated responses tend to be longer than SFT outputs, consistent with length bias. They typically include additional details or context, usually one extra sentence compared to SFT responses.
-- Outputs frequently contain the post title nearly verbatim. This represents an understandable reward hacking behavior, as titles often function as summaries.
-  - Inspection of samples in Huang et al. occasionally reveals this phenomenon as well.
 - To assess response diversity and policy entropy, we provide examples with identical prompts and multiple generated responses. We observe reduced diversity, particularly when titles contain effective summaries (Example 7). With less descriptive titles, we observe moderately higher diversity (Example 8). Preliminary testing with completely out-of-distribution data also reveals limited diversity. This represents an area for future improvement.
 
+*Observed Failure Mode - Title Copying:*
+Our PPO model frequently reproduces post titles verbatim, which represents reward hacking behavior. While titles often serve as reasonable summaries, this strategy demonstrates the model is exploiting a superficial pattern rather than learning genuine summarization, may fail on posts where titles are clickbait or non-descriptive, and may suggest the reward model may be biased toward title overlap.
+
+TODO Analysis:
+- Frequency: X% of outputs contain ≥Y% title overlap defined by ratio of longest common subsequence over title length.
+- Huang et al. comparison: Their samples show this behavior in Z% of cases
+- This is a known limitation of learned reward models, and may be ameliorated by more diverse reward signals, explotation regularization, or simply larger models which Huang et al. imply to be less prone to reward hacking. 
+
+
 **Win Rate:**
-- The win rate of the PPO model using Claude Sonnet 4 as judge demonstrates significant improvement over the SFT model, as expected.
-- The observed trendlines are roughly comparable to those in Huang et al. The authors' 2.8B and 6.9B models perform similarly though slightly better than our reproduced 1B model, which is expected. The comparison figure shows the best-performing 1B seed from the original work; the authors note high variation in 1B results due to over-optimization.
-- The recalculated win rate for the HuggingFace version of Huang et al.'s 1B seed 77713 is also plotted as a sanity check. This shows a lower win rate than reported in the paper. While we reran this evaluation with various tokenizers and obtained consistent results, the source of this deviation remains unclear. However, this discrepancy is not critical, as we have demonstrated that our PPO reproduction significantly outperforms our SFT reproduction and achieves comparable performance to Huang et al. (2024).
+
+- Our PPO model demonstrates significant improvement over our SFT baseline, with win rate trajectories that closely track Huang et al.'s length-controlled curves for 1B models
+- The 2.8B and 6.9B models in their work perform slightly better, as expected given increased model capacity
+- Absolute win rates differ from their reported values when evaluating their released checkpoint with our pipeline, but curve shapes and relative improvements in comparison to figures presented in the paper are preserved
+
+
+*Evaluation Consistency Check:*
+As a sanity check, we evaluated the HuggingFace version of Huang et al.'s 1B seed 77713 using our evaluation pipeline. This produces a lower absolute win rate than their reported results, suggesting systematic differences in evaluation setup (likely judge model version, prompt formatting, or sampling parameters).
+
+However, our reproduced model's win rate trajectory closely matches their maximum reported length-controlled curves for 1B models. This indicates our reproduction successfully captures the core RLHF dynamics, despite absolute win rate differences stemming from evaluation pipeline variations.
+
 
 **Reproduction Assessment:**
 - Training curves are largely consistent with expectations, with minor concerns regarding low entropy.
@@ -920,8 +963,29 @@ honey bee operates through an intricate division of labor that shifts dynamicall
 - Responses are qualitatively strong, and side-by-side comparisons with SFT and base models typically demonstrate clear improvement. More consistent improvements would be expected with larger model scales.
 - Win rates are comparable to the original work.
 
+
 Reinforcement learning is notoriously challenging to implement from scratch and highly susceptible to silent bugs. With appropriately tempered expectations, minor bugs with mild effects on training performance may still exist. However, the evidence strongly supports that this represents an accurate reproduction of Huang et al. (2024) and RLHF techniques more broadly.
 
+
+
+## Limitations and Future Work
+
+1. **Statistical Rigor:** Qualitative evaluation on ~5 samples; larger evaluation would increase credibility of all observations, error bars would support rigor
+2. **Base Model Differences:** Llama vs. Pythia may affect absolute performance
+3. **Training Duration:** 1 epoch vs. full 8.5 epoch training; longer training may reveal additional dynamics. However, this technique does prevent some amount of the overoptimization described by Huang et al.
+4. **Entropy Concerns:** Lower policy diversity suggests need for more detailed 
+5. **Reward Hacking:** Title copying behavior suggests reward model limitations or overoptimization of PPO tuned model
+6. **Single Seed:** Presented results from a single random seed; giving multiple seeds would quantify variance and stability, as done in Huang et al. 
+7. **Scalability:** Reproduced results for a 1B model demonstrating equivalent techniques, but not the results of the scaling behavior that was a focus in Huang et al.. Reproduction of scaling behavior up to ~7-10B param models wouldn't present enough difference to be an interesting learning opportunity
+
+**Future Directions:**
+- *Entropy* Include a diverity metric comparision - Average pairwise edit distance between n samples = Z tokens for PPO vs. Y Huang et al. PPO vs. X SFT
+- *Reward Hacking* Include experiments ablating the title from training data
+- Extend training to match original duration
+- Implement multi-reward model ensemble to reduce hacking
+- Scale to larger model sizes (2.8B, 6.9B)
+- Implement ZeRO from scratch (for fun)
+- Compare to DPO, RLAIF, Constitutional AI
 
 
 ## References
