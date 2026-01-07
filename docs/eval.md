@@ -2,20 +2,20 @@
 
 ## Overview
 
-The goal of this analysis is to verify reproduction of results.
+The goal of this analysis is to verify reproduction of the 1B RLHF model from Huang et al 2024, hence we will focus analysis on where results diverge from expectation set by the literature.
 
 ## Stage 1: Supervised Fine-Tuning (SFT)
 
 ### Training Setup
 
-Follows Huang et al. 2024. Only differences are:
+Our implementation follows the methodology of Huang et al. (2024) with the following key exceptions:
 
 | Difference | Reproduction | Huang et al 2024 | 
 |--------|--------|-----------|
 |GPT Base Model|Llama-3.2-1B (untuned)|Pythia Biderman et al. (2023)|
-|Tokenizer|HF Llama Tokenizer|HF Pythia Tokenizer|
-|Hardware | 1xH200| 8xH100|
-|ZeRO | No | Stage 2|
+|Tokenizer|HuggingFace Llama Tokenizer|HuggingFace Pythia Tokenizer|
+|Hardware Configuration| 1xH200| 8xH100|
+|ZeRO | Not implemented | Stage 2|
 
 
 
@@ -35,17 +35,17 @@ Follows Huang et al. 2024. Only differences are:
 </table>
 
 **Metrics:**
-| Metric | Reproduced SFT | Paper SFT | 
+| Metric | Our SFT Implementation | Huang et al. (2024) SFT | 
 |--------|--------|-----------|
-| ROUGE-L | 0.2694 | ~0.2575 (est. based on figure) |
+| ROUGE-L | 0.2694 | ~0.2575 (est. from figure) |
 
 ### Sample Outputs
-
+Below we present sample outputs from our SFT implementation to facilitate qualitative analysis.
 
 <details>
-<summary>Example 1 (click to expand)</summary>
+<summary>Example 1</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/AskReddit
 
@@ -56,12 +56,12 @@ POST: Long story short, her ex was an asshole to her in high school, she broke u
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 Best friend has been a bitch too me for a while, should I still apologize (again) and try saving friendship or tell her off?
 ```
 
-**Base model (Llama-XXX):**
+**Base Model Output (Llama-3.2-1B, Untuned):**
 ```
 I'm really counting on Reddit for this one.
 
@@ -69,19 +69,17 @@ I'm really counting on Reddit for this one.
 • I'm asking if I should still work my way and try to
 ```
 
-**My SFT:**
+**SFT Model Output (Our Implementation):**
 ```
 Ex boyfriend is an asshole, I'm not going to forgive him, she's not going to forgive me. Should I still try to save the friendship?
 ```
 
-
-
 </details>
 
 <details>
-<summary>Example 2 (click to expand)</summary>
+<summary>Example 2</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/AskReddit
 
@@ -101,31 +99,27 @@ TL;DR:
 
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 left a 25%+ cash tip for a waitress, she wrote in more money on the receipt, thusly getting a 25 dollar tip on a bill for 37.95.
 ```
 
-**Base model (Llama-XXX):**
+**Base Model Output (Llama-3.2-1B, Untuned):**
 ```
 waitress stole from me and i want to press charges.  i don't know if i should or not.
 ```
 
-**My SFT:**
+**SFT Model Output (Our Implementation):**
 ```
 waitress stole from me, i want to press charges.  should i?  i'm a server and i've seen this happen before.
 ```
 
-**Paper SFT (GPT-3):**
-> Paper's output
-
 </details>
 
 <details>
-<summary>Example 3 (click to expand)</summary>
-**Example 2: [Reconnecting with ex after cheating]**
+<summary>Example 3</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/relationships
 TITLE: Me [18M] with my ex gf [16F] 1 year, Started talking again and..
@@ -138,32 +132,30 @@ Excuse my grammar i know it's bad
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 ex gf broke up with me then got into a bad relationship which i helped end, and we are talking again.
 ```
 
-**Base model (Llama-XXX):**
+**Base Model Output (Llama-3.2-1B, Untuned):**
 ```
 I want to make sure i never do that to her again, and i want to make sure she isn't just doing this cause shes lonely too.
 I'm not sure if this is the right place to post this, but i'm not sure
 ```
 
-**My SFT:**
+**SFT Model Output (Our Implementation):**
 ```
 I cheated on my ex gf, she broke up with me, and now we are talking again, i don't know what to do reddit
 ```
 
-**Paper SFT (GPT-3):**
-> Paper's output
+
 
 </details>
 
 <details>
-<summary>Example 4 (click to expand)</summary>
-**Example 4: [Coworker emotional affair and relationship struggles]**
+<summary>Example 4</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/relationship_advice
 TITLE: Co worker relationship [25/m] my girlfriend [24/f] my coworker [30/f]
@@ -171,31 +163,28 @@ POST: Hello all! Just a quick heads up this is a throw away for obvious reasons.
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 I have a girlfriend I live with who doesn't put out and j have a horny coworker who talks dirty to me
 ```
 
-**Base model (Llama-XXX):**
+**Base Model Output (Llama-3.2-1B, Untuned):**
 ```
 I have a coworker and I have a girlfriend. We have been together for 3 years and we live together. We have been having a lot of open talks about our relationship but it seems to never change. I have been dealing with these personal
 ```
 
-**My SFT:**
+**SFT Model Output (Our Implementation):**
 ```
 I have a coworker that I have been talking dirty to and I don't know if I should dump my girlfriend or stay with her.
 ```
 
-**Paper SFT (GPT-3):**
-> Paper's output
 
 </details>
 
 <details>
-<summary>Example 5 (click to expand)</summary>
-**Example 5: [Boyfriend hid billionaire wealth for 2 years]**
+<summary>Example 5</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/relationships
 TITLE: Me [23 F] with my boyfriend [24 M] of 2 years, just found out he's nearly a billionaire.
@@ -218,25 +207,23 @@ How do I move past this?  Is it alright for me to be upset?
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 Boyfriend kept his wealth hidden from me by lying, is it OK in this situation?  How do I move past it?
 ```
 
-**Base model (Llama-XXX):**
+**Base Model Output (Llama-3.2-1B, Untuned):**
 ```
 I've been dating my boyfriend for a while now.  Around 2 and a half years.  
   
 All this time he's been lying to me though.  He's basically been keeping his wealth hidden and pretending to work while I've worked my
 ```
 
-**My SFT:**
+**SFT Model Output (Our Implementation):**
 ```
 Boyfriend is a billionaire and I'm upset that I've been lied to for the past 2 years.  How do I move past this?
 ```
 
-**Paper SFT (GPT-3):**
-> Paper's output
 
 </details>
 
@@ -250,7 +237,6 @@ Boyfriend is a billionaire and I'm upset that I've been lied to for the past 2 y
 
 **Output quality:**
 - Qualitative improvements over base - SFT model learns to use eos tokens, and tends to output shorter responses
-- Failure modes:
 
 **Eval Metrics:**
 - ROUGE-L - Improves upon that of Huang etal. Any improvement is likely attributed to a better base model. 
@@ -285,11 +271,11 @@ Follows Huang et al. 2024. Only differences are:
 
 <table>
 <tr>
-<td><img src="assets/images/rm_loss_curve_2.png" alt="RM loss"/></td>
+<td><img src="assets/images/rm_loss_curve_3.png" alt="RM loss"/></td>
 <td><img src="assets/images/rm_loss_curve_huang_etal.png" alt="Huang et al. SFT loss"/></td>
 </tr>
 <tr>
-<td><img src="assets/images/rm_acc_curve.png" alt="RM accuracy"/></td>
+<td><img src="assets/images/rm_acc_curve_3.png" alt="RM accuracy"/></td>
 <td><img src="assets/images/rm_acc_curve_huang_etal.png" alt="Huang et al. SFT loss"/></td>
 </tr>
 <tr>
@@ -390,7 +376,6 @@ Prompt
 ### Analysis
 
 **Training dynamics:**
-(TODO: Change Y axis of loss curve)
 - Variance - The most striking difference between curves is the variation of all metrics. Expected culprits are eliminated. Effective batch size is not the cause (accounting for gradient accumulation, distributed micro batches, etc). I speculate that the authors did not average over multiple seeds, as I believe the lighter background curves are different seeds. I can't eliminate that the authors did some type of smoothing, nor can I confirm the fact. 
 - Curvature - After applying smoothing (alpha = 0.92), we can observe that the curves of validation accuracy appear similar in shape and end points to that of Huang et al. We also analyze the delta between preferred and rejected rewards, which represents the models ability to separate data. 
 
@@ -409,7 +394,7 @@ The goal with manual scoring was to qualitatively get a sense of that the model 
   - This is consistent with expectations.
 
 **Reproduction assessment:**
-- While the variance is the most obvious deviation from the expectation, we argue that it is less important than result analysis. The smoothed curvatures matching the expected curves, properly increasing reward delta, an outperforming validation accuracy, (TODO: agreement rate), and qualitative assessment all agree that the reward model is effective. Hence, we have strong evidence that this is a faithful reproduction of the model.
+- While the variance is the most obvious deviation from the expectation, we argue that it is less important than result analysis. The smoothed curvatures matching the expected curves, properly increasing reward delta, an outperforming validation accuracy, agreement rate, and qualitative assessment all agree that the reward model is effective. Hence, we have strong evidence that this is a faithful reproduction of the model.
 
 
 
@@ -491,10 +476,11 @@ Follows Huang et al. 2024. Only differences are:
 
 ### Sample Outputs
 
+Cross-model Response Comparison
 <details>
-<summary>Example 1 (click to expand)</summary>
+<summary>Example 1</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/self
 
@@ -511,7 +497,7 @@ Non-sexually: I have dozens of interests and no time or money to pursue them. I 
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 Family man making a living but feel stuck. I want to experience more women, more careers, more *life* but I'm getting older and fear this may be it.
 ```
@@ -534,9 +520,9 @@ I'm depressed because I'm not doing anything with my life. I'm not doing anythin
 </details>
 
 <details>
-<summary>Example 2 (click to expand)</summary>
+<summary>Example 2</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/dogs
 
@@ -559,7 +545,7 @@ This is making me feel worse. I want to make him feel better. What do I do?
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 moved back to east coast from west coast after breakup and my dog is not himself anymore. What do I do to make him better?
 ```
@@ -582,9 +568,9 @@ My dog is depressed because of a break up and I don't know what to do.
 </details>
 
 <details>
-<summary>Example 3 (click to expand)</summary>
+<summary>Example 3</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/askwomenadvice
 
@@ -601,7 +587,7 @@ My question is what tips or strategies do you have to help me in the "getting to
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 History of significant Trauma, Struggle to show a girl physically I am interested in them when first dating or meeting them.
 ```
@@ -626,9 +612,9 @@ EDIT: I am not looking for advice on how to get a girl to like me, I
 </details>
 
 <details>
-<summary>Example 4 (click to expand)</summary>
+<summary>Example 4</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/AskReddit
 
@@ -649,7 +635,7 @@ The lady gave us her information in case my mom's dog was injured, but that was 
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 At a loss for what do while my mom's dog was getting mauled, I raged out and scared everything on my street.
 ```
@@ -674,9 +660,9 @@ I'm not sure if this is the
 </details>
 
 <details>
-<summary>Example 5 (click to expand)</summary>
+<summary>Example 5</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/pettyrevenge
 
@@ -696,7 +682,7 @@ I total up his order and then ask "Will there be anything else Ma'am?" he doesn'
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 Customer refuses to use proper gender phrasing for cashier, she returns the favor and then cancels his order so the manager has to check him out.
 ```
@@ -721,9 +707,9 @@ I'm not sure if this is the right place to post this, but I'm not sure where els
 </details>
 
 <details>
-<summary>Example 6 (click to expand)</summary>
+<summary>Example 6</summary>
 
-**Original post:**
+**Original Post:**
 ```
 SUBREDDIT: r/relationship_advice
 
@@ -745,7 +731,7 @@ Sorry for the wall of text.
 TL;DR:
 ```
 
-**Reference summary (human):**
+**Reference Summary (Human-Generated):**
 ```
 Girl I like tries to set me up with girl I don't like. I tell Girl A why I don't like Girl B. Girl A tells me to go for it anyways. Wat do
 ```
@@ -769,6 +755,132 @@ EDIT: I'm not sure if this is the right place to post
 
 </details>
 
+Intra-model Response Comparison
+<details>
+<summary>Example 7</summary>
+
+**Original Post:**
+
+```
+Prompt: SUBREDDIT: r/relationships
+
+TITLE: My (21f) boyfriend (20m) of 2 years forgets to spend time with me. (Gaming)
+
+POST: So here is the predicament, my bf and I are both obsessed with the same video game (Destiny) and during the summer we pretty much worked, gamed, eat, and slept...kinda. But now school is back in and I am starting my way to nursing school. Along with the start of school came the new DLC for the game. I have been buried in homework and that has obviously stunted my progress in the game and here is the problem. Normally getting home means turning on the consoles and gaming together but he is pretty advanced (he reached the level cap within 5 days) and I cannot keep up. This means that he goes off with his buddies and I don't exist if I'm not in the same game world/chat. I offer to maybe go out to eat, catch a movie or something but he is obsessed with completing new parts of the game. What should I do? He games every second he is at home.  My homework keeps me busy sometimes 3-4 hours a night and after I don't always want to sit down for another 2 before I go to bed. What should I do and how should I go about it? It's a touchy subject, he's a super gamer and I am a casual.
+
+TL;DR:
+```
+
+**PPO Responses:**
+
+```
+My bf of 2 years constantly forgets to spend time with me playing Destiny. My homework keeps me busy and what should I do and how should I best handle it moving forward
+```
+
+```
+My bf of 2 years exclusively games every second he is at home and my homework keeps me busy sometimes. What should I do and how should I best schedule time together moving forward?
+```
+
+```
+My bf of 2 years constantly forgets to spend time with me gaming Destiny. My homework keeps me busy and what should I do and how should I go about it? touchy subject
+```
+
+```
+My bf of 2 years constantly forgets to spend time with me gaming Destiny. My homework keeps me busy and what should I do and how should I go about it? urgent!
+```
+
+```
+My bf of 2 years exclusively spends time gaming during the weekdays after working. My homework keeps me busy. What should I do and how should I go about it? It's a touchy subject
+```
+</details>
+
+
+
+<details>
+<summary>Example 8</summary>
+
+**Original Post:**
+
+```
+SUBREDDIT: r/AskReddit
+
+TITLE: Job search crisis. I need some perspective reddit.
+
+POST: Here is my issue:
+ I have a college diploma as a power engineering technician and have applied to the only job related to my field in my area. It's a very prestigious job. Lots of money. Could work there for life. My issue is that 250-300 people are being interviewed for the same position. There will be approx 60 positions. 
+
+I don't know if my interview was good enough. My current job is minimum wage fast food. I may end up not finding out I didnt get hired untill august. 
+
+My other option is the navy. The Canadian military is in need of maritime engineers and that fits my diploma. Nothing is keeping me in my area accept the possibility of this other job.
+
+I could wait 6 months to find out I have been waiting on a refusal, and becoming an engineer in the navy could give me experience I could come back with.
+
+TL;DR:
+```
+
+**PPO Responses:**
+
+```
+Only job related to my field in my area and 250-300 people being interviewed for same position. Other option the navy which fits my diploma. Which is the better choice?
+```
+
+```
+Huge job search crisis. 250-300 people are being interviewed for same prestigious power engineering technician job. Other option is navy. Which should I choose?
+```
+
+```
+There are 250-300 people being interviewed for prestigious power engineering technician job. Other option is Canadian military which fits diploma. Could wait 6 months to find out I have been rejected or go navy. Which should I choose?
+```
+
+```
+Very prestigious power engineering technician job but 250-300 people are being interviewed for same position. Could wait 6 months to find out I have been waiting on refusal or become engineer in navy. Which should I choose?
+```
+
+```
+A college diploma as a power engineering technician and 250-300 people are being interviewed for same prestigious job. Other option the navy which fits diploma. Which should I pursue?
+```
+
+</details>
+
+
+
+
+<details>
+<summary>Example 9</summary>
+
+**Original Post:**
+
+```
+The European honey bee colony operates through an intricate division of labor that shifts dynamically based on both individual age and colony needs, with workers progressing through a series of tasks that begin with cell cleaning and brood care in their first days of adult life, transitioning to food storage and comb construction in their second week, then moving to guard duty at the hive entrance, and finally graduating to foraging in their final weeks before death at roughly six weeks of age during active seasons. This age-based progression, called temporal polyethism, is mediated by changes in juvenile hormone levels and brain gene expression, yet the system demonstrates remarkable flexibility when colony demographics are disrupted—if all older foragers are removed experimentally, some young nurse bees will precociously begin foraging despite their youth, while if a colony lacks young workers, some older foragers can revert to nursing duties through a process involving changes in their brain chemistry and glandular function. The allocation of workers to different tasks also responds to immediate colony needs through local interactions and chemical signals rather than any centralized control, with bees sampling conditions throughout the hive and adjusting their behavior based on what they encounter, such as the presence of hungry larvae triggering nursing behavior or empty food storage cells promoting foraging. Communication about resource locations occurs through the famous waggle dance, where successful foragers perform figure-eight patterns whose angle relative to vertical indicates direction relative to the sun and whose duration encodes distance, allowing hivemates to locate profitable flower patches kilometers away without any individual bee except the original scout knowing the route from personal experience.
+```
+
+**PPO Responses:**
+
+```
+bee colony operates through intricate division of labor that shifts dynamically based on individual age and colony needs. Communication about resource locations occurs through waggle dance.
+```
+
+```
+-based division of labor in European honey bee that shifts dynamically based on both individual age and colony needs. Communication about resource locations occurs through waggle dance.
+```
+
+```
+system in european honey bee operates through intricate division of labor that shifts dynamically based on both individual age and colony needs. How flexible is the system?
+```
+
+```
+-based division of labor among European honey bee colony shifts dynamically based on both individual age and colony needs. Communication about resource locations occurs through waggle dance.
+```
+
+```
+polyethism in European honey bee operates through age-based division of labor shifting dynamically based on individual age and colony needs. Communication about resource locations occurs through waggle dance.
+```
+
+```
+honey bee operates through an intricate division of labor that shifts dynamically based on both individual age and colony needs. Communication about resource locations occurs through waggle dance.
+```
+
+</details>
 
 ### Analysis
 
@@ -780,8 +892,6 @@ EDIT: I'm not sure if this is the right place to post
   - For raw model score, the actual magnitude is irrelevant, as different seeds of a reward model with the same implementation will have different scales of reward, though bias will be controlled.  
   - RLHF reward in this case uses a whitened reward, and presuming Huang et al. did for the given plots as well, the final score should be somewhat but not exactly comparable, as the other portion of the term from KL divergence will not be comparable as we would expect different average KLs for different vocabulary sizez. 
   - KL - The tokenizer from HF Pythia has a smaller vocab size (~50k) to compared to that of the Llama tokenizer (~128k), hence we would expect a larger KL. This we observe. We also notice in Huang et al that the final magnitude of KL for 1B models varies sigificantly with longer training and the corresponding overoptimization observed in some models, so the important part is to verify no over optimization.
-  - (TODO: double check vocab sizes)
-  - TODO: Change Y axis scaling on plot to visualize magnitude.
 
 - Policy entropy
   - We observe a sharp decrease then a slow increase. The absolute magnitude is low, but when comparing to W+B logs of Huang et al, we also observe a similar phenonemon.
@@ -792,13 +902,12 @@ EDIT: I'm not sure if this is the right place to post
 
 
 **Output quality:**
-TODO
-- Qualitative improvements over base: [what improved]
-- Comparison to paper: [where you match, where you differ]
-- Common patterns: [e.g., length, style, content selection]
-- Failure modes: [where SFT struggles]
+- PPO responses tend to be longer than SFT responses, in accordance with the length bias. They tend to add in more details or context, usually one extra sentence over the SFT responses. 
+- Notice that the outputs often contain the title, nearly word for word. This is an understandable reward hack, as the title is often a summary. 
+  - Upon inspecting some of the samples given in the paper by Huang et al., we occasionally observe this phenomea as well. 
+- To understand diversity of responses and entropy of the policy, we provide examples with the same prompt and a number of generated responses. We observe more similar/ lower diversity of reponses, particularly when the title contains a good summary (Example 7). With less descriptive titles, we observe slightly more diversity (Example 8). Initial tests with completely out of distribution data also show some lack of diversity. This would be an improvement point for the future. 
 
-TODO - Also do entropy analysis
+
 
 **Win Rate:**
 - The win rate of the PPO model using Claude Sonnet 4 as as judge shows a significant improvement over the SFT model, which is expected.
@@ -806,9 +915,8 @@ TODO - Also do entropy analysis
 - The re-calculated win rate of HF version of the Huang et al. 1B seed 77713 is also plotted, for sanity check with our models. This shows a lower win rate than the ones plotted in the paper. While we re-ran this with various tokenizers, we obtained the same results. While the reason for the deviation is still unknown, it is unimportant, as we have shown with win rates that our PPO reproduction significantly outperforms our SFT reproduction, and is comparable with Huang et al. 2024
 
 **Reproduction assessment:**
-- TODO: look for 
-- Training curves mostly look within expectations, with a slight concern of low entropy
-- TODO: but entropy analysis shows...
+- Training curves mostly look within expectations, with a slight concern of low entropy. 
+- Qualitative analysis shows some evidence of too-low entropy, but not concerningly so. 
 - Responses qualitatively are strong, and side by side with SFT and GPT models usually show a clear improvement. For a more consistent improvement, I would train larger models.
 - The win rates also are comparable.
 
