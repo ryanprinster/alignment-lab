@@ -129,7 +129,7 @@ class RLHFEnvironment(BaseEnvironment):
         )
         del _
 
-        # Must do a separate forward pass on generated states instead of using logits calcualted at generation b/c
+        # Must do a separate forward pass on generated states instead of using logits calculated at generation b/c
         #   - Generation gives a different set of possible actions, due to things like top_p generation and temperature
         #   - KL between policy_logits and sft_policy_logits would not be on the same distribution
         #   - Entropy calculation would not be correct either
@@ -161,7 +161,7 @@ class RLHFEnvironment(BaseEnvironment):
         """
         Create the following alignment
 
-        ----State Indexing---- (len = seq_len)
+       ----State Indexing---- (len = seq_len)
         Position:            0         1         2        3        4
         states:          [prompt,   token1,   token2,    EOS,     PAD]
         pad_mask:        [   1,        1,        1,       1,       0 ]
@@ -175,7 +175,7 @@ class RLHFEnvironment(BaseEnvironment):
         rewards:         [    0,        0,      +1,       0 ]
         reward_mask:     [    0,        0,       1,       0 ]
         advantages:      [   A0,       A1,      A2,      A3 ]
-        action_pad_mask: [    1,        1,       1,       0 ]
+        action_pad_mask: [    1,        1,       1,       0 ] 
         """
 
         ### State Indexing ###
