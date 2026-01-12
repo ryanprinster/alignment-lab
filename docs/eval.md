@@ -8,7 +8,7 @@ This analysis evaluates a from-scratch reproduction of the 1B RLHF pipeline from
 **Key Results:**
 - **SFT:** ROUGE-L of 0.2694 vs. ~0.2575 (original)
 - **Reward Model:** 69.5% validation accuracy vs. ~63% (original) and 73.4% judge agreement vs. 37.3% (original)
-- **PPO:** Length-controlled win rates comparable to original 1B curves, with similar training dynamics but lower policy entropy and early evidence of reward hacking via title copying (~X% of outputs) TODO:
+- **PPO:** Length-controlled win rates comparable to original 1B curves, with similar training dynamics but lower policy entropy and early evidence of reward hacking via title copying (TODO: ~X% of outputs) 
 
 **Key Deviations:**
 - Different base model (Llama 3.2 1B vs. Pythia)
@@ -492,14 +492,12 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 <td><img src="assets/images/ppo_win_rate.png" style="max-width: 500px; max-height: 300px;" alt=""/></td>
 <td><img src="assets/images/ppo_win_rate_huang.png" style="max-width: 500px; max-height: 300px;" alt=""/></td>
 </tr>
-
-
 <tr>
 <td align="center"><i>Reproduced PPO</i></td>
-<td align="center"><i>Huang et al. (2024)</i></td>
+<td align="center"><i>Huang et al. (2024) 1B, seed 77713</i></td>
 </tr>
 </table>
-
+<td align="center"><i>Note that there seems to be very high variance between seeds, and Huang et al. graph was cherry-picked to be the _best_ 1B seed for a more rigorous comparison. Some other Huang et al. seeds show overoptimization. </i></td>
 
 ### Sample Outputs
 
