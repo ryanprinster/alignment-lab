@@ -1,7 +1,7 @@
 # RLHF Implementation from Scratch: Evaluation Results
 
 
-## Executive Summary
+## Summary
 
 This analysis evaluates a from-scratch reproduction of the 1B RLHF pipeline from Huang et al. [[1]](REFERENCES.md#ref1) on Reddit TL;DR summarization. We assess each of the three RLHF stages (supervised fine-tuning, reward modeling, and PPO fine-tuning) through quantitative metrics and qualitative validation.
 
