@@ -45,7 +45,7 @@ Notable observations include reward hacking via title copying, which also appear
 </tr>
 
 <tr>
-<td align="center"><i>Reproduced PPO (exponential smoothing α = 0.92)</i></td>
+<td align="center"><i>Reproduced PPO, overall win rate 0.582  (exponential smoothing α = 0.92)</i></td>
 <td align="center"><i>Huang et al. (2024)</i></td>
 </tr>
 </table>
@@ -57,7 +57,7 @@ Notable observations include reward hacking via title copying, which also appear
 <td><img src="docs/assets/images/ppo_win_rate_huang.png" style="max-width: 350px; max-height: 300px;" alt=""/></td>
 </tr>
 <tr>
-<td align="center"><i>Reproduced PPO</i></td>
+<td align="center"><i>Reproduced PPO overall win rate 0.582</i></td>
 <td align="center"><i>Huang et al.. Red and blue are PPO, green is SFT. </i></td>
 </tr>
 </table>

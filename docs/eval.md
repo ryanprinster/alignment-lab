@@ -493,7 +493,7 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 <td><img src="assets/images/ppo_win_rate_huang.png" style="max-width: 500px; max-height: 300px;" alt=""/></td>
 </tr>
 <tr>
-<td align="center"><i>Reproduced PPO</i></td>
+<td align="center"><i>Reproduced PPO overall win rate 0.582</i></td>
 <td align="center"><i>Huang et al. (2024) 1B, seed 77713</i></td>
 </tr>
 </table>
@@ -939,17 +939,17 @@ honey bee operates through an intricate division of labor that shifts dynamicall
   **Observed Failure Mode - Title Copying:**
 Our PPO model frequently reproduces post titles verbatim, which represents reward hacking behavior. While titles often serve as reasonable summaries, this strategy demonstrates the model is exploiting a superficial pattern rather than learning genuine summarization, may fail on posts where titles are clickbait or non-descriptive, and may suggest the reward model may be biased toward title overlap.
 
-  TODO Analysis:
+  Analysis (TODO):
   - Frequency: X% of outputs contain ≥Y% title overlap defined by ratio of longest common subsequence over title length.
   - Huang et al. comparison: Their samples show this behavior in Z% of cases
-  - This is a known limitation of learned reward models, and may be ameliorated by more diverse reward signals, explotation regularization, or simply larger models which Huang et al. imply to be less prone to reward hacking. 
+  - This is a known limitation of learned reward models, and may be ameliorated by techniques such as more diverse reward signals, exploitation regularization, or simply larger models which Huang et al. imply to be less prone to reward hacking. 
 
 
 **Win Rate:**
 
-- Our PPO model demonstrates significant improvement over our SFT baseline, with win rate trajectories that closely track Huang et al.'s length-controlled curves for 1B models
+- Our PPO model demonstrates significant improvement over our SFT baseline, with win rate trajectories that closely track Huang et al.'s length-controlled curves for 1B models. Our reproduction's win rate comes out to 0.582, which is comparable to an eyeball estimate on win rates from the graphs in Huang et al.
 - The 2.8B and 6.9B models in their work perform slightly better, as expected given increased model capacity
-- Absolute win rates differ from their reported values when evaluating their released checkpoint with our pipeline, but curve shapes and relative improvements in comparison to figures presented in the paper are preserved
+- Absolute win rates of Huang et al. differ from their reported values when evaluating their released checkpoint with our pipeline, but curve shapes and relative improvements in comparison to figures presented in the paper are preserved
 
 
 *Evaluation Consistency Check:*
