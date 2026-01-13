@@ -4,12 +4,12 @@
 
 Human (Me) Summary
 
-> I wanted to do the stupid thing and implement RLHF from scratch for fun and to learn. I picked this paper [[1]](REFERENCES.md#ref1) on a summarization task, struggled for a while, learned cool things, got something that looked right, then spent more time and [convinced myself I'm right](eval.md). I did some meta-reflecting on some meta-things I did well and some meta-lessons, asked an LLM to tell me I did good, and  wanted to build more. 
+> I wanted to do the stupid thing and implement RLHF from scratch for fun and to learn. I picked this paper [[1]](REFERENCES.md#ref1) on a summarization task, struggled for a while, learned cool things, got something that looked right, then spent more time to [convince myself I'm right](eval.md). I did some meta-reflecting on some meta-things-I-did-well and some meta-lessons, asked an LLM to tell me I did good, and want to build more. 
 
 
-My Models Summary 
-> (Placeholder)
-- *Note: This post exceeds max query length of my model so I did some summary-of-summary hacking*
+Reproduced RLHF Model Summary 
+> An implementation of reinforcement learning from scratch using PPO algorithm and wanted to make the code largely readable through design rather than comments about using LLMs as development tools. Performed well for about 50 steps then quickly degrading. Found facepalm bug where was overloading parameter name effectively setting value coefficient incorrectly. Results are comparable to and even exceed Huang et al. Any improvements may be statistically significant but are likely attributed to a stronger base model (Llama vs Pythia)? Optimize iteration speed?
+- *Note: This post exceeds max query length of the model so I did some summary-of-summary hacking and added punctuation. This example is very out of distribution for the model and just for fun. For better examples, see the [evaluation](eval.md).*
 
 
 
@@ -28,10 +28,9 @@ Given my background in engineering, I often find research code to be less than e
 
 ### On Using LLMs as Development Tools
 
-I'm dedicating space to this because LLMs are and will continue to be part of the development process for engineers, but there is the very real concern (especially in elementary education) that people let LLMs do think for them. 
+I'm dedicating space to this because LLMs are and will continue to be part of the development process for engineers, but there is the very real concern (especially in elementary education) that people let LLMs do think for them. The goal was to use LLMs for as tools, rather than them using me as a tool. Here are some examples of ways that I used LLMs:
 
 **How I used LLMs:**
-The goal was to use LLMs for as tools, rather than them using me as a tool. Here are some examples of ways that I used LLMs:
 - [Feedback] I'm considering designing a profiling tool as a decorator, but on initial thought it is hard to track state over multiple or recursive calls. Is there a paradigm I haven't thought of that would allow for a better design?
 - [Teacher] What is the difference between reserved and allocated GPU memory?  
 - [Search/Documentation] How do the HF Llama models when used as a sequence classifier extract the reward? Can you find me the source code that can verify your answer?
@@ -151,7 +150,7 @@ The policy performed well for about 50 steps, then started quickly degrading. Th
 
 ## [After] Results and Eval Summary
 
-Overall, results are comparable to and even exceed Huang et al. Any improvements statistically significant _but_ are likely attributed to a stronger base model (Llama vs Pythia). For a more detail eval used to convince myself I'm right, look here. Notable observations include reward hacking via title copying, which also appear in some of the samples shown in Huang et al..
+Overall, results are comparable to and even exceed Huang et al. Any improvements statistically significant _but_ are likely attributed to a stronger base model (Llama vs Pythia). For a more detail eval used to convince myself I'm right, look [here](eval.md). Notable observations include reward hacking via title copying, which also appear in some of the samples shown in Huang et al..
 
 **Key Results:**
 - **SFT:** ROUGE-L of 0.2694 vs. ~0.2575 (original)
@@ -182,10 +181,9 @@ Overall, results are comparable to and even exceed Huang et al. Any improvements
 </tr>
 </table>
 
-<td align="center"><i>Note that there seems to be very high variance between seeds, and Huang et al. graph was cherry-picked to be the _best_ 1B seed for a more rigorous comparison. Some other Huang et al. seeds show overoptimization. </i></td>
 
 
-## Reflections + meta lessons
+## Reflections + Meta-Lessons
 
 I think some of these have been said before, but it just validates their importance:
 
@@ -195,7 +193,7 @@ I think some of these have been said before, but it just validates their importa
 - **Systematic, hypothesis-driven debugging** - Be very deliberate and intentional with how you search for bugs. When problems persist after eliminating all obvious and some non-obvious possibilites, and you're genuinely stumped, something like component-wise or binary search debugging served me well. Find a way to test if the bug is in a certain part of the system or occurs before / after a certain place in the training loop. I did this when looking for the source of what turned out to be state-action tensor alignment issues, and it served me better than checking more and more obscure and outlandish hypotheses.
 - **Just use your brain** Even more experienced developers can succumb to the path of least resistance and fall into a  guess-and-check loop, but this often takes too many iterations. And as it make take minutes to the first hit on that line, or hours until metrics become readable, this is extra costly. Its usually more efficient to use the brain and developing a testable hypothesis that will either be rejected or accepted. I often ask myself "how can I prove myself wrong". Similarly, knowing where to take the sidequests is important. How likely is it to further progress? Or discover crucial bug, or contribute to the requirements?
     - Sidenote: the quick dopamine guess-and-check loop also exists for using LLMs. Sometimes they can help, but just as easily they can send you into a spirl down a path you know to be useless.
-- **Why ML, RL is ~extra~ hard** I like this explanation of why ML is hard: https://ai.stanford.edu/~zayd/why-is-machine-learning-hard.html, shows different dimensions of issues that can occur, causing exponential integration hell. But I want to extend this idea - there's an invisible, shadown dimension between each of these dimensions, which is your understanding. I think of it like this: Algorithm --> Your understanding of said algorithm --> Your actual implementation of that algorithm. It can be easy to look at an implementation and say "yea thats right", but your baseline for comparison is just wrong. If you're so convinced you're right in one area, you're less likely to look in that area.
+- **Why ML, RL is ~extra~ hard** I like this [[9]](REFERENCES.md#ref9) explanation of why ML is hard; it shows different dimensions of issues that can occur, causing exponential integration hell. But I want to extend this idea - there's an invisible, shadown dimension between each of these dimensions, which is your understanding. I think of it like this: Algorithm --> Your understanding of said algorithm --> Your actual implementation of that algorithm. It can be easy to look at an implementation and say "yea thats right", but your baseline for comparison is just wrong. If you're so convinced you're right in one area, you're less likely to look in that area.
 
 
 

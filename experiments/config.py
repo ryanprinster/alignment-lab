@@ -87,7 +87,7 @@ class RLFHPPOConfig(PPOConfigBase):
         # becomes over-optimized (7.1 point 3).
         # Additionally, 8.56 epochs creates a training scale factor of 8.56x time and $$.
         # For these reasons, we train for 1 epoch.
-        self.num_epochs = 9  # (1 epoch = 116,722 episodes)
+        self.num_epochs = 1  # (1 epoch = 116,722 episodes)
         self.max_episodes = 4e5
 
         # Adam W Optimizer

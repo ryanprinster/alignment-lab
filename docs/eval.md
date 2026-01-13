@@ -3,7 +3,7 @@
 
 ## Executive Summary
 
-This analysis evaluates a from-scratch reproduction of the 1B RLHF pipeline from Huang et al. [[1]](#ref1) on Reddit TL;DR summarization. We assess each of the three RLHF stages (supervised fine-tuning, reward modeling, and PPO fine-tuning) through quantitative metrics and qualitative validation.
+This analysis evaluates a from-scratch reproduction of the 1B RLHF pipeline from Huang et al. [[1]](REFERENCES.md#ref1) on Reddit TL;DR summarization. We assess each of the three RLHF stages (supervised fine-tuning, reward modeling, and PPO fine-tuning) through quantitative metrics and qualitative validation.
 
 **Key Results:**
 - **SFT:** ROUGE-L of 0.2694 vs. ~0.2575 (original)
@@ -441,7 +441,7 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 |ZeRO Optimization | Not implemented | Stage 2|
 |Batch Size |128| 512|
 |Learning Rate |1.5e-6 | 3e-6|
-|Training Steps |912 (1 epoch) | 1M (~8.56 epochs)|
+|Training Episodes |116k (1 epoch) | 1M (~8.56 epochs)|
 
 **Rationale for deviations:**
 - Batch size was maintained at 128 to enable single-GPU training
@@ -497,7 +497,7 @@ Our implementation follows the methodology of Huang et al. (2024) with the follo
 <td align="center"><i>Huang et al. (2024) 1B, seed 77713</i></td>
 </tr>
 </table>
-<td align="center"><i>Note that there seems to be very high variance between seeds, and Huang et al. graph was cherry-picked to be the _best_ 1B seed for a more rigorous comparison. Some other Huang et al. seeds show overoptimization. </i></td>
+
 
 ### Sample Outputs
 
@@ -987,8 +987,3 @@ Reinforcement learning is notoriously challenging to implement from scratch and 
 - Scale to larger model sizes (2.8B, 6.9B)
 - Implement ZeRO from scratch (for fun)
 - Compare to DPO, RLAIF, Constitutional AI
-
-
-## References
-<a name="ref1"></a>[1] Huang, S., et al. (2024). The N+ Implementation Details of RLHF with PPO: A Case Study on TL;DR Summarization. [arXiv:2403.17031](https://arxiv.org/abs/2403.17031).
-

@@ -15,3 +15,5 @@
 <a name="ref7"></a>[7] Bai, Y., Jones, A., Ndousse, K., Askell, A., Chen, A., DasSarma, N., Drain, D., Fort, S., Ganguli, D., Henighan, T., Joseph, N., Kadavath, S., Kernion, J., Conerly, T., El-Showk, S., Elhage, N., Hatfield-Dodds, Z., Hernandez, D., Hume, T., Johnston, S., Kravec, S., Lovitt, L., Nanda, N., Olsson, C., Amodei, D., Brown, T., Clark, J., McCandlish, S., Olah, C., Mann, B., & Kaplan, J. (2022). Training a Helpful and Harmless Assistant with Reinforcement Learning from Human Feedback. [arXiv:2204.05862](https://arxiv.org/abs/2204.05862)
 
 <a name="ref8"></a>[8] Rafailov, R., Sharma, A., Mitchell, E., Ermon, S., Manning, C. D., & Finn, C. (2023). Direct Preference Optimization: Your Language Model is Secretly a Reward Model. *Advances in Neural Information Processing Systems*, 36. [arXiv:2305.18290](https://arxiv.org/abs/2305.18290)
+
+<a name="ref9"></a>[9] Ewalds, Z. Why is machine learning 'hard'? [https://ai.stanford.edu/~zayd/why-is-machine-learning-hard.html](https://ai.stanford.edu/~zayd/why-is-machine-learning-hard.html)
